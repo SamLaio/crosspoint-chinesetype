@@ -2,6 +2,8 @@
 
 #include <Utf8.h>
 
+#include <SDCardManager.h>
+
 void GfxRenderer::insertFont(const int fontId, EpdFontFamily font) { fontMap[fontId] = font; }
 
 void GfxRenderer::clearCustomFonts(const int startId) {
@@ -57,7 +59,7 @@ void GfxRenderer::drawPixel(const int x, const int y, const bool state) const {
   // Bounds checking against physical panel dimensions
   if (rotatedX < 0 || rotatedX >= EInkDisplay::DISPLAY_WIDTH || rotatedY < 0 ||
       rotatedY >= EInkDisplay::DISPLAY_HEIGHT) {
-    Serial.printf("[%lu] [GFX] !! Outside range (%d, %d) -> (%d, %d)\n", millis(), x, y, rotatedX, rotatedY);
+    //Serial.printf("[%lu] [GFX] !! Outside range (%d, %d) -> (%d, %d)\n", millis(), x, y, rotatedX, rotatedY);
     return;
   }
 
@@ -898,4 +900,92 @@ void GfxRenderer::getOrientedViewableTRBL(int* outTop, int* outRight, int* outBo
       *outLeft = VIEWABLE_MARGIN_TOP;
       break;
   }
+}
+
+void GfxRenderer::drawPngFromTxtpng(const char* txtpng_file_path) const {
+    // 固定txtpng分辨率：480×800，与屏幕物理分辨率匹配
+    const int pngWidth = 480;
+    const int pngHeight = 800;
+
+    // 1. 打开txtpng文件（复用你的SdMan文件操作）
+    FsFile txtpng_file;
+    if (!SdMan.openFileForRead("GFD", txtpng_file_path, txtpng_file)) {
+        Serial.printf("[%lu] [GFX] Failed to open txtpng: %s\n", millis(), txtpng_file_path);
+        return;
+    }
+
+    // 2. 单行缓冲区：适配480个数值+空格，2048字节足够
+    char line_buffer[2048];
+    // pngY：txtpng的行号（对应原始y坐标 0~799）
+    int pngY = 0;
+
+    // 3. 逐行读取txtpng（一行对应一个y坐标）
+    while (txtpng_file.available() && pngY < pngHeight) {
+        // 读取一行并补结束符，避免乱码
+        int line_len = txtpng_file.readBytesUntil('\n', line_buffer, sizeof(line_buffer) - 1);
+        line_buffer[line_len] = '\0';
+
+        // 计算屏幕实际Y坐标：绘制偏移y + txtpng原始y
+        int screenY = pngY;
+        // 超出屏幕高度，直接终止绘制
+        if (screenY >= getScreenHeight()) {
+            break;
+        }
+
+        // 4. 分割当前行的灰度值（一个数值对应一个x坐标）
+        char* token = strtok(line_buffer, " ");
+        // pngX：txtpng的列号（对应原始x坐标 0~479）
+        int pngX = 0;
+
+        while (token != nullptr && pngX < pngWidth) {
+            // 计算屏幕实际X坐标：绘制偏移x + txtpng原始x
+            int screenX =  pngX;
+            // 超出屏幕宽度，跳过当前行剩余像素
+            if (screenX >= getScreenWidth()) {
+                break;
+            }
+
+            // 5. 解析灰度值：-1=透明（跳过），0~255=有效灰度
+            int gray_255 = atoi(token);
+            uint8_t val = 0; // 映射为4级灰阶值（0~3），对齐drawBitmap的val
+
+            // 有效像素判断+灰度值映射（0=白，3=黑，1=浅灰，2=深灰）
+            if (gray_255 != -1 && gray_255 >= 0 && gray_255 <= 255) {
+                if (gray_255 < 64)      val = 3;
+                else if (gray_255 < 128) val = 2;
+                else if (gray_255 < 192) val = 1;
+                else                    val = 0;
+            } else {
+                // 透明/无效像素：跳过，解析下一个
+                token = strtok(nullptr, " ");
+                pngX++;
+                continue;
+            }
+
+            // 6. 按当前渲染模式绘制：与drawBitmap判断逻辑完全一致
+            // 清空区域
+            if (renderMode == BW && val < 4) {
+              drawPixel(screenX, screenY,false);
+            }
+
+          if (renderMode == BW && val < 3) {
+            drawPixel(screenX, screenY);
+          } else if (renderMode == GRAYSCALE_MSB && (val == 1 || val == 2)) {
+            drawPixel(screenX, screenY, false);
+          } else if (renderMode == GRAYSCALE_LSB && val == 1) {
+            drawPixel(screenX, screenY, false);
+          }
+
+            // 解析下一个灰度值，x坐标+1
+            token = strtok(nullptr, " ");
+            pngX++;
+        }
+
+        // 读取下一行，y坐标+1
+        pngY++;
+    }
+
+    // 7. 关闭文件，释放资源
+    txtpng_file.close();
+    Serial.printf("[%lu] [GFX] Png draw completed (mode: %d)\n", millis(), renderMode);
 }

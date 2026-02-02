@@ -160,7 +160,7 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
     }
 
     self->startNewTextBlock(static_cast<TextBlock::Style>(self->paragraphAlignment));
-    if (strcmp(name, "li") == 0) {
+    if (strcmp(name, "li") == 0 && self->paragraphAlignment == 1) {
       self->currentTextBlock->addWord("\xe2\x80\xa2", EpdFontFamily::REGULAR);
     }
 

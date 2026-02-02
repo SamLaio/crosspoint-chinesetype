@@ -6,13 +6,25 @@
 #include "fontIds.h"
 #include "Xtc.h"
 
+//目录跟随旋转
+#include "CrossPointSettings.h"
+
 namespace {
 constexpr int SKIP_PAGE_MS = 700;
 int page = 1;
 }  // namespace
 
 int XtcReaderChapterSelectionActivity::getPageItems() const {
-  return 25; // ✅ 优化：固定返回25，匹配业务逻辑
+  constexpr int startY = 60;
+  constexpr int lineHeight = 30;
+
+  const int screenHeight = renderer.getScreenHeight();
+  const int availableHeight = screenHeight - startY;
+  int items = availableHeight / lineHeight;
+  if (items < 1) {
+    items = 1;
+  }
+  return items;
 }
 
 void XtcReaderChapterSelectionActivity::taskTrampoline(void* param) {
@@ -23,6 +35,25 @@ void XtcReaderChapterSelectionActivity::taskTrampoline(void* param) {
 void XtcReaderChapterSelectionActivity::onEnter() {
   renderer.clearScreen();
   Activity::onEnter();
+
+  // 屏幕方向配置
+  switch (SETTINGS.orientation) {
+    case CrossPointSettings::ORIENTATION::PORTRAIT:
+      renderer.setOrientation(GfxRenderer::Orientation::Portrait);
+      break;
+    case CrossPointSettings::ORIENTATION::LANDSCAPE_CW:
+      renderer.setOrientation(GfxRenderer::Orientation::LandscapeClockwise);
+      break;
+    case CrossPointSettings::ORIENTATION::INVERTED:
+      renderer.setOrientation(GfxRenderer::Orientation::PortraitInverted);
+      break;
+    case CrossPointSettings::ORIENTATION::LANDSCAPE_CCW:
+      renderer.setOrientation(GfxRenderer::Orientation::LandscapeCounterClockwise);
+      break;
+    default:
+      break;
+  }
+
 
   updateRequired = true;
   selectorIndex = 0;
@@ -37,6 +68,7 @@ void XtcReaderChapterSelectionActivity::onEnter() {
 
 void XtcReaderChapterSelectionActivity::onExit() {
   Activity::onExit();
+  renderer.setOrientation(GfxRenderer::Orientation::Portrait);
 
   if (displayTaskHandle) {
     vTaskDelete(displayTaskHandle);
@@ -54,7 +86,7 @@ void XtcReaderChapterSelectionActivity::loop() {
   const int pageItems = getPageItems();
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-    const int pagebegin=(page-1)*25;
+    const int pagebegin=(page-1)*getPageItems();
     xtc->readChapters_gd(pagebegin);
     uint32_t chapterpage = this->xtc->getChapterstartpage(selectorIndex);
     Serial.printf("[%lu] [XTC] 跳转章节：%d,跳转页数：%d\n", millis(), selectorIndex, chapterpage);
@@ -68,19 +100,19 @@ void XtcReaderChapterSelectionActivity::loop() {
     if (skipPage || isUpKey) {
       page -= 1;
       if(page < 1) page = 1; 
-      selectorIndex = (page-1)*25; // ✅ BUG修复：局部索引0，选中当前页第一个
+      selectorIndex = (page-1)*getPageItems(); 
     } else {
-      selectorIndex--; // ✅ BUG修复：局部索引减1
-      if(selectorIndex < 0) selectorIndex = 0; // ✅ 边界防护
+      selectorIndex--; 
+      if(selectorIndex < 0) selectorIndex = 0; 
     }
     updateRequired = true;
   } else if (nextReleased) {
     bool isDownKey = mappedInput.wasReleased(MappedInputManager::Button::Down);
     if (skipPage || isDownKey) {
       page += 1;
-      selectorIndex = (page-1)*25; // ✅ BUG修复：局部索引24，选中当前页第一个
+      selectorIndex = (page-1)*getPageItems(); 
     } else {
-      selectorIndex++; // ✅ BUG修复：局部索引加1
+      selectorIndex++; 
     }
     updateRequired = true;
   }
@@ -98,8 +130,8 @@ void XtcReaderChapterSelectionActivity::displayTaskLoop() {
 
 void XtcReaderChapterSelectionActivity::renderScreen() {
   renderer.clearScreen();
-  const int pagebegin=(page-1)*25;
-  int page_chapter=25;
+  const int pagebegin=(page-1)*getPageItems();
+  int page_chapter=getPageItems();
   static int parsedPage = -1; // ✅ 保留页码缓存，只解析1次
 
   if (parsedPage != page) {
@@ -127,7 +159,7 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
       
       int drawY = BASE_Y + localIdx * FIX_LINE_HEIGHT; // ✅ 简化计算，逻辑正确
       if (i == selectorIndex) {
-        renderer.fillRect(0, drawY, 480, FIX_LINE_HEIGHT);
+        renderer.fillRect(0, drawY, renderer.getScreenWidth(), FIX_LINE_HEIGHT);
         renderer.drawText(UI_10_FONT_ID, 20, drawY, title, 0);
       } else {
         //renderer.drawRect(0, drawY, 480, FIX_LINE_HEIGHT);

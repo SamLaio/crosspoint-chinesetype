@@ -38,6 +38,7 @@ static const char* getChineseName(const char* englishName) {
     if (strcmp(englishName, "Dark") == 0) return "深色";
     if (strcmp(englishName, "Light") == 0) return "浅色";
     if (strcmp(englishName, "Custom") == 0) return "自定义";
+    if (strcmp(englishName, "Custom_tou") == 0) return "透明壁纸";
     if (strcmp(englishName, "Cover") == 0) return "封面";
     if (strcmp(englishName, "None") == 0) return "无";
     if (strcmp(englishName, "Fit") == 0) return "适配";

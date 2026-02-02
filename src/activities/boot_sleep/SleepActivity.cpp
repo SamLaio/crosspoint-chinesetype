@@ -14,20 +14,27 @@
 
 void SleepActivity::onEnter() {
   Activity::onEnter();
-  renderPopup("Entering Sleep...");
+  
 
   if (SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::BLANK) {
+    renderPopup("Entering Sleep...");
     return renderBlankSleepScreen();
   }
 
   if (SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::CUSTOM) {
+    renderPopup("Entering Sleep...");
     return renderCustomSleepScreen();
   }
 
-  if (SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::COVER) {
-    return renderCoverSleepScreen();
+    if (SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::CUSTOM_TOU) {
+    return renderpngtxtSleepScreen();
   }
 
+  if (SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::COVER) {
+    renderPopup("Entering Sleep...");
+    return renderCoverSleepScreen();
+  }
+  renderPopup("Entering Sleep...");
   renderDefaultSleepScreen();
 }
 
@@ -117,6 +124,127 @@ void SleepActivity::renderCustomSleepScreen() const {
   }
 
   renderDefaultSleepScreen();
+}
+
+void SleepActivity::renderpngtxtSleepScreen() const {
+  bool isPngtxtLoaded = false; // 标记是否成功加载PNGTXT文件
+
+  // ========== 分支1：优先从 /sleep_mask 目录随机加载 .pngtxt ==========
+  auto dir = SdMan.open("/sleep_mask");
+  if (dir && dir.isDirectory()) {
+    std::vector<std::string> files;
+    char name[256]; // 缩减文件名缓冲区长度（足够用）
+    
+    // 收集所有 .pngtxt 文件
+    for (auto file = dir.openNextFile(); file; file = dir.openNextFile()) {
+      if (file.isDirectory()) {
+        file.close();
+        continue;
+      }
+      file.getName(name, sizeof(name));
+      std::string filename = name;
+      
+      // 跳过隐藏文件（.开头）
+      if (!filename.empty() && filename[0] == '.') {
+        file.close();
+        continue;
+      }
+
+      // 修正：判断后缀为 .pngtxt
+      const std::string suffix = ".pngtxt";
+      if (filename.length() < suffix.length() || 
+          filename.substr(filename.length() - suffix.length()) != suffix) {
+        Serial.printf("[%lu] [SLP] Skipping non-.pngtxt file: %s\n", millis(), name);
+        file.close();
+        continue;
+      }
+      
+      files.emplace_back(filename);
+      file.close();
+    }
+
+    const size_t numFiles = files.size();
+    if (numFiles > 0) {
+      // 初始化随机数种子（确保每次随机结果不同）
+      randomSeed(millis());
+      // 生成 0 ~ numFiles-1 的随机索引（修正注释）
+      size_t randomFileIndex = random(numFiles);
+      // 避免重复加载同一张图（仅当文件数>1时）
+      while (numFiles > 1 && randomFileIndex == APP_STATE.lastSleepImage) {
+        randomFileIndex = random(numFiles);
+      }
+      APP_STATE.lastSleepImage = randomFileIndex;
+      APP_STATE.saveToFile();
+
+      const std::string filename = "/sleep_mask/" + files[randomFileIndex];
+      FsFile file;
+      if (SdMan.openFileForRead("SLP", filename, file)) {
+        Serial.printf("[%lu] [SLP] Randomly loading: %s\n", millis(), filename.c_str());
+        
+        // 绘制PNGTXT（灰阶分层绘制）
+        renderer.drawPngFromTxtpng(filename.c_str());
+        renderer.displayBuffer(EInkDisplay::FAST_REFRESH);
+
+        renderer.clearScreen(0x00);
+        renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
+        renderer.drawPngFromTxtpng(filename.c_str());
+        renderer.copyGrayscaleLsbBuffers();
+
+        renderer.clearScreen(0x00);
+        renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
+        renderer.drawPngFromTxtpng(filename.c_str());
+        renderer.copyGrayscaleMsbBuffers();
+
+        renderer.displayGrayBuffer();
+        renderer.setRenderMode(GfxRenderer::BW);
+        
+        file.close(); // 关闭文件，避免泄漏
+        isPngtxtLoaded = true; // 标记加载成功
+      } else {
+        Serial.printf("[%lu] [SLP] Failed to open random file: %s\n", millis(), filename.c_str());
+      }
+    }
+    dir.close(); // 无论是否加载成功，都关闭目录句柄
+  } else if (dir) {
+    dir.close(); // 目录打开失败时，关闭无效句柄
+  }
+
+  // ========== 分支2：若随机加载失败，加载单个 /sleep.pngtxt ==========
+  if (!isPngtxtLoaded) {
+    const std::string pngtxtPath = "/sleep.pngtxt";
+    FsFile txtpng_file;
+    if (SdMan.openFileForRead("GFD", pngtxtPath, txtpng_file)) {
+      Serial.printf("[%lu] [SLP] Loading single file: %s\n", millis(), pngtxtPath.c_str());
+      
+      // 绘制PNGTXT（灰阶分层绘制）
+      renderer.drawPngFromTxtpng(pngtxtPath.c_str());
+      renderer.displayBuffer(EInkDisplay::FAST_REFRESH);
+
+      renderer.clearScreen(0x00);
+      renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
+      renderer.drawPngFromTxtpng(pngtxtPath.c_str());
+      renderer.copyGrayscaleLsbBuffers();
+
+      renderer.clearScreen(0x00);
+      renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
+      renderer.drawPngFromTxtpng(pngtxtPath.c_str());
+      renderer.copyGrayscaleMsbBuffers();
+
+      renderer.displayGrayBuffer();
+      renderer.setRenderMode(GfxRenderer::BW);
+      
+      txtpng_file.close(); // 关闭文件，避免泄漏
+      isPngtxtLoaded = true; // 标记加载成功
+    } else {
+      Serial.printf("[%lu] [SLP] Failed to open single file: %s\n", millis(), pngtxtPath.c_str());
+    }
+  }
+
+  // ========== 分支3：仅当所有PNGTXT加载失败时，才绘制默认睡眠屏 ==========
+  if (!isPngtxtLoaded) {
+    Serial.printf("[%lu] [SLP] No PNGTXT loaded, render default sleep screen\n", millis());
+    renderDefaultSleepScreen();
+  }
 }
 
 void SleepActivity::renderDefaultSleepScreen() const {

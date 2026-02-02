@@ -112,4 +112,6 @@ class GfxRenderer {
   static size_t getBufferSize();
   void grayscaleRevert() const;
   void getOrientedViewableTRBL(int* outTop, int* outRight, int* outBottom, int* outLeft) const;
+
+  void drawPngFromTxtpng(const char* txtpng_file_path) const ;
 };

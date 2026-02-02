@@ -196,6 +196,7 @@ void OtaUpdateActivity::loop() {
       updateRequired = true;
       vTaskDelay(10 / portTICK_PERIOD_MS);
       const auto res = updater.installUpdate();
+      Serial.printf("[%lu] [OTA] 进入到这里，%d.\n", millis(), res);
 
       if (res != OtaUpdater::OK) {
         Serial.printf("[%lu] [OTA] Update failed: %d\n", millis(), res);

@@ -50,7 +50,7 @@ void TxtReaderChapterSelectionActivity::onEnter() {
   renderingMutex = xSemaphoreCreateMutex();
   selectorIndex = findChapterIndexForPage(beginbype);
   // 初始化选中项：默认选中第一个章节（跳过顶部特殊选项）
-  if (selectorIndex < 0) selectorIndex = (page - 1) * 25;
+  if (selectorIndex < 0) selectorIndex = (page - 1) * getPageItems();
 
   updateRequired = true;
   xTaskCreate(&TxtReaderChapterSelectionActivity::taskTrampoline, "TxtReaderChapterSelectionActivityTask",
@@ -82,7 +82,7 @@ void TxtReaderChapterSelectionActivity::loop() {
 
   const bool skipPage = mappedInput.getHeldTime() > SKIP_PAGE_MS;
   const int pageItems = getPageItems();
-  const int total = 25;
+  const int total = pageItems;
 
   // ========== 核心新增：处理顶部特殊选项的确认点击 ==========
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
@@ -193,8 +193,8 @@ void TxtReaderChapterSelectionActivity::displayTaskLoop() {
 
 void TxtReaderChapterSelectionActivity::renderScreen() {
   renderer.clearScreen();
-  const int pagebegin=(page-1)*25;
-  int page_chapter=25;
+  const int pagebegin=(page-1)*getPageItems();
+  int page_chapter=getPageItems();
   static int parsedPage = -1;
 
   // 同一个页码只解析1次
@@ -243,7 +243,7 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
   //renderer.drawText(UI_10_FONT_ID, 200, skipForwardY, skipForwardText.c_str(), selectorIndex != ITEM_SKIP_100_FORWARD);
 
   // ========== 步骤3：绘制章节列表（下移到BASE_Y_CHAPTER） ==========
-  for (int i = pagebegin; i <= pagebegin + page_chapter - 1; i++) {
+  for (int i = pagebegin; i <= pagebegin + getPageItems() - 1; i++) {
       if(this->txt == nullptr || !this->txt->isChapterExist(i)){
           continue;
       }
@@ -259,7 +259,7 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
 
       //renderer.drawText(UI_10_FONT_ID, 20, drawY, title, i != selectorIndex);
       if (i == selectorIndex) {
-        renderer.fillRect(0, drawY, 480, FIX_LINE_HEIGHT);
+        renderer.fillRect(0, drawY, renderer.getScreenWidth(), FIX_LINE_HEIGHT);
         renderer.drawText(UI_10_FONT_ID, 20, drawY, title, 0);
       } else {
         //renderer.drawRect(0, drawY, 480, FIX_LINE_HEIGHT);

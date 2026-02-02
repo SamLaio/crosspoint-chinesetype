@@ -37,6 +37,7 @@ static const char* getChineseName(const char* englishName) {
     if (strcmp(englishName, "Dark") == 0) return "深色";
     if (strcmp(englishName, "Light") == 0) return "浅色";
     if (strcmp(englishName, "Custom") == 0) return "自定义";
+    if (strcmp(englishName, "Custom_tou") == 0) return "透明壁纸";
     if (strcmp(englishName, "Cover") == 0) return "封面";
     if (strcmp(englishName, "None") == 0) return "无";
     if (strcmp(englishName, "Fit") == 0) return "适配";
@@ -126,7 +127,7 @@ namespace {
 constexpr int displaySettingsCount = 6;
 const SettingInfo displaySettings[displaySettingsCount] = {
     // Should match with SLEEP_SCREEN_MODE
-    SettingInfo::Enum("Sleep Screen", &CrossPointSettings::sleepScreen, {"Dark", "Light", "Custom", "Cover", "None"}),
+    SettingInfo::Enum("Sleep Screen", &CrossPointSettings::sleepScreen, {"Dark", "Light", "Custom","Custom_tou", "Cover", "None"}),
     SettingInfo::Enum("Sleep Screen Cover Mode", &CrossPointSettings::sleepScreenCoverMode, {"Fit", "Crop"}),
     SettingInfo::Enum("Sleep Screen Cover Filter", &CrossPointSettings::sleepScreenCoverFilter,
                       {"None", "Contrast", "Inverted"}),

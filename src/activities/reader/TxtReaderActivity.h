@@ -53,6 +53,10 @@ class TxtReaderActivity final : public ActivityWithSubactivity {
   uint32_t beginbype=0; //动态分配
   void loadChapterByOffset(size_t chapterStartOffset);
 
+
+  volatile bool exitRequested = false;  // 新增
+
+
  public:
   explicit TxtReaderActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, std::unique_ptr<Txt> txt,
                              const std::function<void()>& onGoBack, const std::function<void()>& onGoHome)
