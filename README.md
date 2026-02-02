@@ -1,151 +1,78 @@
-# CrossPoint Reader
+# 版本信息
+本项目处于初步阶段，而且这是我第一次写固件，欢迎大家指导批评~
 
-Firmware for the **Xteink X4** e-paper display reader (unaffiliated with Xteink).
-Built using **PlatformIO** and targeting the **ESP32-C3** microcontroller.
+基于 **crosspoint 0.16.0** 版本修改而来，此版本稳定性及性能均有提升，感谢以下开源项目及其贡献者：
 
-CrossPoint Reader is a purpose-built firmware designed to be a drop-in, fully open-source replacement for the official 
-Xteink firmware. It aims to match or improve upon the standard EPUB reading experience.
-
-![](./docs/images/cover.jpg)
-
-## Motivation
-
-E-paper devices are fantastic for reading, but most commercially available readers are closed systems with limited 
-customisation. The **Xteink X4** is an affordable, e-paper device, however the official firmware remains closed.
-CrossPoint exists partly as a fun side-project and partly to open up the ecosystem and truely unlock the device's
-potential.
-
-CrossPoint Reader aims to:
-* Provide a **fully open-source alternative** to the official firmware.
-* Offer a **document reader** capable of handling EPUB content on constrained hardware.
-* Support **customisable font, layout, and display** options.
-* Run purely on the **Xteink X4 hardware**.
-
-This project is **not affiliated with Xteink**; it's built as a community project.
-
-## Features & Usage
-
-- [x] EPUB parsing and rendering (EPUB 2 and EPUB 3)
-- [ ] Image support within EPUB
-- [x] Saved reading position
-- [x] File explorer with file picker
-  - [x] Basic EPUB picker from root directory
-  - [x] Support nested folders
-  - [ ] EPUB picker with cover art
-- [x] Custom sleep screen
-  - [x] Cover sleep screen
-- [x] Wifi book upload
-- [x] Wifi OTA updates
-- [x] Configurable font, layout, and display options
-  - [ ] User provided fonts
-  - [ ] Full UTF support
-- [x] Screen rotation
-
-Multi-language support: Read EPUBs in various languages, including English, Spanish, French, German, Italian, Portuguese, Russian, Ukrainian, Polish, Swedish, Norwegian, [and more](./USER_GUIDE.md#supported-languages).
-
-See [the user guide](./USER_GUIDE.md) for instructions on operating CrossPoint. 
-
-## Installing
-
-### Web (latest firmware)
-
-1. Connect your Xteink X4 to your computer via USB-C
-2. Go to https://xteink.dve.al/ and click "Flash CrossPoint firmware"
-
-To revert back to the official firmware, you can flash the latest official firmware from https://xteink.dve.al/, or swap
-back to the other partition using the "Swap boot partition" button here https://xteink.dve.al/debug.
-
-### Web (specific firmware version)
-
-1. Connect your Xteink X4 to your computer via USB-C
-2. Download the `firmware.bin` file from the release of your choice via the [releases page](https://github.com/daveallie/crosspoint-reader/releases)
-3. Go to https://xteink.dve.al/ and flash the firmware file using the "OTA fast flash controls" section
-
-To revert back to the official firmware, you can flash the latest official firmware from https://xteink.dve.al/, or swap
-back to the other partition using the "Swap boot partition" button here https://xteink.dve.al/debug.
-
-### Manual
-
-See [Development](#development) below.
-
-## Development
-
-### Prerequisites
-
-* **PlatformIO Core** (`pio`) or **VS Code + PlatformIO IDE**
-* Python 3.8+
-* USB-C cable for flashing the ESP32-C3
-* Xteink X4
-
-### Checking out the code
-
-CrossPoint uses PlatformIO for building and flashing the firmware. To get started, clone the repository:
-
-```
-git clone --recursive https://github.com/daveallie/crosspoint-reader
-
-# Or, if you've already cloned without --recursive:
-git submodule update --init --recursive
-```
-
-### Flashing your device
-
-Connect your Xteink X4 to your computer via USB-C and run the following command.
-
-```sh
-pio run --target upload
-```
-
-## Internals
-
-CrossPoint Reader is pretty aggressive about caching data down to the SD card to minimise RAM usage. The ESP32-C3 only
-has ~380KB of usable RAM, so we have to be careful. A lot of the decisions made in the design of the firmware were based
-on this constraint.
-
-### Data caching
-
-The first time chapters of a book are loaded, they are cached to the SD card. Subsequent loads are served from the 
-cache. This cache directory exists at `.crosspoint` on the SD card. The structure is as follows:
-
-
-```
-.crosspoint/
-├── epub_12471232/       # Each EPUB is cached to a subdirectory named `epub_<hash>`
-│   ├── progress.bin     # Stores reading progress (chapter, page, etc.)
-│   ├── cover.bmp        # Book cover image (once generated)
-│   ├── book.bin         # Book metadata (title, author, spine, table of contents, etc.)
-│   └── sections/        # All chapter data is stored in the sections subdirectory
-│       ├── 0.bin        # Chapter data (screen count, all text layout info, etc.)
-│       ├── 1.bin        #     files are named by their index in the spine
-│       └── ...
-│
-└── epub_189013891/
-```
-
-Deleting the `.crosspoint` directory will clear the entire cache. 
-
-Due the way it's currently implemented, the cache is not automatically cleared when a book is deleted and moving a book
-file will use a new cache directory, resetting the reading progress.
-
-For more details on the internal file structures, see the [file formats document](./docs/file-formats.md).
-
-## Contributing
-
-Contributions are very welcome!
-
-If you're looking for a way to help out, take a look at the [ideas discussion board](https://github.com/daveallie/crosspoint-reader/discussions/categories/ideas).
-If there's something there you'd like to work on, leave a comment so that we can avoid duplicated effort.
-
-### To submit a contribution:
-
-1. Fork the repo
-2. Create a branch (`feature/dithering-improvement`)
-3. Make changes
-4. Submit a PR
+- 主项目：[crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
+- 自选字体功能参考：[ruby-builds/crosspoint-reader (custom-fonts分支)](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
 
 ---
 
-CrossPoint Reader is **not affiliated with Xteink or any manufacturer of the X4 hardware**.
+# 当前进度
 
-Huge shoutout to [**diy-esp32-epub-reader** by atomic14](https://github.com/atomic14/diy-esp32-epub-reader), which was a project I took a lot of inspiration from as I
-was making CrossPoint.
+- **EPUB**：基本完成中文化适配
+- **XTC**：实现动态管理功能
+- **TXT**：目录解析逻辑如下：
+  - 优先按“第n章”格式提取目录
+  - 若无匹配目录或提取失败，则自动启用按字节分卷的兜底方案
+  - *注：这部分是在原项目更新前独立编写的，刚写完就发现更新了txt hhh*
+
+---
+
+# 字体说明
+
+## 内置字体
+项目最初为满足个人阅读需求，内置字体选用 **汉仪空山楷**。  
+
+
+## 自选字体
+
+用户有两种方式制作字体：
+
+python用户：lib\EpdFont\scripts下的fontconvert.py进行字体转换
+
+
+Windows用户：选用usetool/文件夹下的test_gui.exe进行字体转换
+
+转换完后放入fonts/文件夹中，具体可见：[ruby-builds/crosspoint-reader (custom-fonts分支)](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
+
+格式：
+
+1.字体名称.epdfont（无法调整大小，生成多大就是多大）
+2.按照这种格式明明字体：Family_Style_Size.epdfont（例如，Aileron_Regular_18.epdfont),生成一套字体可达成最佳效果
+
+
+## 刷机指导
+
+
+1. 需要一根typec线连接你的电脑和x4
+2. 下载release页面下的bin文件
+3. 打开 https://xteink.dve.al/ 页面，在OTA fast flash controls部分选择下载好的bin文件，点击flash firmware from file
+4. 先短按reset(sd卡附近），再长按电源键
+
+首次刷机建议做好保存，在full flash controls界面下，选择save full flash，备份一下你的官方固件
+
+# 文件管理
+
+适配新0.16.0版本，下方按键选择阅读历史和本地文件，侧边按键进行选择
+
+# wifi传书
+按屏幕提示来即可
+
+# OPDS传书
+与calibre同步，到时候会出教程
+
+# 主页
+主页自动生成封面，所以返回主页的时候时间会比较长，属于正常现象
+
+# bugs
+TXT：txt进入后需要手动翻页刷新，翻页略有卡顿，需要包容一下
+
+# 问题解决
+万事先重启
+
+重启解决不了的，拔出sd卡，删除根目录下的.crosspoint文件夹
+
+# 联系方式
+可在小红书私聊我，也可以发邮件到gdby_mail@163.com,当然，最简单的是直接在github项目的讨论里发表看法
+
