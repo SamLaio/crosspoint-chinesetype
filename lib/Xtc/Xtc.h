@@ -25,6 +25,7 @@ class Xtc {
   std::string cachePath;
   std::unique_ptr<xtc::XtcParser> parser;
   bool loaded;
+  bool scaleCoverToThumb(int height) const;
 
  public:
   explicit Xtc(std::string filepath, const std::string& cacheDir) : filepath(std::move(filepath)), loaded(false) {

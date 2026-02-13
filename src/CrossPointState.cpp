@@ -16,6 +16,8 @@ bool CrossPointState::saveToFile() const {
   if (!SdMan.openFileForWrite("CPS", STATE_FILE, outputFile)) {
     return false;
   }
+  Serial.printf("[%lu] [CPS] Saving state to file: openEpubPath='%s', lastSleepImage=%u, readerActivityLoadCount=%u, lastSleepFromReader=%d\n",
+                millis(), openEpubPath.c_str(), lastSleepImage, readerActivityLoadCount, lastSleepFromReader);
 
   serialization::writePod(outputFile, STATE_FILE_VERSION);
   serialization::writeString(outputFile, openEpubPath);

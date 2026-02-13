@@ -128,6 +128,8 @@ std::string getChapterTitleByIndex(int chapterIndex) {
   int chapterActualCount = 0;
   XtcError loadPageBatchByStart(uint16_t startPage);
 
+  
+
  private:
   FsFile m_file;
   bool m_isOpen;

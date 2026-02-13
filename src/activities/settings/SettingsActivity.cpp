@@ -16,6 +16,8 @@
 #include "fontIds.h"
 #include "JianGuoYunSettingsActivity.h"
 #include "languageMapper.h"
+#include "../reader/PreviewActivity.h"
+
 
 const char* SettingsActivity::categoryNames[categoryCount] = {"Display", "Reader", "Controls", "System"};
 
@@ -39,11 +41,11 @@ const SettingInfo displaySettings[displaySettingsCount] = {
     SettingInfo::Toggle("Sunlight Fading Fix", &CrossPointSettings::fadingFix),
 };
 
-constexpr int readerSettingsCount = 13;
+constexpr int readerSettingsCount = 14;
 const SettingInfo readerSettings[readerSettingsCount] = {
-    SettingInfo::Enum("Font Family", &CrossPointSettings::fontFamily, {"Bookerly", "Noto Sans", "Open Dyslexic", "Custom"}),
+    SettingInfo::Enum("Font Family", &CrossPointSettings::fontFamily, {"Bookerly", "汉仪空山楷", "汉仪空山楷", "自定义"}),
     SettingInfo::Action("Set Custom Font Family"),
-    SettingInfo::Enum("Font Size", &CrossPointSettings::fontSize, {"Small", "Medium", "Large", "X Large"}),
+    SettingInfo::Enum("字号（不起效）", &CrossPointSettings::fontSize, {"Small", "Medium", "Large", "X Large"}),
     SettingInfo::Enum("Line Spacing", &CrossPointSettings::lineSpacing, {"Tight", "Normal", "Wide"}),
     SettingInfo::Toggle("firstlineintent", &CrossPointSettings::firstlineintented),
     SettingInfo::Enum("word Spacing", &CrossPointSettings::wordSpacing, {"Tight", "Normal", "Wide"}),
@@ -55,7 +57,9 @@ const SettingInfo readerSettings[readerSettingsCount] = {
     SettingInfo::Enum("Reading Orientation", &CrossPointSettings::orientation,
                       {"Portrait", "Landscape CW", "Inverted", "Landscape CCW"}),
     SettingInfo::Toggle("Extra Paragraph Spacing", &CrossPointSettings::extraParagraphSpacing),
-    SettingInfo::Toggle("Text Anti-Aliasing", &CrossPointSettings::textAntiAliasing)};
+    SettingInfo::Toggle("Text Anti-Aliasing", &CrossPointSettings::textAntiAliasing),
+    SettingInfo::Action("查看预览")
+};
 
 constexpr int controlsSettingsCount = 4;
 const SettingInfo controlsSettings[controlsSettingsCount] = {
@@ -70,7 +74,7 @@ constexpr int systemSettingsCount = 6;
 const SettingInfo systemSettings[systemSettingsCount] = {
     SettingInfo::Enum("Time to Sleep", &CrossPointSettings::sleepTimeout,
                       {"1 min", "5 min", "10 min", "15 min", "30 min"}),
-    SettingInfo::Action("KOReader Sync"), SettingInfo::Action("OPDS Browser"),SettingInfo::Action("JianGuoYun Settings"), SettingInfo::Action("Clear Cache"),
+    SettingInfo::Action("KOReader Sync"), SettingInfo::Action("OPDS Browser"),SettingInfo::Action("坚果云信息配置"), SettingInfo::Action("Clear Cache"),
     SettingInfo::Action("Check for updates")};
 }  // namespace
 
@@ -237,7 +241,7 @@ void SettingsActivity::toggleCurrentSetting() {
         updateRequired = true;
             }));
       xSemaphoreGive(renderingMutex);
-    } else if (strcmp(setting.name, "JianGuoYun Settings") == 0) {
+    } else if (strcmp(setting.name, "坚果云信息配置") == 0) {
     xSemaphoreTake(renderingMutex, portMAX_DELAY);
     exitActivity();
     enterNewActivity(new JianGuoYunSettingsActivity(renderer, mappedInput, [this] {
@@ -265,6 +269,14 @@ void SettingsActivity::toggleCurrentSetting() {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       exitActivity();
       enterNewActivity(new FontSelectionActivity(renderer, mappedInput, [this] {
+        exitActivity();
+        updateRequired = true;
+      }));
+      xSemaphoreGive(renderingMutex);
+      } else if (strcmp(setting.name, "查看预览") == 0) {
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      exitActivity();
+      enterNewActivity(new PreviewActivity(renderer, mappedInput, [this] {
         exitActivity();
         updateRequired = true;
       }));

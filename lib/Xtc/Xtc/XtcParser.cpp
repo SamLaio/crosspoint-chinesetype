@@ -524,6 +524,7 @@ size_t XtcParser::loadPage(uint32_t pageIndex, uint8_t* buffer, size_t bufferSiz
   size_t bitmapSize;
   if (m_bitDepth == 2) {
     bitmapSize = ((static_cast<size_t>(pageHeader.width) * pageHeader.height + 7) / 8) * 2;
+
   } else {
     bitmapSize = ((pageHeader.width + 7) / 8) * pageHeader.height;
   }
@@ -658,5 +659,6 @@ XtcError XtcParser::loadPageBatchByStart(uint16_t startPage) {
                startPage, endPage, loadCount);
   return XtcError::OK;
 }
+
 
 }  // namespace xtc

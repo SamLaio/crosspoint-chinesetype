@@ -363,8 +363,8 @@ void setup() {
     APP_STATE.openEpubPath = "";
     APP_STATE.readerActivityLoadCount++;
     APP_STATE.saveToFile();
-    //onGoToReader(path);
-    onGoHome();
+    onGoToReader(path);
+    //onGoHome();
   }
 
   // Ensure we're not still holding the power button before leaving setup

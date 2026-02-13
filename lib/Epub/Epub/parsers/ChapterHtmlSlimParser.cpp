@@ -224,6 +224,8 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
       headerBlockStyle.alignment = cssStyle.textAlign;
     }
     self->startNewTextBlock(headerBlockStyle);
+    //稍微排下版，标题前加小黑点
+    self->currentTextBlock->addWord("\xe2\x97\x8f ", EpdFontFamily::REGULAR);
     self->boldUntilDepth = std::min(self->boldUntilDepth, self->depth);
     self->updateEffectiveInlineStyle();
   } else if (matches(name, BLOCK_TAGS, NUM_BLOCK_TAGS)) {
