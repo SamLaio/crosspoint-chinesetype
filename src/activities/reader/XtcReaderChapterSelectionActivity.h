@@ -19,7 +19,6 @@ class XtcReaderChapterSelectionActivity final : public Activity {
   const std::function<void(uint32_t newPage)> onSelectPage;
 
   int getPageItems() const;
-  int findChapterIndexForPage(uint32_t page) const;
 
   static void taskTrampoline(void* param);
   [[noreturn]] void displayTaskLoop();

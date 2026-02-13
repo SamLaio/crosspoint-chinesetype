@@ -258,7 +258,7 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
 
 void ParsedText::applyParagraphIndent() {
   Serial.printf("已进入此函数\n");
-  if (blockStyle.alignment == CssTextAlign::Left) {
+  if (blockStyle.alignment == CssTextAlign::Left && firstlineintented) {
     Serial.printf("已进入\n");
     words.front().insert(0, "\xe3\x80\x80\xe3\x80\x80"); // 两个全角空格，替代原来的1个窄空格
     Serial.printf("首行缩进应用：%d\n", firstlineintented);

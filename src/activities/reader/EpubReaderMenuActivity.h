@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "../ActivityWithSubactivity.h"
+#include "LanguageMapper.h"
 
 class EpubReaderMenuActivity final : public ActivityWithSubactivity {
  public:
@@ -40,9 +41,9 @@ class EpubReaderMenuActivity final : public ActivityWithSubactivity {
 
   // Fixed menu layout (order matters for up/down navigation).
   const std::vector<MenuItem> menuItems = {
-      {MenuAction::SELECT_CHAPTER, "Go to Chapter"}, {MenuAction::ROTATE_SCREEN, "Reading Orientation"},
-      {MenuAction::GO_TO_PERCENT, "Go to %"},        {MenuAction::GO_HOME, "Go Home"},
-      {MenuAction::SYNC, "Sync Progress"},           {MenuAction::DELETE_CACHE, "Delete Book Cache"}};
+      {MenuAction::SELECT_CHAPTER, "进入章节目录"}, {MenuAction::ROTATE_SCREEN, "阅读方向"},
+      {MenuAction::GO_TO_PERCENT, "直达进度 %"},        {MenuAction::GO_HOME, "返回主页"},
+      {MenuAction::SYNC, "进度同步(koreader)"},           {MenuAction::DELETE_CACHE, "清理缓存"}};
 
   int selectedIndex = 0;
   bool updateRequired = false;
@@ -50,7 +51,7 @@ class EpubReaderMenuActivity final : public ActivityWithSubactivity {
   SemaphoreHandle_t renderingMutex = nullptr;
   std::string title = "Reader Menu";
   uint8_t pendingOrientation = 0;
-  const std::vector<const char*> orientationLabels = {"Portrait", "Landscape CW", "Inverted", "Landscape CCW"};
+  const std::vector<const char*> orientationLabels = {getChineseName("Portrait"), getChineseName("Landscape CW"), getChineseName("Inverted"), getChineseName("Landscape CCW")};
   int currentPage = 0;
   int totalPages = 0;
   int bookProgressPercent = 0;

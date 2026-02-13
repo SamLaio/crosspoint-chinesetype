@@ -127,8 +127,8 @@ static const char* getChineseName(const char* englishName) {
 
 
         // 选项
-    if (strcmp(englishName, "« Back") == 0) return "保存/返回";
-    if (strcmp(englishName, "Toggle") == 0) return "选择/切换";
+    if (strcmp(englishName, "« Back") == 0) return "<<返回";
+    if (strcmp(englishName, "Toggle") == 0) return "选择";
     if (strcmp(englishName, "Up") == 0) return "向上";
     if (strcmp(englishName, "Down") == 0) return "向下";
 

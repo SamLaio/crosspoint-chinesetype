@@ -39,7 +39,9 @@ void TxtReaderChapterSelectionActivity::onEnter() {
 
 
   renderingMutex = xSemaphoreCreateMutex();
-  selectorIndex = 0;
+  //进入当前章节
+  page=chapternum / getPageItems()+1;
+  selectorIndex = chapternum; // 计算当前章节在页内的索引
   // 初始化选中项：默认选中第一个章节（跳过顶部特殊选项）
   if (selectorIndex < 0) selectorIndex = (page - 1) * getPageItems();
 

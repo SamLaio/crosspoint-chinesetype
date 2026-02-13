@@ -25,7 +25,7 @@ constexpr int displaySettingsCount = 8;
 const SettingInfo displaySettings[displaySettingsCount] = {
     // Should match with SLEEP_SCREEN_MODE
     SettingInfo::Enum("Sleep Screen", &CrossPointSettings::sleepScreen,
-                      {"Dark", "Light", "Custom", "Cover", "None", "Cover + Custom"}),
+                      {"Dark", "Light", "Custom", "Cover", "透明壁纸","None", "Cover + Custom"}),
     SettingInfo::Enum("Sleep Screen Cover Mode", &CrossPointSettings::sleepScreenCoverMode, {"Fit", "Crop"}),
     SettingInfo::Enum("Sleep Screen Cover Filter", &CrossPointSettings::sleepScreenCoverFilter,
                       {"None", "Contrast", "Inverted"}),

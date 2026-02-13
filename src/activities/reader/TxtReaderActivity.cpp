@@ -251,6 +251,7 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
 
   viewportWidth = renderer.getScreenWidth() - orientedMarginLeft - orientedMarginRight;
   const int viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;
+  //行距加这里？
   const int lineHeight = renderer.getLineHeight(cachedFontId)+lineSpacing;
 
   linesPerPage = viewportHeight / lineHeight;
@@ -354,7 +355,6 @@ void TxtReaderActivity::buildPageIndex(size_t beginByte, size_t endByte) {
 
 
 
-
 bool TxtReaderActivity::loadPageAtOffset(size_t offset, std::vector<std::string>& outLines, size_t& nextOffset) {
   outLines.clear();
   const size_t fileSize = txt->getFileSize();
@@ -380,17 +380,13 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset, std::vector<std::string>
   // Parse lines from buffer
   size_t pos = 0;
 
-  //增加首行缩进,控制是否缩进
-  bool isParagraphFirstLine;
-  if(firstLineIndent){  
-    isParagraphFirstLine = true;
-    //Serial.printf("首行缩进生效\n");
-  }else{
-   isParagraphFirstLine = false;
-  }
+  // 首行缩进控制变量
+  const std::string indentStr = "\xe3\x80\x80\xe3\x80\x80"; // 两个全角空格
+  const int indentWidth = renderer.getTextWidth(cachedFontId, "中")*2; // 缩进宽度
+  bool needIndent = true; // 换段后需要缩进（仅对原生行生效）
+  bool isFirstLineOfPage = true; // 每页第一行不缩进
+  bool isOriginalLine = true; // 标记是否是原生行（未拆行）
 
-
-  const std::string indentStr = "  "; // 两个空格作为首行缩进
   while (pos < chunkSize && static_cast<int>(outLines.size()) < linesPerPage) {
     // Find end of line
     size_t lineEnd = pos;
@@ -416,38 +412,67 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset, std::vector<std::string>
     // Extract line content for display (without CR/LF)
     std::string line(reinterpret_cast<char*>(buffer + pos), displayLen);
 
+    // 空行标记段落结束，下一段需要缩进（仅对原生行生效）
+    if (displayLen == 0) {
+      pos = lineEnd + 1;
+      needIndent = true; // 空行后，下一段原生行需要缩进
+      isOriginalLine = true; // 重置原生行标记
+      continue;
+    }
+
+    // 检测行首是否已有两个全角空格（仅对原生行检测）
+    bool hasLeadingIndent = false;
+    if (isOriginalLine && line.length() >= 6) {
+      std::string leadingChars = line.substr(0, 6);
+      if (leadingChars == indentStr) {
+        hasLeadingIndent = true; // 行首已有两个全角空格
+        needIndent = false;      // 重置缩进标记，避免重复缩进
+      }
+    }
+
     // Track position within this source line (in bytes from pos)
     size_t lineBytePos = 0;
 
+    // 重置拆行标记：进入拆行逻辑后，后续行都是拆行
+    isOriginalLine = false;
+
     // Word wrap if needed
     while (!line.empty() && static_cast<int>(outLines.size()) < linesPerPage) {
-      //字距加这里？
+      // 计算行宽：仅原生行需要考虑缩进宽度，拆行完全不考虑
       int lineWidth = renderer.getTextWidth(cachedFontId, line.c_str());
-        // 2. 仅左对齐时，使用SETTINGS里的字间距设置（核心修正：不重定义变量）
+      // 缩进判断：仅原生行 + 需要缩进 + 不是页首 + 无已有空格
+      const bool doIndent = isOriginalLine && needIndent && !isFirstLineOfPage && !hasLeadingIndent;
+      
+      if (doIndent) {
+        lineWidth += indentWidth; // 仅原生行预留缩进宽度
+      }
+
+      // 字距处理（原有逻辑）
       switch (cachedParagraphAlignment) {
         case CrossPointSettings::LEFT_ALIGN:
-        // 修正：直接赋值给已定义的spaceWidth，而非重新定义int spaceWidth
         lineWidth = lineWidth+wordSpacing;
         //Serial.printf("左对齐字间距生效：wordSpacing=%d\n", wordSpacing);
       }
 
       if (lineWidth <= viewportWidth) {
-        //增加首行缩进
-        
-        if (isParagraphFirstLine) {
-            outLines.push_back(indentStr + line);
-            isParagraphFirstLine = false; // 首行缩进后，后续行取消
+        // 仅原生行添加缩进，拆行完全不添加
+        if (doIndent) {
+          outLines.push_back(indentStr + line);
+          needIndent = false; // 原生行缩进后，该段落后续行（包括拆行）都不缩进
         } else {
-            outLines.push_back(line);
+          outLines.push_back(line);
         }
         lineBytePos = displayLen;  // Consumed entire display content
         line.clear();
+        isFirstLineOfPage = false; // 每页第一行已处理
         break;
       }
 
-      // Find break point
+      // Find break point（拆行逻辑）
       size_t breakPos = line.length();
-      while (breakPos > 0 && renderer.getTextWidth(cachedFontId, line.substr(0, breakPos).c_str()) > viewportWidth) {
+      // 拆行宽度：完全不考虑缩进（拆行不缩进）
+      int allowedWidth = viewportWidth - (cachedParagraphAlignment == CrossPointSettings::LEFT_ALIGN ? wordSpacing : 0);
+      while (breakPos > 0 && renderer.getTextWidth(cachedFontId, line.substr(0, breakPos).c_str()) > allowedWidth) {
         // Try to break at space
         size_t spacePos = line.rfind(' ', breakPos - 1);
         if (spacePos != std::string::npos && spacePos > 0) {
@@ -465,13 +490,9 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset, std::vector<std::string>
       if (breakPos == 0) {
         breakPos = 1;
       }
-      //增加首行缩进
-      std::string currentLine = line.substr(0, breakPos);
-      if (isParagraphFirstLine) {
-          currentLine = indentStr + currentLine;
-          isParagraphFirstLine = false;
-      }
-      outLines.push_back(currentLine);
+
+      // 拆行后的行：完全不缩进，直接添加
+      outLines.push_back(line.substr(0, breakPos));
 
       // Skip space at break point
       size_t skipChars = breakPos;
@@ -480,16 +501,20 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset, std::vector<std::string>
       }
       lineBytePos += skipChars;
       line = line.substr(skipChars);
+      isFirstLineOfPage = false; // 每页第一行已处理
     }
 
     // Determine how much of the source buffer we consumed
     if (line.empty()) {
       // Fully consumed this source line, move past the newline
       pos = lineEnd + 1;
+      needIndent = true; // 换行了，下一段原生行需要缩进
+      isOriginalLine = true; // 重置原生行标记，下一行是新的原生行
     } else {
       // Partially consumed - page is full mid-line
       // Move pos to where we stopped in the line (NOT past the line)
       pos = pos + lineBytePos;
+      isOriginalLine = true; // 未消费完的行，下一次处理仍视为原生行
       break;
     }
   }
@@ -695,7 +720,7 @@ void TxtReaderActivity::renderStatusBar(const int orientedMarginRight, const int
     const int titleMarginRight = progressTextWidth + 30 + orientedMarginRight;
     const int availableTextWidth = renderer.getScreenWidth() - titleMarginLeft - titleMarginRight;
 
-    std::string title = txt->getTitle();
+    std::string title = txt->getChapterTitleByIndex(chapternum);
     int titleWidth = renderer.getTextWidth(SMALL_FONT_ID, title.c_str());
     if (titleWidth > availableTextWidth) {
       title = renderer.truncatedText(SMALL_FONT_ID, title.c_str(), availableTextWidth);
@@ -1036,5 +1061,3 @@ void TxtReaderActivity::chapter_savePageIndexCache(int chapternum) const {
   f.close();
   Serial.printf("[%lu] [TRS] Saved page index cache: %d pages\n", millis(), totalPages);
 }
-
-

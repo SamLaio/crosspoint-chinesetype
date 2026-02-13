@@ -56,8 +56,29 @@ void XtcReaderChapterSelectionActivity::onEnter() {
 
 
   updateRequired = true;
-  selectorIndex = 0;
-  page = 1;
+  //循环找所在章节
+
+  int testpage=0;
+  xtc->readChapters_gd(testpage*getPageItems());
+  while(currentPage >this->xtc->getChapterstartpage(testpage*getPageItems())){
+    
+    testpage++;
+    xtc->readChapters_gd(testpage*getPageItems());
+    Serial.printf("[%lu] [XTC] 比较，所在页码：%d，目前页码：%d\n", millis(), currentPage, this->xtc->getChapterstartpage(testpage*getPageItems()));
+  }
+  //找到页
+  page = testpage;
+  int i =(testpage-1)*getPageItems();
+  xtc->readChapters_gd((testpage-1)*getPageItems());
+  while(currentPage >this->xtc->getChapterstartpage(i)){
+    
+    i++;
+    Serial.printf("[%lu] [XTC] 查找到：%d\n", millis(), i);
+    Serial.printf("[%lu] [XTC] 比较，所在页码：%d，目前页码：%d\n", millis(), currentPage, this->xtc->getChapterstartpage(i));
+  }
+  //找到章
+  selectorIndex = i; // 计算当前章节在页内的索引
+
   xTaskCreate(&XtcReaderChapterSelectionActivity::taskTrampoline, "XtcReaderChapterSelectionTask",
               4096,        
               this,        
@@ -145,19 +166,19 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
   const int FIX_LINE_HEIGHT = 29;
   const int BASE_Y = 60;
 
-  // ✅ 强制循环渲染25章(pagebegin ~ pagebegin+24)，无有效数判断、不截断、不满也留空行
+  
   for (int i = pagebegin; i <= pagebegin + page_chapter - 1; i++) {
-      int localIdx = i - pagebegin; // ✅ 保留核心修复：全局索引→局部索引0~24，必加！读取数据全靠它
+      int localIdx = i - pagebegin; 
       
-      uint32_t currOffset = this->xtc->getChapterstartpage(i); // ✅ 传局部索引，能读到正确数据
-      std::string dirTitle = this->xtc->getChapterTitleByIndex(i); // ✅ 传局部索引，能读到正确标题
+      uint32_t currOffset = this->xtc->getChapterstartpage(i); 
+      std::string dirTitle = this->xtc->getChapterTitleByIndex(i); 
       
       Serial.printf("[%lu] [XTC_CHAPTER] 第%d章，名字为:%s,页码为%d\n", millis(), i, dirTitle.c_str(),currOffset);
       static char title[64];
       strncpy(title, dirTitle.c_str(), sizeof(title)-1);
       title[sizeof(title)-1] = '\0';
       
-      int drawY = BASE_Y + localIdx * FIX_LINE_HEIGHT; // ✅ 简化计算，逻辑正确
+      int drawY = BASE_Y + localIdx * FIX_LINE_HEIGHT; // 
       if (i == selectorIndex) {
         renderer.fillRect(0, drawY, renderer.getScreenWidth(), FIX_LINE_HEIGHT);
         renderer.drawText(UI_10_FONT_ID, 20, drawY, title, 0);
