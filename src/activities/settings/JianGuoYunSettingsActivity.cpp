@@ -116,7 +116,7 @@ void JianGuoYunSettingsActivity::handleSelection() {
         enterNewActivity(new KeyboardEntryActivity(
             renderer, mappedInput, "输入应用密码", SETTINGS.jgAppPassword, 10,
             63,     // 最大长度63
-            true,   // 密码模式（输入时隐藏）
+            false,   // 密码模式（输入时隐藏）
             [this](const std::string& password) {
                 // 保存应用密码到配置
                 strncpy(SETTINGS.jgAppPassword, password.c_str(), sizeof(SETTINGS.jgAppPassword) - 1);

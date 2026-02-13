@@ -20,9 +20,9 @@ void readAndValidate(FsFile& file, uint8_t& member, const uint8_t maxValue) {
 }
 
 namespace {
-constexpr uint8_t SETTINGS_FILE_VERSION = 2;
+constexpr uint8_t SETTINGS_FILE_VERSION = 3;
 // Increment this when adding new persisted settings fields
-constexpr uint8_t SETTINGS_COUNT = 32;
+constexpr uint8_t SETTINGS_COUNT = 36;
 constexpr char SETTINGS_FILE[] = "/.crosspoint/settings.bin";
 
 // Validate front button mapping to ensure each hardware button is unique.
@@ -114,7 +114,9 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writePod(outputFile, hyphenationEnabled);
   serialization::writeString(outputFile, std::string(opdsUsername));
   serialization::writeString(outputFile, std::string(opdsPassword));
-  serialization::writePod(outputFile, sleepScreenCoverFilter);
+  serialization::writeString(outputFile, std::string(jgBookFolder));
+  serialization::writeString(outputFile, std::string(jgUsername));
+  serialization::writeString(outputFile, std::string(jgAppPassword));
   serialization::writePod(outputFile, uiTheme);
   serialization::writePod(outputFile, frontButtonBack);
   serialization::writePod(outputFile, frontButtonConfirm);
@@ -222,6 +224,29 @@ bool CrossPointSettings::loadFromFile() {
       strncpy(opdsPassword, passwordStr.c_str(), sizeof(opdsPassword) - 1);
       opdsPassword[sizeof(opdsPassword) - 1] = '\0';
     }
+
+    if (++settingsRead >= fileSettingsCount) break;
+    {
+      std::string urlStr;
+      serialization::readString(inputFile, urlStr);
+      strncpy(jgBookFolder, urlStr.c_str(), sizeof(jgBookFolder) - 1);
+      jgBookFolder[sizeof(jgBookFolder) - 1] = '\0';
+    }
+    if (++settingsRead >= fileSettingsCount) break;
+    {
+      std::string usernameStr;
+      serialization::readString(inputFile, usernameStr);
+      strncpy(jgUsername, usernameStr.c_str(), sizeof(jgUsername) - 1);
+      jgUsername[sizeof(jgUsername) - 1] = '\0';
+    }
+    if (++settingsRead >= fileSettingsCount) break;
+    {
+      std::string passwordStr;
+      serialization::readString(inputFile, passwordStr);
+      strncpy(jgAppPassword, passwordStr.c_str(), sizeof(jgAppPassword) - 1);
+      jgAppPassword[sizeof(jgAppPassword) - 1] = '\0';
+    }
+
     if (++settingsRead >= fileSettingsCount) break;
     serialization::readPod(inputFile, sleepScreenCoverFilter);
     if (++settingsRead >= fileSettingsCount) break;

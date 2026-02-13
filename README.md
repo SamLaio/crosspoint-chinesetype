@@ -1,7 +1,7 @@
 # 版本信息
 本项目处于初步阶段，而且这是我第一次写固件，欢迎大家指导批评~
 
-基于 **crosspoint 0.16.0** 版本修改而来，此版本稳定性及性能均有提升，感谢以下开源项目及其贡献者：
+基于 **crosspoint 1.0.0** 版本修改而来，此版本稳定性及性能均有提升，感谢以下开源项目及其贡献者：
 
 - 主项目：[crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
 - 自选字体功能参考：[ruby-builds/crosspoint-reader (custom-fonts分支)](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
@@ -16,31 +16,59 @@
 - **TXT**：目录解析逻辑如下：
   - 优先按“第n章”格式提取目录
   - 若无匹配目录或提取失败，则自动启用按字节分卷的兜底方案
-  - *注：这部分是在原项目更新前独立编写的，刚写完就发现更新了txt hhh*
 
 ---
+
+
+#阅读文本
+第一建议阅读中文书籍
+
+本版本改善了本项目上一版的英文分词逻辑，但是效果仍不是很理想
+
+
+#与原版不同：
+
+目录页面：侧面键翻页，下面键选择选项
+
+增加了透明壁纸
+
+添加首行缩进、字距
+
+txt阅读体验改善
+
+添加坚果云云盘（方便大陆用户）
+
 
 # 字体说明
 
 ## 内置字体
-项目最初为满足个人阅读需求，内置字体选用 **汉仪空山楷**。  
+内置字体选用 **汉仪空山楷**。
+英文字体保存**bookerly 18**。
+  
 
 
 ## 自选字体
 
 用户有两种方式制作字体：
 
-python用户：选用usetool/文件夹下的test_gui_v1.py进行字体转换
+python用户：
+
+选用usetool/文件夹下的test_gui_v1.py进行字体转换
 
 
-Windows用户：选用[ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYFDroid/crosspointcn-fontcreator)字体制作工具，制作后的字体在放置exe的文件夹下
+Windows用户：
+
+[-] 选用[ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYFDroid/crosspointcn-fontcreator)字体制作工具，制作后的字体在放置exe的文件夹下
 
 转换完后放入fonts/文件夹中，具体可见：[ruby-builds/crosspoint-reader (custom-fonts分支)](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
 
-格式：
+网络用户：
 
-1.字体名称.epdfont（无法调整大小，生成多大就是多大）
-2.具体教程下一版出--按照这种格式明明字体：Family_Style_Size.epdfont（例如，Aileron_Regular_18.epdfont),生成一套字体可达成最佳效果
+[-] 自制字体网页（简陋版）：[字体网址](https://epdfontweb.streamlit.app/)，转换速度比客户端要慢。
+
+格式：
+字体名称.epdfont（无法调整大小，生成多大就是多大）
+
 
 
 ## 刷机指导
@@ -53,9 +81,6 @@ Windows用户：选用[ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYF
 
 首次刷机建议做好保存，在full flash controls界面下，选择save full flash，备份一下你的官方固件
 
-# 文件管理
-
-适配新0.16.0版本，下方按键选择阅读历史和本地文件，侧边按键进行选择
 
 # wifi传书
 按屏幕提示来即可
@@ -64,13 +89,15 @@ Windows用户：选用[ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYF
 与calibre同步，到时候会出教程
 
 # 透明字体
-需要工具自制，稍等更新
+[透明壁纸网址](https://blog.gdcba.cyou/xtc/)
+[教程网址](http://xhslink.com/o/3BmHclU630Z)
 
 # 主页
 主页自动生成封面，所以返回主页的时候时间会比较长，属于正常现象
 
-# bugs
-TXT：txt进入后需要手动翻页刷新，翻页略有卡顿，需要包容一下
+# TXT
+TXT建立章节索引，可识别“第n章”开头的章节目录，识别不了的会自动进入自动分卷
+
 
 # 问题解决
 万事先重启
