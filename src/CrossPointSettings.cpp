@@ -20,9 +20,9 @@ void readAndValidate(FsFile& file, uint8_t& member, const uint8_t maxValue) {
 }
 
 namespace {
-constexpr uint8_t SETTINGS_FILE_VERSION = 3;
-// Increment this when adding new persisted settings fields
-constexpr uint8_t SETTINGS_COUNT = 36;
+constexpr uint8_t SETTINGS_FILE_VERSION = 4;
+// 注意：如果修改了字段数量，需要同步更新这个值
+constexpr uint8_t SETTINGS_COUNT = 37;  // 增加1：新增sleepScreenCoverFilter
 constexpr char SETTINGS_FILE[] = "/.crosspoint/settings.bin";
 
 // Validate front button mapping to ensure each hardware button is unique.
@@ -117,6 +117,8 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writeString(outputFile, std::string(jgBookFolder));
   serialization::writeString(outputFile, std::string(jgUsername));
   serialization::writeString(outputFile, std::string(jgAppPassword));
+  // 修复点1：新增sleepScreenCoverFilter的写入（和读取顺序对应）
+  serialization::writePod(outputFile, sleepScreenCoverFilter);
   serialization::writePod(outputFile, uiTheme);
   serialization::writePod(outputFile, frontButtonBack);
   serialization::writePod(outputFile, frontButtonConfirm);
@@ -224,7 +226,6 @@ bool CrossPointSettings::loadFromFile() {
       strncpy(opdsPassword, passwordStr.c_str(), sizeof(opdsPassword) - 1);
       opdsPassword[sizeof(opdsPassword) - 1] = '\0';
     }
-
     if (++settingsRead >= fileSettingsCount) break;
     {
       std::string urlStr;
@@ -246,10 +247,13 @@ bool CrossPointSettings::loadFromFile() {
       strncpy(jgAppPassword, passwordStr.c_str(), sizeof(jgAppPassword) - 1);
       jgAppPassword[sizeof(jgAppPassword) - 1] = '\0';
     }
-
     if (++settingsRead >= fileSettingsCount) break;
+    
+    // 修复点2：读取sleepScreenCoverFilter（和写入顺序对应）
     serialization::readPod(inputFile, sleepScreenCoverFilter);
     if (++settingsRead >= fileSettingsCount) break;
+    
+    // 修复点3：uiTheme读取位置修正（原代码位置错误导致后续字段错位）
     serialization::readPod(inputFile, uiTheme);
     if (++settingsRead >= fileSettingsCount) break;
     readAndValidate(inputFile, frontButtonBack, FRONT_BUTTON_HARDWARE_COUNT);

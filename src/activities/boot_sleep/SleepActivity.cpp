@@ -15,19 +15,24 @@
 
 void SleepActivity::onEnter() {
   Activity::onEnter();
-  GUI.drawPopup(renderer, "Entering Sleep...");
+  
 
   switch (SETTINGS.sleepScreen) {
     case (CrossPointSettings::SLEEP_SCREEN_MODE::BLANK):
+    GUI.drawPopup(renderer, "Entering Sleep...");
       return renderBlankSleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::CUSTOM):
+    GUI.drawPopup(renderer, "Entering Sleep...");
       return renderCustomSleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::COVER):
+    GUI.drawPopup(renderer, "Entering Sleep...");
     case (CrossPointSettings::SLEEP_SCREEN_MODE::COVER_CUSTOM):
+    GUI.drawPopup(renderer, "Entering Sleep...");
       return renderCoverSleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::MARSK):
       return renderpngtxtSleepScreen();
     default:
+    GUI.drawPopup(renderer, "Entering Sleep...");
       return renderDefaultSleepScreen();
   }
 }
