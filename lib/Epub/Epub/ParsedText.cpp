@@ -81,7 +81,7 @@ void ParsedText::layoutAndExtractLines(const GfxRenderer& renderer, const int fo
   if (blockStyle.alignment == CssTextAlign::Left) {
     // 修正：直接赋值给已定义的spaceWidth，而非重新定义int spaceWidth
     spaceWidth = 1+(wordSpacing ) * 5;
-    Serial.printf("左对齐字间距生效：wordSpacing=%d，最终spaceWidth=%d\n", wordSpacing, spaceWidth);
+    //Serial.printf("左对齐字间距生效：wordSpacing=%d，最终spaceWidth=%d\n", wordSpacing, spaceWidth);
   }
 
   // ========== 可选：如果需要中文强制spaceWidth=0，取消注释以下逻辑 ==========
@@ -257,11 +257,11 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
 }
 
 void ParsedText::applyParagraphIndent() {
-  Serial.printf("已进入此函数\n");
+  //Serial.printf("已进入此函数\n");
   if (blockStyle.alignment == CssTextAlign::Left && firstlineintented) {
-    Serial.printf("已进入\n");
+    //Serial.printf("已进入\n");
     words.front().insert(0, "\xe3\x80\x80\xe3\x80\x80"); // 两个全角空格，替代原来的1个窄空格
-    Serial.printf("首行缩进应用：%d\n", firstlineintented);
+    //Serial.printf("首行缩进应用：%d\n", firstlineintented);
   }
 
   if (extraParagraphSpacing || words.empty()) {

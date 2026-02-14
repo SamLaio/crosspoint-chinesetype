@@ -18,6 +18,8 @@
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "util/StringUtils.h"
+//清理字体内存
+#include "CustomEpdFont.h"
 
 void HomeActivity::taskTrampoline(void* param) {
   auto* self = static_cast<HomeActivity*>(param);
@@ -117,8 +119,11 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
 void HomeActivity::onEnter() {
   Activity::onEnter();
 
-  renderingMutex = xSemaphoreCreateMutex();
 
+
+
+
+  renderingMutex = xSemaphoreCreateMutex();
   // Check if OPDS browser URL is configured
   hasOpdsUrl = strlen(SETTINGS.opdsServerUrl) > 0;
   hasjianguoUrl = strlen(SETTINGS.jgUsername) > 0;

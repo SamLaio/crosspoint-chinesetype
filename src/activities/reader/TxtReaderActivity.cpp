@@ -73,7 +73,7 @@ void TxtReaderActivity::onEnter() {
   updateRequired = true;
 
   xTaskCreate(&TxtReaderActivity::taskTrampoline, "TxtReaderActivityTask",
-              6144,               // Stack size
+              4096,               // Stack size
               this,               // Parameters
               1,                  // Priority
               &displayTaskHandle  // Task handle

@@ -16,7 +16,6 @@
 #include "fontIds.h"
 #include "JianGuoYunSettingsActivity.h"
 #include "languageMapper.h"
-#include "../reader/PreviewActivity.h"
 
 
 const char* SettingsActivity::categoryNames[categoryCount] = {"Display", "Reader", "Controls", "System"};
@@ -41,7 +40,7 @@ const SettingInfo displaySettings[displaySettingsCount] = {
     SettingInfo::Toggle("Sunlight Fading Fix", &CrossPointSettings::fadingFix),
 };
 
-constexpr int readerSettingsCount = 14;
+constexpr int readerSettingsCount = 13;
 const SettingInfo readerSettings[readerSettingsCount] = {
     SettingInfo::Enum("Font Family", &CrossPointSettings::fontFamily, {"Bookerly", "汉仪空山楷", "汉仪空山楷", "自定义"}),
     SettingInfo::Action("Set Custom Font Family"),
@@ -57,8 +56,7 @@ const SettingInfo readerSettings[readerSettingsCount] = {
     SettingInfo::Enum("Reading Orientation", &CrossPointSettings::orientation,
                       {"Portrait", "Landscape CW", "Inverted", "Landscape CCW"}),
     SettingInfo::Toggle("Extra Paragraph Spacing", &CrossPointSettings::extraParagraphSpacing),
-    SettingInfo::Toggle("Text Anti-Aliasing", &CrossPointSettings::textAntiAliasing),
-    SettingInfo::Action("查看预览")
+    SettingInfo::Toggle("Text Anti-Aliasing", &CrossPointSettings::textAntiAliasing)
 };
 
 constexpr int controlsSettingsCount = 4;
@@ -269,14 +267,6 @@ void SettingsActivity::toggleCurrentSetting() {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       exitActivity();
       enterNewActivity(new FontSelectionActivity(renderer, mappedInput, [this] {
-        exitActivity();
-        updateRequired = true;
-      }));
-      xSemaphoreGive(renderingMutex);
-      } else if (strcmp(setting.name, "查看预览") == 0) {
-      xSemaphoreTake(renderingMutex, portMAX_DELAY);
-      exitActivity();
-      enterNewActivity(new PreviewActivity(renderer, mappedInput, [this] {
         exitActivity();
         updateRequired = true;
       }));

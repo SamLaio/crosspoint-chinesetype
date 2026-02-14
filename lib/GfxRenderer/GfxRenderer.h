@@ -9,6 +9,8 @@
 
 #include "Bitmap.h"
 
+#include "CustomEpdFont.h"
+
 // Color representation: uint8_t mapped to 4x4 Bayer matrix dithering levels
 // 0 = transparent, 1-16 = gray levels (white to black)
 enum Color : uint8_t { Clear = 0x00, White = 0x01, LightGray = 0x05, DarkGray = 0x0A, Black = 0x10 };
@@ -133,4 +135,5 @@ class GfxRenderer {
   static size_t getBufferSize();
     //透明壁纸
   void drawPngFromTxtpng(const char* txtpng_file_path) const ;
+
 };
