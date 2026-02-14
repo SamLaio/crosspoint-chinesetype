@@ -563,25 +563,45 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
     updateRequired = true;
 
     // 构建完整 URL
-    std::string downloadUrl =std::string("https://dav.jianguoyun.com/dav/") + SETTINGS.jgBookFolder;
+    std::string downloadUrl = std::string("https://dav.jianguoyun.com/dav/") + SETTINGS.jgBookFolder+"/";
     if (!currentPath.empty()) {
-        // 注意：currentPath 也应是已编码的！如果是用户输入，也要 encode
         downloadUrl += currentPath;
         if (downloadUrl.back() != '/') downloadUrl += "/";
     }
-    downloadUrl += urlEncode(book.title);  // ← 关键修复！
+    downloadUrl += urlEncode(book.title);
+    Serial.printf("[%lu] [JG] 准备下载: %s\n", millis(), downloadUrl.c_str());
 
+    // === 根据扩展名选择本地保存目录 ===
+    std::string targetDir;
+    if (endsWith(book.title, ".pngtxt")) {
+        targetDir = "/sleep_mask/";
+    } else if (endsWith(book.title, ".epdfont")) {
+        targetDir = "/fonts";
+    } else {
+        targetDir = "/坚果云"; // 根目录（SdMan 中 "" 或 "/" 表示根）
+    }
 
-    // 保留原始扩展名
-    std::string filename = "/" + StringUtils::sanitizeFilename(book.title);
+    // 确保目标目录存在（SdMan 支持 mkdir）
+    if (!targetDir.empty()) {
+        SdMan.mkdir(targetDir.c_str());
+    }
+
+    // 构建完整本地路径：目录 + 安全文件名
+    std::string safeFilename = StringUtils::sanitizeFilename(book.title);
+    std::string localPath;
+    if (targetDir.empty()) {
+        localPath = "/" + safeFilename;
+    } else {
+        localPath = targetDir + "/" + safeFilename;
+    }
 
     Serial.printf("[%lu] [JG] Downloading: %s -> %s\n", millis(), 
-                  downloadUrl.c_str(), filename.c_str());
+                  downloadUrl.c_str(), localPath.c_str());
 
-    // 直接调用！HttpDownloader 会自动用 jg 账号
+    // 执行下载
     const auto result = HttpDownloader::downloadToFile_jg(
         downloadUrl,
-        filename,
+        localPath,
         [this](size_t downloaded, size_t total) {
             downloadProgress = downloaded;
             downloadTotal = total;
@@ -590,10 +610,11 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
     );
 
     if (result == HttpDownloader::OK) {
-        Serial.printf("[%lu] [JG] 下载完成: %s\n", millis(), filename.c_str());
+        Serial.printf("[%lu] [JG] 下载完成: %s\n", millis(), localPath.c_str());
 
+        // 仅对 EPUB 清缓存
         if (endsWith(book.title, ".epub")) {
-            Epub epub(filename, "/.crosspoint");
+            Epub epub(localPath, "/.crosspoint");
             epub.clearCache();
         }
 

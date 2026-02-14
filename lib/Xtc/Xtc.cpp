@@ -451,7 +451,7 @@ bool Xtc::scaleCoverToThumb(int height) const {
 
 bool Xtc::generateThumbBmp(int height) const {
   if (generateCoverBmp()) {
-  return scaleCoverToThumb(height); // 新增：缩放cover生成thumb
+    return scaleCoverToThumb(height); // 新增：缩放cover生成thumb
   }
   // Already generated
   if (SdMan.exists(getThumbBmpPath(height).c_str())) {
@@ -610,6 +610,14 @@ bool Xtc::generateThumbBmp(int height) const {
   const size_t colBytes = (bitDepth == 2) ? ((pageInfo.height + 7) / 8) : 0;
   const size_t srcRowBytes = (bitDepth == 1) ? ((pageInfo.width + 7) / 8) : 0;
 
+  // --- 4x4 Bayer dither matrix (values 0-15) ---
+  static const uint8_t bayer4x4[16] = {
+      0,  8,  2, 10,
+      12, 4, 14, 6,
+      3, 11, 1,  9,
+      15, 7, 13, 5
+  };
+
   for (uint16_t dstY = 0; dstY < thumbHeight; dstY++) {
     memset(rowBuffer, 0xFF, rowSize);  // Start with all white (bit 1)
 
@@ -640,31 +648,26 @@ bool Xtc::generateThumbBmp(int height) const {
 
           if (bitDepth == 2) {
             // XTH 2-bit mode: pixel value 0-3
-            // Bounds check for column index
             if (srcX < pageInfo.width) {
               const size_t colIndex = pageInfo.width - 1 - srcX;
               const size_t byteInCol = srcY / 8;
               const size_t bitInByte = 7 - (srcY % 8);
               const size_t byteOffset = colIndex * colBytes + byteInCol;
-              // Bounds check for buffer access
               if (byteOffset < planeSize) {
                 const uint8_t bit1 = (plane1[byteOffset] >> bitInByte) & 1;
                 const uint8_t bit2 = (plane2[byteOffset] >> bitInByte) & 1;
                 const uint8_t pixelValue = (bit1 << 1) | bit2;
-                // Convert 2-bit (0-3) to grayscale: 0=black, 3=white
-                // pixelValue: 0=white, 1=light gray, 2=dark gray, 3=black (XTC polarity)
-                grayValue = (3 - pixelValue) * 85;  // 0->255, 1->170, 2->85, 3->0
+                // Convert 2-bit (0-3) to grayscale: 0=white, 3=black (XTC polarity)
+                grayValue = (3 - pixelValue) * 85;  // 0→255, 1→170, 2→85, 3→0
               }
             }
           } else {
             // 1-bit mode
             const size_t byteIdx = srcY * srcRowBytes + srcX / 8;
             const size_t bitIdx = 7 - (srcX % 8);
-            // Bounds check for buffer access
             if (byteIdx < bitmapSize) {
               const uint8_t pixelBit = (pageBuffer[byteIdx] >> bitIdx) & 1;
-              // XTC 1-bit polarity: 0=black, 1=white (same as BMP palette)
-              grayValue = pixelBit ? 255 : 0;
+              grayValue = pixelBit ? 255 : 0;  // 0=black, 1=white
             }
           }
 
@@ -673,25 +676,20 @@ bool Xtc::generateThumbBmp(int height) const {
         }
       }
 
-      // Calculate average grayscale and quantize to 1-bit with noise dithering
+      // Calculate average grayscale
       uint8_t avgGray = (totalCount > 0) ? static_cast<uint8_t>(graySum / totalCount) : 255;
 
-      // Hash-based noise dithering for 1-bit output
-      uint32_t hash = static_cast<uint32_t>(dstX) * 374761393u + static_cast<uint32_t>(dstY) * 668265263u;
-      hash = (hash ^ (hash >> 13)) * 1274126177u;
-      const int threshold = static_cast<int>(hash >> 24);           // 0-255
-      const int adjustedThreshold = 128 + ((threshold - 128) / 2);  // Range: 64-192
-
-      // Quantize to 1-bit: 0=black, 1=white
-      uint8_t oneBit = (avgGray >= adjustedThreshold) ? 1 : 0;
+      // --- Replace noise dithering with ordered Bayer dithering ---
+      const uint8_t bayerValue = bayer4x4[(dstY & 3) * 4 + (dstX & 3)];
+      const uint8_t threshold = (bayerValue * 255) / 16;  // map 0-15 → 0-255
+      uint8_t oneBit = (avgGray > threshold) ? 1 : 0;     // > avoids bias at exact 128
 
       // Pack 1-bit value into row buffer (MSB first, 8 pixels per byte)
       const size_t byteIndex = dstX / 8;
       const size_t bitOffset = 7 - (dstX % 8);
-      // Bounds check for row buffer access
       if (byteIndex < rowSize) {
         if (oneBit) {
-          rowBuffer[byteIndex] |= (1 << bitOffset);  // Set bit for white
+          rowBuffer[byteIndex] |= (1 << bitOffset);   // Set bit for white
         } else {
           rowBuffer[byteIndex] &= ~(1 << bitOffset);  // Clear bit for black
         }
@@ -710,8 +708,6 @@ bool Xtc::generateThumbBmp(int height) const {
                 getThumbBmpPath(height).c_str());
   return true;
 }
-
-
 
 
 uint32_t Xtc::getPageCount() const {

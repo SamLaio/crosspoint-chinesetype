@@ -96,14 +96,16 @@ void EpubReaderChapterSelectionActivity::loop() {
   } else if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     onGoBack();
   } else if (prevReleased) {
-    if (skipPage) {
+    bool isUpKey = mappedInput.wasReleased(MappedInputManager::Button::Up);
+    if (skipPage || isUpKey) {
       selectorIndex = ((selectorIndex / pageItems - 1) * pageItems + totalItems) % totalItems;
     } else {
       selectorIndex = (selectorIndex + totalItems - 1) % totalItems;
     }
     updateRequired = true;
   } else if (nextReleased) {
-    if (skipPage) {
+    bool isDownKey = mappedInput.wasReleased(MappedInputManager::Button::Down);
+    if (skipPage || isDownKey) {
       selectorIndex = ((selectorIndex / pageItems + 1) * pageItems) % totalItems;
     } else {
       selectorIndex = (selectorIndex + 1) % totalItems;
