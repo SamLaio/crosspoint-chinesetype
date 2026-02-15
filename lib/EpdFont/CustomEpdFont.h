@@ -25,8 +25,6 @@ class CustomEpdFont : public EpdFont {
                 uint32_t offsetBitmaps, int version = 0);
   ~CustomEpdFont() override;
 
-  void clearCache() const;
-
   const EpdGlyph* getGlyph(uint32_t cp, const EpdFontStyles::Style style = EpdFontStyles::REGULAR) const override;
   const uint8_t* loadGlyphBitmap(const EpdGlyph* glyph, uint8_t* buffer,
                                  const EpdFontStyles::Style style = EpdFontStyles::REGULAR) const override;
@@ -49,5 +47,5 @@ class CustomEpdFont : public EpdFont {
   mutable uint32_t currentAccessCount = 0;
   int version = 0;
 
-
+  void clearCache() const;
 };

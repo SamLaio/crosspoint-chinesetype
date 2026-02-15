@@ -16,6 +16,7 @@
 #include "fontIds.h"
 #include "JianGuoYunSettingsActivity.h"
 #include "languageMapper.h"
+//#include "../reader/PreviewActivity.h"
 
 
 const char* SettingsActivity::categoryNames[categoryCount] = {"Display", "Reader", "Controls", "System"};
@@ -272,6 +273,7 @@ void SettingsActivity::toggleCurrentSetting() {
       }));
       xSemaphoreGive(renderingMutex);
     }
+
 
 
   } else {

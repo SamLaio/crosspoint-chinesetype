@@ -64,7 +64,6 @@ void EpdFontLoader::loadFontsFromSd(GfxRenderer& renderer) {
   }
 }
 
-
 int EpdFontLoader::getBestFontId(const char* familyName, int size) {
   if (!familyName || strlen(familyName) == 0) return -1;
 

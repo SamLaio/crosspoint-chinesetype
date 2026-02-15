@@ -72,7 +72,7 @@ void ParsedText::layoutAndExtractLines(const GfxRenderer& renderer, const int fo
 
   // Apply fixed transforms before any per-line layout work.
   applyParagraphIndent();
-  Serial.printf("首行缩进结束\n");
+  //Serial.printf("首行缩进结束\n");
 
   const int pageWidth = viewportWidth;
   int spaceWidth = renderer.getSpaceWidth(fontId);
