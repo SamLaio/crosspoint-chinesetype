@@ -85,19 +85,19 @@ class KeyboardEntryActivity : public Activity {
   std::unique_ptr<KeyboardWebInputServer> webInputServer;
 
   // Keyboard layout
-  static constexpr int NUM_ROWS = 5;
+  static constexpr int NUM_ROWS = 6;
   static constexpr int KEYS_PER_ROW = 13;  // Max keys per row (rows 0 and 1 have 13 keys)
   static const char* const keyboard[NUM_ROWS];
   static const char* const keyboardShift[NUM_ROWS];
   static const char* const shiftString[3];
 
   // Special key positions (bottom row)
-  static constexpr int SPECIAL_ROW = 4;
+  static constexpr int SPECIAL_ROW = 5;
   static constexpr int SHIFT_COL = 0;
   static constexpr int SPACE_COL = 2;
   static constexpr int BACKSPACE_COL = 6;
   static constexpr int QR_COL = 8;
-  static constexpr int DONE_COL = 10;
+  static constexpr int DONE_COL = 8;
 
   static void taskTrampoline(void* param);
   [[noreturn]] void displayTaskLoop();

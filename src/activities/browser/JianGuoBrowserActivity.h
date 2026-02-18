@@ -29,7 +29,7 @@ public:
     // 修复：构造函数添加name参数（适配ActivityWithSubactivity）
     JianGuoBrowserActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
                                    const std::function<void()>& onGoHome)
-      : ActivityWithSubactivity("OpdsBookBrowser", renderer, mappedInput), onGoHome(onGoHome) {}
+      : ActivityWithSubactivity("JianGuoBrowser", renderer, mappedInput), onGoHome(onGoHome) {}
 
   void onEnter() override;
   void onExit() override;

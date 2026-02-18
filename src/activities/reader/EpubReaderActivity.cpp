@@ -16,6 +16,8 @@
 #include "components/UITheme.h"
 #include "fontIds.h"
 
+#include "JianGuoSyncActivity.h"
+
 namespace {
 // pagesPerRefresh now comes from SETTINGS.getRefreshFrequency()
 constexpr unsigned long skipChapterMs = 700;
@@ -487,6 +489,16 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
       }
       break;
     }
+    case EpubReaderMenuActivity::MenuAction::SYNCY: {
+        xSemaphoreTake(renderingMutex, portMAX_DELAY);
+        exitActivity();
+        enterNewActivity(new JianGuoSyncActivity(
+            renderer, mappedInput, onGoHome));
+        xSemaphoreGive(renderingMutex);
+      break;
+    }
+
+
   }
 }
 

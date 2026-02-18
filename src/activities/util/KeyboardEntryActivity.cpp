@@ -8,8 +8,9 @@
 
 // Keyboard layouts - lowercase
 const char* const KeyboardEntryActivity::keyboard[NUM_ROWS] = {
+    "QR",
     "`1234567890-=", "qwertyuiop[]\\", "asdfghjkl;'", "zxcvbnm,./",
-    "^  ____<QR OK"  // ^ = shift, _ = space, < = backspace, QR = remote input, OK = done
+    "^  ____< OK"  // ^ = shift, _ = space, < = backspace, QR = remote input, OK = done
 };
 
 // Keyboard layouts - uppercase/symbols
@@ -74,15 +75,17 @@ int KeyboardEntryActivity::getRowLength(const int row) const {
   // Return actual length of each row based on keyboard layout
   switch (row) {
     case 0:
-      return 13;  // `1234567890-=
+      return 2;
     case 1:
-      return 13;  // qwertyuiop[]backslash
+      return 13;  // `1234567890-=
     case 2:
-      return 11;  // asdfghjkl;'
+      return 13;  // qwertyuiop[]backslash
     case 3:
-      return 10;  // zxcvbnm,./
+      return 11;  // asdfghjkl;'
     case 4:
-      return 12;  // shift(2), space(4), backspace(2), QR(2), OK(2)
+      return 10;  // zxcvbnm,./
+    case 5:
+      return 10;  // shift(2), space(4), backspace(2), OK(2)
     default:
       return 0;
   }
@@ -98,6 +101,11 @@ char KeyboardEntryActivity::getSelectedChar() const {
 }
 
 void KeyboardEntryActivity::handleKeyPress() {
+  if (selectedCol ==0 && selectedRow == 0) {
+    // QR button - start web input server and show QR screen
+    startWebInputServer();
+    return;
+  }
   // Handle special row (bottom row with shift, space, backspace, QR, done)
   if (selectedRow == SPECIAL_ROW) {
     if (selectedCol >= SHIFT_COL && selectedCol < SPACE_COL) {
@@ -114,7 +122,7 @@ void KeyboardEntryActivity::handleKeyPress() {
       return;
     }
 
-    if (selectedCol >= BACKSPACE_COL && selectedCol < QR_COL) {
+    if (selectedCol >= BACKSPACE_COL && selectedCol < DONE_COL) {
       // Backspace
       if (!text.empty()) {
         text.pop_back();
@@ -122,11 +130,7 @@ void KeyboardEntryActivity::handleKeyPress() {
       return;
     }
 
-    if (selectedCol >= QR_COL && selectedCol < DONE_COL) {
-      // QR button - start web input server and show QR screen
-      startWebInputServer();
-      return;
-    }
+
 
     if (selectedCol >= DONE_COL) {
       // Done button
@@ -212,25 +216,25 @@ void KeyboardEntryActivity::loop() {
 
   if (mappedInput.wasPressed(MappedInputManager::Button::Left)) {
     const int maxCol = getRowLength(selectedRow) - 1;
+    if(selectedRow == 0){
+      selectedCol =QR_COL;
+    }
 
     // Special bottom row case
     if (selectedRow == SPECIAL_ROW) {
       // Bottom row has special key widths
       if (selectedCol >= SHIFT_COL && selectedCol < SPACE_COL) {
-        // In shift key, wrap to end of row
-        selectedCol = maxCol;
-      } else if (selectedCol >= SPACE_COL && selectedCol < BACKSPACE_COL) {
-        // In space bar, move to shift
-        selectedCol = SHIFT_COL;
-      } else if (selectedCol >= BACKSPACE_COL && selectedCol < QR_COL) {
-        // In backspace, move to space
+        // In shift key, move to space
         selectedCol = SPACE_COL;
-      }else if (selectedCol >= QR_COL && selectedCol < DONE_COL) {
-        // In backspace, move to space
-        selectedCol = QR_COL;
-      } else if (selectedCol >= DONE_COL) {
-        // At done button, move to backspace
+      } else if (selectedCol >= SPACE_COL && selectedCol < BACKSPACE_COL) {
+        // In space bar, move to backspace
         selectedCol = BACKSPACE_COL;
+      } else if (selectedCol >= BACKSPACE_COL && selectedCol < DONE_COL) {
+        // In backspace, move to done
+        selectedCol = DONE_COL;
+      } else if (selectedCol >= DONE_COL) {
+        // At done button, wrap to beginning of row
+        selectedCol = SHIFT_COL;
       }
       updateRequired = true;
       return;
@@ -247,7 +251,9 @@ void KeyboardEntryActivity::loop() {
 
     if (mappedInput.wasPressed(MappedInputManager::Button::Right)) {
     const int maxCol = getRowLength(selectedRow) - 1;
-
+      if(selectedRow == 0){
+      selectedCol =QR_COL;
+      }
     // Special bottom row case
     if (selectedRow == SPECIAL_ROW) {
       // Bottom row has special key widths
@@ -257,15 +263,12 @@ void KeyboardEntryActivity::loop() {
       } else if (selectedCol >= SPACE_COL && selectedCol < BACKSPACE_COL) {
         // In space bar, move to backspace
         selectedCol = BACKSPACE_COL;
-      } else if (selectedCol >= BACKSPACE_COL && selectedCol < QR_COL) {
-        // In backspace, move to space
-        selectedCol = SPACE_COL;
-      }else if (selectedCol >= QR_COL && selectedCol < DONE_COL) {
-        // In backspace, move to space
-        selectedCol = QR_COL;
+      } else if (selectedCol >= BACKSPACE_COL && selectedCol < DONE_COL) {
+        // In backspace, move to done
+        selectedCol = DONE_COL;
       } else if (selectedCol >= DONE_COL) {
-        // At done button, move to backspace
-        selectedCol = BACKSPACE_COL;
+        // At done button, wrap to beginning of row
+        selectedCol = SHIFT_COL;
       }
       updateRequired = true;
       return;
@@ -355,44 +358,47 @@ void KeyboardEntryActivity::render() const {
   // Calculate left margin to center the longest row (13 keys)
   constexpr int maxRowWidth = KEYS_PER_ROW * (keyWidth + keySpacing);
   const int leftMargin = (pageWidth - maxRowWidth) / 2;
+  for (int row = 0; row < 1; row++) {
+    const int rowY = keyboardStartY + row * (keyHeight + keySpacing);
+    const int startX = leftMargin;
+    // QR button (logical col 9, spans 2 key widths)
+    const bool QRSelected = (selectedRow == 0);
+    renderItemWithSelector(startX + 2, rowY, "QR", QRSelected);
+  }
 
-  for (int row = 0; row < NUM_ROWS; row++) {
+  for (int row = 1; row < NUM_ROWS; row++) {
     const int rowY = keyboardStartY + row * (keyHeight + keySpacing);
 
     // Left-align all rows for consistent navigation
     const int startX = leftMargin;
 
     // Handle bottom row (row 4) specially with proper multi-column keys
-    if (row == 4) {
-    // Bottom row layout: SHIFT (2 cols) | SPACE (4 cols) | <- (2 cols) | QR (2 cols) | OK (2 cols)
+    if (row == 5) {
+      // Bottom row layout: SHIFT (2 cols) | SPACE (5 cols) | <- (2 cols) | OK (2 cols)
+      // Total: 11 visual columns, but we use logical positions for selection
 
       int currentX = startX;
 
-      // SHIFT key (logical cols 0-1, spans 2 key widths)
-      const bool shiftSelected = (selectedRow == 4 && selectedCol >= SHIFT_COL && selectedCol < SPACE_COL);
+      // SHIFT key (logical col 0, spans 2 key widths)
+      const bool shiftSelected = (selectedRow == 5 && selectedCol >= SHIFT_COL && selectedCol < SPACE_COL);
       renderItemWithSelector(currentX + 2, rowY, shiftString[shiftState], shiftSelected);
       currentX += 2 * (keyWidth + keySpacing);
 
-      // Space bar (logical cols 2-5, spans 4 key widths)
-      const bool spaceSelected = (selectedRow == 4 && selectedCol >= SPACE_COL && selectedCol < BACKSPACE_COL);
-      const int spaceTextWidth = renderer.getTextWidth(UI_10_FONT_ID, "____");
-      const int spaceXWidth = 4 * (keyWidth + keySpacing);
+      // Space bar (logical cols 2-6, spans 5 key widths)
+      const bool spaceSelected = (selectedRow == 5 && selectedCol >= SPACE_COL && selectedCol < BACKSPACE_COL);
+      const int spaceTextWidth = renderer.getTextWidth(UI_10_FONT_ID, "_____");
+      const int spaceXWidth = 5 * (keyWidth + keySpacing);
       const int spaceXPos = currentX + (spaceXWidth - spaceTextWidth) / 2;
-      renderItemWithSelector(spaceXPos, rowY, "____", spaceSelected);
+      renderItemWithSelector(spaceXPos, rowY, "_____", spaceSelected);
       currentX += spaceXWidth;
 
-      // Backspace key (logical cols 6-7, spans 2 key widths)
-      const bool bsSelected = (selectedRow == 4 && selectedCol >= BACKSPACE_COL && selectedCol < QR_COL);
+      // Backspace key (logical col 7, spans 2 key widths)
+      const bool bsSelected = (selectedRow == 5 && selectedCol >= BACKSPACE_COL && selectedCol < DONE_COL);
       renderItemWithSelector(currentX + 2, rowY, "<-", bsSelected);
       currentX += 2 * (keyWidth + keySpacing);
 
-      // QR button (logical cols 8-9, spans 2 key widths)
-      const bool qrSelected = (selectedRow == 4 && selectedCol >= QR_COL && selectedCol < DONE_COL);
-      renderItemWithSelector(currentX + 2, rowY, "QR", qrSelected);
-      currentX += 2 * (keyWidth + keySpacing);
-
-      // OK button (logical cols 10-11, spans 2 key widths)
-      const bool okSelected = (selectedRow == 4 && selectedCol >= DONE_COL);
+      // OK button (logical col 9, spans 2 key widths)
+      const bool okSelected = (selectedRow == 5 && selectedCol >= DONE_COL);
       renderItemWithSelector(currentX + 2, rowY, "OK", okSelected);
     } else {
       // Regular rows: render each key individually
@@ -409,6 +415,7 @@ void KeyboardEntryActivity::render() const {
     }
   }
 
+
   // Draw help text
   const auto labels = mappedInput.mapLabels("« Back", "Select", "Left", "Right");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
@@ -418,6 +425,8 @@ void KeyboardEntryActivity::render() const {
 
   renderer.displayBuffer();
 }
+
+
 
 void KeyboardEntryActivity::renderItemWithSelector(const int x, const int y, const char* item,
                                                    const bool isSelected) const {
