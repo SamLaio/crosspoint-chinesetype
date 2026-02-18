@@ -121,7 +121,8 @@ void JianGuoSyncActivity::loop() {
       updateRequired = true;
       downloadProgressFile();
     } else if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-      exitActivity();
+      Serial.printf("[%lu] [JG] 错误状态，退出同步界面\n", millis());
+      onGoBack();
     }
     return;
   }
@@ -131,10 +132,15 @@ void JianGuoSyncActivity::loop() {
       state == BrowserState::DOWNLOADING || 
       state == BrowserState::COMPLETE) {
     if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-      exitActivity();
+      Serial.printf("[%lu] [JG]其他状态\n", millis());
+      onGoBack();
     }
     return;
   }
+  //同步完返回
+  if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+    Serial.printf("[%lu] [JG] 用户选择返回，退出同步界面\n", millis());
+    onGoBack();}
 }
 
 void JianGuoSyncActivity::displayTaskLoop() {
@@ -266,7 +272,9 @@ void JianGuoSyncActivity::downloadProgressFile() {
 
     // 目标文件路径（相对路径）
     // 目标书名
-    std::string targetName = "十万个氪金的理由";  // ← 可改为参数传入
+    //debug std::string targetName = "十万个氪金的理由";  // ← 可改为参数传入
+    std::string targetName = epub->getTitle();
+    Serial.printf("[JG] 标题为：%s\n", targetName.c_str());
     std::string matchedFileName = "";
 
     // === PROPFIND 列目录查找文件 ===
@@ -461,6 +469,9 @@ void JianGuoSyncActivity::parseAndCleanup() {
     // === 存储提取结果 ===
     lastExtractedChapterIndex = chapterIndex;
     lastExtractedBookName = bookName.c_str();
+
+    //同步
+    onSelectChapter(chapterIndex);
 
     Serial.printf("[PROGRESS] 章节索引: %d, 书名: %s\n", chapterIndex, bookName.c_str());
 

@@ -13,6 +13,7 @@ struct WebDAVEntry {
     std::string title;    // 文件名/文件夹名
     std::string path;     // 相对路径
     enum Type { FOLDER, BOOK_FILE } type; // 简化类型定义
+    std::string sourceFolder;  // 新增：标记来源文件夹 ("jg" 或 "legado")
 };
 
 class JianGuoBrowserActivity : public ActivityWithSubactivity {
@@ -46,6 +47,10 @@ private:
     void checkAndConnectWifi();
     void launchWifiSelection();
     void onWifiSelectionComplete(const bool connected);
+    void parseXmlEntries(const String& xmlResult, 
+                                              const std::string& basePath,
+                                              const std::string& sourceFolder,
+                                              std::vector<WebDAVEntry>& outEntries);
 
     static bool endsWith(const std::string& str, const std::string& suffix); 
 

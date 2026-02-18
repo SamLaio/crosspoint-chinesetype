@@ -24,6 +24,11 @@
 #include <iomanip>
 #include <sstream>
 
+namespace {
+// pagesPerRefresh now comes from SETTINGS.getRefreshFrequency()
+constexpr unsigned long goHomeMs = 500;
+}
+
 static std::string urlEncode(const std::string& value) {
     std::ostringstream escaped;
     escaped.fill('0');
@@ -43,14 +48,20 @@ static std::string urlEncode(const std::string& value) {
 class ESPWebDAV {
 public:
     void begin(const char* url, const char* user, const char* pass) {
-        _baseUrl = url; // e.g., "https://dav.jianguoyun.com/dav/"
+        _baseUrl = url;
         _user = user;
         _pass = pass;
         _timeout = 5000;
+        _basePath = "";  // 新增：初始化
     }
 
     void setTimeout(int timeout) {
         _timeout = timeout;
+    }
+
+    // 新增：设置自定义基础路径
+    void setBasePath(const char* basePath) {
+        _basePath = basePath;
     }
 
     int propfind(const char* relativePath, String& result) {
@@ -65,25 +76,30 @@ public:
             return 0;
         }
 
-        // === 关键修正：只发送路径部分，不带协议和主机 ===
+        // === 修改：优先使用 _basePath，如果没有则用 SETTINGS.jgBookFolder ===
+        String requestPath = String("/dav/");
+        if (_basePath.length() > 0) {
+            requestPath += _basePath;
+        } else {
+            requestPath += String(SETTINGS.jgBookFolder);
+        }
         
-        String requestPath = String("/dav/") + String(SETTINGS.jgBookFolder);
         if (relativePath && strlen(relativePath) > 0) {
-            // 支持子目录，如 relativePath = "subfolder"
             if (requestPath[requestPath.length()-1] != '/') requestPath += "/";
             requestPath += relativePath;
         }
-        // 确保以 / 结尾（坚果云建议）
         if (!requestPath.endsWith("/")) requestPath += "/";
+
+        // 【调试】打印路径
+        Serial.printf("[DAV] PROPFIND 请求路径: %s\n", requestPath.c_str());
 
         // Base64 认证
         String authStr = _user + ":" + _pass;
         String base64Auth = base64::encode(authStr);
-        base64Auth.trim(); // 移除潜在换行
+        base64Auth.trim();
 
-        // 发送合法 HTTP/1.1 请求
         client.print("PROPFIND ");
-        client.print(requestPath); // ← 只发路径！
+        client.print(requestPath);
         client.println(" HTTP/1.1");
         client.println("Host: dav.jianguoyun.com");
         client.println("Authorization: Basic " + base64Auth);
@@ -123,7 +139,6 @@ public:
                 }
             }
         } else {
-            // 读取错误体用于调试
             while (client.available()) {
                 result += client.readString();
             }
@@ -141,6 +156,7 @@ private:
     String _user;
     String _pass;
     int _timeout;
+    String _basePath;  // 新增：自定义基础路径
 };
 // ===================== 内嵌ESPWebDAV核心代码（结束）=====================
 
@@ -231,7 +247,7 @@ void JianGuoBrowserActivity::loop() {
 
   // 错误状态：重试/返回
   if (state == BrowserState::ERROR) {
-    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    if (mappedInput.isPressed(MappedInputManager::Button::Confirm) && mappedInput.getHeldTime() >= goHomeMs) {
       if (WiFi.status() == WL_CONNECTED) {
         state = BrowserState::LOADING;
         statusMessage = "加载中...";
@@ -396,6 +412,7 @@ void JianGuoBrowserActivity::render() const {
 }
 
 // 核心：列目录逻辑（仅保留PROPFIND+XML解析）
+// 核心：列目录逻辑（支持双文件夹）
 void JianGuoBrowserActivity::fetchFeed(const std::string& subPath) {
     std::string username = SETTINGS.jgUsername;
     std::string appPwd = SETTINGS.jgAppPassword;
@@ -407,32 +424,58 @@ void JianGuoBrowserActivity::fetchFeed(const std::string& subPath) {
         return;
     }
 
-    // 硬编码基础路径为 /ebooks/，subPath 是子目录（如 "sci-fi/"）
-    Serial.printf("[%lu] [JG] Listing ebooks%s\n", millis(), 
-                  subPath.empty() ? "" : ("/" + subPath).c_str());
+    entries.clear();
 
-    ESPWebDAV dav;
-    
-    dav.begin("https://dav.jianguoyun.com/dav/", username.c_str(), appPwd.c_str());
-    dav.setTimeout(8000);
+    // === 文件夹1：原文件夹 (SETTINGS.jgBookFolder) ===
+    {
+        ESPWebDAV dav1;
+        dav1.begin("https://dav.jianguoyun.com/dav/", username.c_str(), appPwd.c_str());
+        dav1.setTimeout(8000);
 
-    String xmlResult;
-    int responseCode = dav.propfind(subPath.c_str(), xmlResult); // 传子路径
-
-    if (responseCode != 207) {
-        state = BrowserState::ERROR;
-        char codeStr[10];
-        sprintf(codeStr, "%d", responseCode);
-        errorMessage = "列目录失败（码：";
-        errorMessage += codeStr;
-        errorMessage += "）";
-        updateRequired = true;
-        dav.end();
-        return;
+        Serial.printf("\n[========== 文件夹1: %s ==========]\n", SETTINGS.jgBookFolder);
+        String xmlResult1;
+        int responseCode1 = dav1.propfind(subPath.c_str(), xmlResult1);
+        if (responseCode1 == 207) {
+            parseXmlEntries(xmlResult1, subPath, "jg", entries);
+            Serial.printf("[JG] 文件夹1 成功，当前共 %d 个条目\n", entries.size());
+        } else {
+            Serial.printf("[JG] 文件夹1 失败（码：%d）\n", responseCode1);
+        }
+        dav1.end();
     }
 
-    // === 解析 XML（保持不变）===
-    entries.clear();
+    // === 文件夹2：ebooks/ (或其他路径) ===
+    {
+        ESPWebDAV dav2;
+        dav2.begin("https://dav.jianguoyun.com/dav/", username.c_str(), appPwd.c_str());
+        dav2.setTimeout(8000);
+        dav2.setBasePath("legado/books");  // 新增：设置第二个文件夹路径
+
+        Serial.printf("\n[========== 文件夹2: legado/books ==========]\n");
+        String xmlResult2;
+        int responseCode2 = dav2.propfind(subPath.c_str(), xmlResult2);
+        if (responseCode2 == 207) {
+            parseXmlEntries(xmlResult2, subPath, "legado", entries);
+            Serial.printf("[JG] 文件夹2 成功，当前共 %d 个条目\n", entries.size());
+        } else {
+            Serial.printf("[JG] 文件夹2 失败（码：%d）\n", responseCode2);
+        }
+        dav2.end();
+    }
+
+    Serial.printf("[================================]\n");
+    Serial.printf("[%lu] [JG] 共找到 %d 个条目\n", millis(), entries.size());
+
+    selectorIndex = 0;
+    state = BrowserState::BROWSING;
+    updateRequired = true;
+}
+
+// 新增：XML 解析辅助函数（避免代码重复）
+void JianGuoBrowserActivity::parseXmlEntries(const String& xmlResult, 
+                                              const std::string& basePath,
+                                              const std::string& sourceFolder,
+                                              std::vector<WebDAVEntry>& outEntries) {
     int xmlPos = 0;
     while (true) {
         int nameStart = xmlResult.indexOf("<d:displayname>", xmlPos);
@@ -452,27 +495,21 @@ void JianGuoBrowserActivity::fetchFeed(const std::string& subPath) {
 
         WebDAVEntry entry;
         entry.title = fileName;
-        entry.path = subPath.empty() ? fileName : subPath + "/" + fileName;
+        entry.path = basePath.empty() ? fileName : basePath + "/" + fileName;
         entry.type = (isFolder != -1) ? WebDAVEntry::FOLDER : WebDAVEntry::BOOK_FILE;
+        entry.sourceFolder = sourceFolder;  // 标记来源
 
+        // 文件类型过滤
         if (entry.type == WebDAVEntry::BOOK_FILE) {
             if (!endsWith(entry.title, ".epub") && !endsWith(entry.title, ".txt")
-          && !endsWith(entry.title, ".xtc")&& !endsWith(entry.title, ".xtch")
-        && !endsWith(entry.title, ".pngtxt")&& !endsWith(entry.title, ".epdfont")) {
+                && !endsWith(entry.title, ".xtc") && !endsWith(entry.title, ".xtch")
+                && !endsWith(entry.title, ".pngtxt") && !endsWith(entry.title, ".epdfont")) {
                 continue;
             }
         }
-        entries.push_back(entry);
+        outEntries.push_back(entry);
     }
-
-    dav.end();
-    Serial.printf("[%lu] [JG] 找到 %d 个条目\n", millis(), entries.size());
-
-    selectorIndex = 0;
-    state = BrowserState::BROWSING;
-    updateRequired = true;
 }
-
 
 // 文件夹跳转逻辑
 void JianGuoBrowserActivity::navigateToEntry(const WebDAVEntry& entry) {
@@ -562,14 +599,25 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
     downloadTotal = 0;
     updateRequired = true;
 
-    // 构建完整 URL
-    std::string downloadUrl = std::string("https://dav.jianguoyun.com/dav/") + SETTINGS.jgBookFolder+"/";
-    if (!currentPath.empty()) {
-        downloadUrl += currentPath;
-        if (downloadUrl.back() != '/') downloadUrl += "/";
+    // === 根据来源文件夹构建 URL ===
+    std::string downloadUrl;
+    if (book.sourceFolder == "legado") {
+        downloadUrl = "https://dav.jianguoyun.com/dav/legado/books/";
+    } else {
+        downloadUrl = std::string("https://dav.jianguoyun.com/dav/") + SETTINGS.jgBookFolder+"/";
     }
+    
+    // 添加子路径
+    std::string folderPath = book.path;
+    size_t lastSlash = folderPath.rfind('/');
+    if (lastSlash != std::string::npos && lastSlash > 0) {
+        folderPath = folderPath.substr(0, lastSlash);
+        downloadUrl += folderPath + "/";
+    }
+    
     downloadUrl += urlEncode(book.title);
-    Serial.printf("[%lu] [JG] 准备下载: %s\n", millis(), downloadUrl.c_str());
+    Serial.printf("[%lu] [JG] 准备下载: %s (来源:%s)\n", millis(), 
+                  downloadUrl.c_str(), book.sourceFolder.c_str());
 
     // === 根据扩展名选择本地保存目录 ===
     std::string targetDir;
@@ -578,15 +626,13 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
     } else if (endsWith(book.title, ".epdfont")) {
         targetDir = "/fonts";
     } else {
-        targetDir = "/坚果云"; // 根目录（SdMan 中 "" 或 "/" 表示根）
+        targetDir = "/坚果云";
     }
 
-    // 确保目标目录存在（SdMan 支持 mkdir）
     if (!targetDir.empty()) {
         SdMan.mkdir(targetDir.c_str());
     }
 
-    // 构建完整本地路径：目录 + 安全文件名
     std::string safeFilename = StringUtils::sanitizeFilename(book.title);
     std::string localPath;
     if (targetDir.empty()) {
@@ -598,7 +644,6 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
     Serial.printf("[%lu] [JG] Downloading: %s -> %s\n", millis(), 
                   downloadUrl.c_str(), localPath.c_str());
 
-    // 执行下载
     const auto result = HttpDownloader::downloadToFile_jg(
         downloadUrl,
         localPath,
@@ -612,7 +657,6 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
     if (result == HttpDownloader::OK) {
         Serial.printf("[%lu] [JG] 下载完成: %s\n", millis(), localPath.c_str());
 
-        // 仅对 EPUB 清缓存
         if (endsWith(book.title, ".epub")) {
             Epub epub(localPath, "/.crosspoint");
             epub.clearCache();

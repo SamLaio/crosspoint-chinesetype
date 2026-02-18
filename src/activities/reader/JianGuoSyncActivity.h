@@ -22,23 +22,12 @@
  * 5. Apply or upload progress
  */
 class JianGuoSyncActivity final : public ActivityWithSubactivity {
- public:
-  using OnCancelCallback = std::function<void()>;
-  using OnSyncCompleteCallback = std::function<void(int newSpineIndex, int newPageNumber)>;
-
-  explicit JianGuoSyncActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
-                                   const std::function<void()>& onGoHome)
-      : ActivityWithSubactivity("JianGuoSync", renderer, mappedInput), onGoHome(onGoHome) {}
-
-  void onEnter() override;
-  void onExit() override;
-  void loop() override;
-    // 获取提取结果（供外部调用）
-  int getExtractedChapterIndex() const { return lastExtractedChapterIndex; }
-  const std::string& getExtractedBookName() const { return lastExtractedBookName; }
-
- private:
-  const std::function<void()> onGoHome;
+private:
+  const std::shared_ptr<Epub> epub;
+  const std::string epubPath;
+  const int currentSpineIndex;
+  const std::function<void()> onGoBack;
+  const std::function<void(uint32_t newChapter)> onSelectChapter;
   enum class BrowserState {
       CHECK_WIFI,
       WIFI_SELECTION,
@@ -72,4 +61,28 @@ class JianGuoSyncActivity final : public ActivityWithSubactivity {
     static int lastExtractedChapterIndex;
     static std::string lastExtractedBookName;
     //static int selectorIndex;
+ public:
+  using OnCancelCallback = std::function<void()>;
+  using OnSyncCompleteCallback = std::function<void(int newSpineIndex, int newPageNumber)>;
+
+  explicit JianGuoSyncActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
+                                const std::shared_ptr<Epub>& epub, const std::string& epubPath,
+                                int currentSpineIndex,
+                                const std::function<void()>& onGoBack, 
+                                const std::function<void(uint32_t newChapter)>& onSelectChapter)
+      : ActivityWithSubactivity("JianGuoSync", renderer, mappedInput), 
+      epub(epub),
+      epubPath(epubPath), 
+      currentSpineIndex(currentSpineIndex), 
+      onGoBack(onGoBack),
+      onSelectChapter(onSelectChapter) {}
+
+  void onEnter() override;
+  void onExit() override;
+  void loop() override;
+    // 获取提取结果（供外部调用，debug）
+  //int getExtractedChapterIndex() const { return lastExtractedChapterIndex; }
+  //const std::string& getExtractedBookName() const { return lastExtractedBookName; }
+
+ 
 };
