@@ -1,7 +1,7 @@
 # 版本信息
 本项目处于初步阶段，而且这是我第一次写固件，欢迎大家指导批评~ 可以的话点点star⭐，谢谢
 
-基于 **crosspoint 1.0.0** 版本修改而来，此版本稳定性及性能均有提升，感谢以下开源项目及其贡献者：
+基于 **crosspoint 1.0.0** 版本修改而来，感谢以下开源项目及其贡献者：
 
 - 参考改版项目：[crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
 - 自选字体功能参考：[ruby-builds/crosspoint-reader (custom-fonts分支)](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
