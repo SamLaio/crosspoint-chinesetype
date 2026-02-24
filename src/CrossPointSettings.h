@@ -172,6 +172,10 @@ class CrossPointSettings {
   char jgUsername[64] = "";    // 坚果云账号（邮箱）
   char jgAppPassword[64] = ""; // 坚果云应用密码
   char jgBookFolder[128] = ""; // 电子书文件夹路径
+
+  // Z-Library 配置
+char zlibEmail[64] = "13608489150@163.com";
+char zlibPassword[64] = "xi10147374";
   // Hide battery percentage
   uint8_t hideBatteryPercentage = HIDE_NEVER;
   // Long-press chapter skip on side buttons

@@ -7,16 +7,19 @@
 #include <memory>
 
 #include "../ParsedText.h"
+#include "../blocks/ImageBlock.h"
 #include "../blocks/TextBlock.h"
 #include "../css/CssParser.h"
 #include "../css/CssStyle.h"
 
 class Page;
 class GfxRenderer;
+class Epub;
 
 #define MAX_WORD_SIZE 200
 
 class ChapterHtmlSlimParser {
+  std::shared_ptr <Epub> epub;
   const std::string& filepath;
   GfxRenderer& renderer;
   std::function<void(std::unique_ptr<Page>)> completePageFn;
@@ -46,6 +49,10 @@ class ChapterHtmlSlimParser {
   const CssParser* cssParser;
   bool embeddedStyle;
 
+  std::string contentBase;
+  std::string imageBasePath;
+  int imageCounter = 0;
+
   // Style tracking (replaces depth-based approach)
   struct StyleStackEntry {
     int depth = 0;
@@ -71,16 +78,18 @@ class ChapterHtmlSlimParser {
   static bool isEnglishPunctuation(unsigned char c);
   static bool isOnlyWhitespace(const char* buf, int len);
  public:
-  explicit ChapterHtmlSlimParser(const std::string& filepath, GfxRenderer& renderer, const int fontId,
+  explicit ChapterHtmlSlimParser(std::shared_ptr<Epub> epub, const std::string& filepath, GfxRenderer& renderer, const int fontId,
                                  const float lineCompression, const bool extraParagraphSpacing,
                                  const uint8_t paragraphAlignment, const uint16_t viewportWidth,
                                  const uint16_t viewportHeight, const bool hyphenationEnabled,
                                  const uint8_t wordSpacing,const bool firstlineintented,
                                  const std::function<void(std::unique_ptr<Page>)>& completePageFn,
-                                 const bool embeddedStyle, const std::function<void()>& popupFn = nullptr,
+                                 const bool embeddedStyle, const std::string& contentBase,
+                                 const std::string& imageBasePath, const std::function<void()>& popupFn = nullptr,
                                  const CssParser* cssParser = nullptr)
 
-      : filepath(filepath),
+      : epub(epub),
+        filepath(filepath),
         renderer(renderer),
         fontId(fontId),
         lineCompression(lineCompression),
@@ -94,7 +103,9 @@ class ChapterHtmlSlimParser {
         completePageFn(completePageFn),
         popupFn(popupFn),
         cssParser(cssParser),
-        embeddedStyle(embeddedStyle) {}
+        embeddedStyle(embeddedStyle),
+        contentBase(contentBase),
+        imageBasePath(imageBasePath) {}
 
   ~ChapterHtmlSlimParser() = default;
   bool parseAndBuildPages();

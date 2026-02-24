@@ -36,7 +36,9 @@ int HomeActivity::getMenuItemCount() const {
   }
   if (hasjianguoUrl) count++;
   return count;
+
 }
+
 
 void HomeActivity::loadRecentBooks(int maxBooks) {
   recentBooks.clear();
@@ -280,6 +282,7 @@ if (hasOpdsUrl) {
 if (hasjianguoUrl) {
     menuItems.push_back("坚果云");
 }
+
 
 menuItems.push_back("wifi传书");
 menuItems.push_back("设置");

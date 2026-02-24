@@ -34,6 +34,7 @@ class HomeActivity final : public Activity {
   const std::function<void()> onOpdsBrowserOpen;
   const std::function<void()> onJianGuoYunOpen;
 
+
   static void taskTrampoline(void* param);
   [[noreturn]] void displayTaskLoop();
   void render();

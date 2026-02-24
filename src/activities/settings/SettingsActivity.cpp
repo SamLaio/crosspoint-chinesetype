@@ -43,7 +43,7 @@ const SettingInfo displaySettings[displaySettingsCount] = {
 
 constexpr int readerSettingsCount = 13;
 const SettingInfo readerSettings[readerSettingsCount] = {
-    SettingInfo::Enum("Font Family", &CrossPointSettings::fontFamily, {"Bookerly", "汉仪空山楷", "汉仪空山楷", "自定义"}),
+    SettingInfo::Enum("Font Family", &CrossPointSettings::fontFamily, {"汉仪空山楷","汉仪空山楷", "汉仪空山楷", "自定义"}),
     SettingInfo::Action("Set Custom Font Family"),
     SettingInfo::Enum("字号（不起效）", &CrossPointSettings::fontSize, {"Small", "Medium", "Large", "X Large"}),
     SettingInfo::Enum("Line Spacing", &CrossPointSettings::lineSpacing, {"Tight", "Normal", "Wide"}),

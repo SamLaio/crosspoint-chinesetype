@@ -92,7 +92,7 @@ class CssParser {
   bool loadFromCache(FsFile& file);
 
  private:
-  // Storage: maps normalized selector -> style properties
+  // SdMan: maps normalized selector -> style properties
   std::unordered_map<std::string, CssStyle> rulesBySelector_;
 
   // Internal parsing helpers

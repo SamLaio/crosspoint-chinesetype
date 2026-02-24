@@ -30,6 +30,8 @@
 #include "fontIds.h"
 #include "activities/browser/JianGuoBrowserActivity.h"
 
+
+
 HalDisplay display;
 HalGPIO gpio;
 MappedInputManager mappedInputManager(gpio);
@@ -37,29 +39,29 @@ GfxRenderer renderer(display);
 Activity* currentActivity;
 
 // Fonts
-EpdFont bookerly14RegularFont(&bookerly_18_regular);
-EpdFont bookerly14BoldFont(&bookerly_18_bold);
-EpdFont bookerly14ItalicFont(&bookerly_18_italic);
-EpdFont bookerly14BoldItalicFont(&bookerly_18_bolditalic);
+EpdFont bookerly14RegularFont(&notosans_18_bold);
+EpdFont bookerly14BoldFont(&notosans_18_bold);
+EpdFont bookerly14ItalicFont(&notosans_18_bold);
+EpdFont bookerly14BoldItalicFont(&notosans_18_bold);
 EpdFontFamily bookerly14FontFamily(&bookerly14RegularFont, &bookerly14BoldFont, &bookerly14ItalicFont,
                                    &bookerly14BoldItalicFont);
 #ifndef OMIT_FONTS
-EpdFont bookerly12RegularFont(&bookerly_18_regular);
-EpdFont bookerly12BoldFont(&bookerly_18_bold);
-EpdFont bookerly12ItalicFont(&bookerly_18_italic);
-EpdFont bookerly12BoldItalicFont(&bookerly_18_bolditalic);
+EpdFont bookerly12RegularFont(&notosans_18_bold);
+EpdFont bookerly12BoldFont(&notosans_18_bold);
+EpdFont bookerly12ItalicFont(&notosans_18_bold);
+EpdFont bookerly12BoldItalicFont(&notosans_18_bold);
 EpdFontFamily bookerly12FontFamily(&bookerly12RegularFont, &bookerly12BoldFont, &bookerly12ItalicFont,
                                    &bookerly12BoldItalicFont);
-EpdFont bookerly16RegularFont(&bookerly_18_regular);
-EpdFont bookerly16BoldFont(&bookerly_18_bold);
-EpdFont bookerly16ItalicFont(&bookerly_18_italic);
-EpdFont bookerly16BoldItalicFont(&bookerly_18_bolditalic);
+EpdFont bookerly16RegularFont(&notosans_18_bold);
+EpdFont bookerly16BoldFont(&notosans_18_bold);
+EpdFont bookerly16ItalicFont(&notosans_18_bold);
+EpdFont bookerly16BoldItalicFont(&notosans_18_bold);
 EpdFontFamily bookerly16FontFamily(&bookerly16RegularFont, &bookerly16BoldFont, &bookerly16ItalicFont,
                                    &bookerly16BoldItalicFont);
-EpdFont bookerly18RegularFont(&bookerly_18_regular);
-EpdFont bookerly18BoldFont(&bookerly_18_bold);
-EpdFont bookerly18ItalicFont(&bookerly_18_italic);
-EpdFont bookerly18BoldItalicFont(&bookerly_18_bolditalic);
+EpdFont bookerly18RegularFont(&notosans_18_bold);
+EpdFont bookerly18BoldFont(&notosans_18_bold);
+EpdFont bookerly18ItalicFont(&notosans_18_bold);
+EpdFont bookerly18BoldItalicFont(&notosans_18_bold);
 EpdFontFamily bookerly18FontFamily(&bookerly18RegularFont, &bookerly18BoldFont, &bookerly18ItalicFont,
                                    &bookerly18BoldItalicFont);
 
@@ -251,6 +253,7 @@ void onGoToJianGuoYun() {
   exitActivity();
   enterNewActivity(new JianGuoBrowserActivity(renderer, mappedInputManager, onGoHome));
 }
+
 void onGoHome() {
   exitActivity();
   enterNewActivity(new HomeActivity(renderer, mappedInputManager, onGoToReader, onGoToMyLibrary, onGoToRecentBooks,
