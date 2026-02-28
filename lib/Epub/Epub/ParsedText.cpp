@@ -11,6 +11,10 @@
 
 #include "hyphenation/Hyphenator.h"
 
+
+#include <list>  // 新增：list容器头文件
+#include <string> // 新增：string头文件
+
 constexpr int MAX_COST = std::numeric_limits<int>::max();
 
 namespace {
@@ -46,6 +50,93 @@ uint16_t measureWordWidth(const GfxRenderer& renderer, const int fontId, const s
   }
   return renderer.getTextWidth(fontId, sanitized.c_str(), style);
 }
+
+// ========== 工具函数标点判断==========
+// 复刻LVGL的UTF-8解码（嵌入式环境通用，无依赖）
+uint32_t utf8_next(const std::string& str, size_t& pos) {
+    if(pos >= str.size()) return 0;
+
+    unsigned char c = static_cast<unsigned char>(str[pos]);
+    uint32_t cp = 0;
+    size_t len = 0;
+
+    // UTF-8解码规则（LVGL 同款）
+    if(c < 0x80) { // 单字节（ASCII）
+        cp = c;
+        len = 1;
+    } else if(c < 0xE0) { // 双字节
+        cp = ((c & 0x1F) << 6) | (static_cast<unsigned char>(str[pos+1]) & 0x3F);
+        len = 2;
+    } else if(c < 0xF0) { // 三字节（中文/标点）
+        cp = ((c & 0x0F) << 12) | 
+             ((static_cast<unsigned char>(str[pos+1]) & 0x3F) << 6) | 
+             (static_cast<unsigned char>(str[pos+2]) & 0x3F);
+        len = 3;
+    } else { // 四字节（极少用）
+        cp = ((c & 0x07) << 18) | 
+             ((static_cast<unsigned char>(str[pos+1]) & 0x3F) << 12) | 
+             ((static_cast<unsigned char>(str[pos+2]) & 0x3F) << 6) | 
+             (static_cast<unsigned char>(str[pos+3]) & 0x3F);
+        len = 4;
+    }
+
+    pos += len;
+    return cp;
+}
+// 匹配中文标点（UTF-8）：。，！？；：、“”‘’（）【】《》，）】》”’
+// 匹配禁止行首的中文标点（复刻LVGL逻辑）
+bool isCJKLeadingPunctuation(const std::string& unit) {
+    size_t pos = 0;
+    uint32_t cp = utf8_next(unit, pos); // 解码为Unicode码点
+
+    // 中文标点的Unicode码点（和LVGL一致）
+    const uint32_t leading_puncts[] = {
+        0x3002, // 。
+        0xFF0C, // ，
+        0xFF01, // ！
+        0xFF1F, // ？
+        0xFF1B, // ；
+        0xFF1A, // ：
+        0x3001, // 、
+        0xFF09, // ）
+        0x301B, // 】
+        0x300B, // 》
+        0x201D, // ”
+        0x2019  // ’
+    };
+
+    // 遍历匹配码点
+    for(size_t i = 0; i < sizeof(leading_puncts)/sizeof(leading_puncts[0]); i++) {
+        if(cp == leading_puncts[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// 判断是否为中文字符（单字/标点）
+bool isCJKUnit(const std::string& unit) {
+    if (unit.empty() || unit.size() > 3) return false;
+    unsigned char firstByte = static_cast<unsigned char>(unit[0]);
+    // UTF-8中文/标点首字节范围：0xE0~0xEF
+    return firstByte >= 0xE0 && firstByte <= 0xEF;
+}
+// 辅助函数：获取list中指定索引的元素（适配嵌入式环境）
+template <typename T>
+const T& getListElement(const std::list<T>& lst, size_t index) {
+    auto it = lst.begin();
+    std::advance(it, index);
+    return *it;
+}
+
+// 非const版本
+template <typename T>
+T& getListElement(std::list<T>& lst, size_t index) {
+    auto it = lst.begin();
+    std::advance(it, index);
+    return *it;
+}
+// ========== 工具函数结束 ==========
 
 }  // namespace
 
@@ -121,7 +212,7 @@ void ParsedText::layoutAndExtractLines(const GfxRenderer& renderer, const int fo
   const size_t lineCount = includeLastLine ? lineBreakIndices.size() : lineBreakIndices.size() - 1;
 
   for (size_t i = 0; i < lineCount; ++i) {
-    extractLine(i, pageWidth, spaceWidth, wordWidths, continuesVec, lineBreakIndices, processLine);
+    extractLine(i, pageWidth, spaceWidth, wordWidths, continuesVec, lineBreakIndices, processLine,renderer, fontId);
   }
 }
 
@@ -153,9 +244,9 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
 
   // Calculate first line indent (only for left/justified text without extra paragraph spacing)
   const int firstLineIndent =
-      blockStyle.textIndent > 0 && !extraParagraphSpacing &&
+      firstlineintented &&
               (blockStyle.alignment == CssTextAlign::Justify || blockStyle.alignment == CssTextAlign::Left)
-          ? blockStyle.textIndent
+          ? 2*renderer.getTextWidth(fontId,"我")
           : 0;
 
   // Ensure any word that would overflow even as the first entry on a line is split using fallback hyphenation.
@@ -243,6 +334,40 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
   while (currentWordIndex < totalWordCount) {
     size_t nextBreakIndex = ans[currentWordIndex] + 1;
 
+    // ========== 修复：标点避忌+宽度检查（适配list） ==========
+    if (nextBreakIndex < totalWordCount) {
+        const std::string& nextFirstUnit = getListElement(words, nextBreakIndex);
+        if (isCJKLeadingPunctuation(nextFirstUnit)) {
+            // 1. 计算上一行当前总宽度
+            size_t prevBreakIndex = ans[currentWordIndex];
+            int prevLineWidth = 0;
+            int gapCount = 0;
+            for (size_t k = currentWordIndex; k <= prevBreakIndex; ++k) {
+                prevLineWidth += wordWidths[k];
+                if (k > currentWordIndex && !continuesVec[k] && !isCJKUnit(getListElement(words, k))) {
+                    gapCount++;
+                }
+            }
+            prevLineWidth += gapCount * spaceWidth; // 加上间距
+
+            // 2. 计算标点宽度（要回退的标点）
+            int punctWidth = wordWidths[nextBreakIndex];
+            const int effectivePageWidth = currentWordIndex == 0 ? pageWidth - firstLineIndent : pageWidth;
+            // 3. 允许轻微溢出（最多5%页面宽度）
+            const int maxOverflow = effectivePageWidth * 0.05;
+
+            // 4. 如果加上标点后溢出不超过5%，就允许回退
+            if (prevLineWidth + punctWidth <= effectivePageWidth + maxOverflow) {
+                nextBreakIndex = ans[currentWordIndex] + 1; // 包含标点
+                ans[currentWordIndex] = nextBreakIndex - 1; // 更新最优解
+            } else {
+                // 溢出过多：不回退，让标点留在下一行（兜底方案）
+                wordWidths[nextBreakIndex] -= 2; // 标点左移2px
+            }
+        }
+    }
+    // ===========================================
+
     // Safety check: prevent infinite loop if nextBreakIndex doesn't advance
     if (nextBreakIndex <= currentWordIndex) {
       // Force advance by at least one word to avoid infinite loop
@@ -256,11 +381,13 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
   return lineBreakIndices;
 }
 
+
+
 void ParsedText::applyParagraphIndent() {
   //Serial.printf("已进入此函数\n");
   if (blockStyle.alignment == CssTextAlign::Left && firstlineintented) {
     //Serial.printf("已进入\n");
-    words.front().insert(0, "\xe3\x80\x80\xe3\x80\x80"); // 两个全角空格，替代原来的1个窄空格
+    //words.front().insert(0, "\xe3\x80\x80\xe3\x80\x80"); // 两个全角空格，替代原来的1个窄空格
     //Serial.printf("首行缩进应用：%d\n", firstlineintented);
   }
 
@@ -285,9 +412,9 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
                                                             std::vector<bool>& continuesVec) {
   // Calculate first line indent (only for left/justified text without extra paragraph spacing)
   const int firstLineIndent =
-      blockStyle.textIndent > 0 && !extraParagraphSpacing &&
+      firstlineintented &&
               (blockStyle.alignment == CssTextAlign::Justify || blockStyle.alignment == CssTextAlign::Left)
-          ? blockStyle.textIndent
+          ? 2*renderer.getTextWidth(fontId,"我")
           : 0;
 
   std::vector<size_t> lineBreakIndices;
@@ -340,12 +467,42 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
       --currentIndex;
     }
 
+    // ========== 修复：标点避忌+宽度检查（适配list） ==========
+    if (currentIndex < wordWidths.size()) {
+        const std::string& nextFirstUnit = getListElement(words, currentIndex);
+        if (isCJKLeadingPunctuation(nextFirstUnit) && currentIndex > lineStart) {
+            // 计算上一行剩余空间
+            int lineWidth = 0;
+            int gapCount = 0;
+            for (size_t k = lineStart; k < currentIndex; ++k) {
+                lineWidth += wordWidths[k];
+                if (k > lineStart && !continuesVec[k] && !isCJKUnit(getListElement(words, k))) {
+                    gapCount++;
+                }
+            }
+            lineWidth += gapCount * spaceWidth;
+            const int effectivePageWidth = isFirstLine ? pageWidth - firstLineIndent : pageWidth;
+            const int maxOverflow = effectivePageWidth * 0.05;
+
+            // 检查是否能容纳标点
+            if (lineWidth + wordWidths[currentIndex] <= effectivePageWidth + maxOverflow) {
+                --currentIndex; // 回退标点到上一行
+            } else {
+                // 溢出过多：标点留在下一行，左移2px
+                wordWidths[currentIndex] -= 2;
+            }
+        }
+    }
+    // ===========================================
+
     lineBreakIndices.push_back(currentIndex);
     isFirstLine = false;
   }
 
   return lineBreakIndices;
 }
+
+
 
 // Splits words[wordIndex] into prefix (adding a hyphen only when needed) and remainder when a legal breakpoint fits the
 // available width.
@@ -438,17 +595,18 @@ bool ParsedText::hyphenateWordAtIndex(const size_t wordIndex, const int availabl
 void ParsedText::extractLine(const size_t breakIndex, const int pageWidth, const int spaceWidth,
                              const std::vector<uint16_t>& wordWidths, const std::vector<bool>& continuesVec,
                              const std::vector<size_t>& lineBreakIndices,
-                             const std::function<void(std::shared_ptr<TextBlock>)>& processLine) {
+                             const std::function<void(std::shared_ptr<TextBlock>)>& processLine,const GfxRenderer& renderer, int fontId) {
   const size_t lineBreak = lineBreakIndices[breakIndex];
   const size_t lastBreakAt = breakIndex > 0 ? lineBreakIndices[breakIndex - 1] : 0;
   const size_t lineWordCount = lineBreak - lastBreakAt;
 
   // Calculate first line indent (only for left/justified text without extra paragraph spacing)
   const bool isFirstLine = breakIndex == 0;
+
   const int firstLineIndent =
-      isFirstLine && blockStyle.textIndent > 0 && !extraParagraphSpacing &&
+      isFirstLine && firstlineintented  &&
               (blockStyle.alignment == CssTextAlign::Justify || blockStyle.alignment == CssTextAlign::Left)
-          ? blockStyle.textIndent
+          ? 2*renderer.getTextWidth(fontId,"我") // Use double space width as a fallback indent for the first line
           : 0;
 
   // Calculate total word width for this line and count actual word gaps

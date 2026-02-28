@@ -60,4 +60,5 @@ class Page {
   return std::any_of(elements.begin(), elements.end(),
                       [](const std::shared_ptr<PageElement>& el) { return el->getTag() == TAG_PageImage; });
 }
+//void renderPngSleepScreen(GfxRenderer& renderer) const;
 };

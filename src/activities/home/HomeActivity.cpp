@@ -284,7 +284,7 @@ if (hasjianguoUrl) {
 }
 
 
-menuItems.push_back("wifi传书");
+menuItems.push_back("wifi设置");
 menuItems.push_back("设置");
 
   GUI.drawButtonMenu(

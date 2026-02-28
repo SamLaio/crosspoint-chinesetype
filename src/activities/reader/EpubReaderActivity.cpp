@@ -59,6 +59,8 @@ void applyReaderOrientation(GfxRenderer& renderer, const uint8_t orientation) {
 
 }  // namespace
 
+EpubReaderActivity::EPUBState EpubReaderActivity::state;
+
 void EpubReaderActivity::taskTrampoline(void* param) {
   auto* self = static_cast<EpubReaderActivity*>(param);
   self->displayTaskLoop();
@@ -66,6 +68,8 @@ void EpubReaderActivity::taskTrampoline(void* param) {
 
 void EpubReaderActivity::onEnter() {
   ActivityWithSubactivity::onEnter();
+  state = EPUBState::READING;
+
 
   if (!epub) {
     return;
@@ -78,6 +82,7 @@ void EpubReaderActivity::onEnter() {
   renderingMutex = xSemaphoreCreateMutex();
 
   epub->setupCacheDir();
+
 
   FsFile f;
   if (SdMan.openFileForRead("ERS", epub->getCachePath() + "/progress.bin", f)) {
@@ -149,153 +154,206 @@ void EpubReaderActivity::onExit() {
 }
 
 void EpubReaderActivity::loop() {
-  // Pass input responsibility to sub activity if exists
-  if (subActivity) {
-    subActivity->loop();
-    // Deferred exit: process after subActivity->loop() returns to avoid use-after-free
-    if (pendingSubactivityExit) {
-      pendingSubactivityExit = false;
-      exitActivity();
-      updateRequired = true;
-      skipNextButtonCheck = true;  // Skip button processing to ignore stale events
+  if(state== EPUBState::READING){
+    if (mappedInput.isPressed(MappedInputManager::Button::Confirm) && mappedInput.getHeldTime() >= 1000) {
+      Serial.printf("[%lu] [ERS] Long press detected, entering settings\n", millis());
+      state = EPUBState::SETTING;
+      skipNextButtonCheck = true; // 避免按钮事件冲突
+      return;
     }
-    // Deferred go home: process after subActivity->loop() returns to avoid race condition
+    // Pass input responsibility to sub activity if exists
+    if (subActivity) {
+      subActivity->loop();
+      // Deferred exit: process after subActivity->loop() returns to avoid use-after-free
+      if (pendingSubactivityExit) {
+        pendingSubactivityExit = false;
+        exitActivity();
+        updateRequired = true;
+        skipNextButtonCheck = true;  // Skip button processing to ignore stale events
+      }
+      // Deferred go home: process after subActivity->loop() returns to avoid race condition
+      if (pendingGoHome) {
+        pendingGoHome = false;
+        exitActivity();
+        if (onGoHome) {
+          onGoHome();
+        }
+        return;  // Don't access 'this' after callback
+      }
+      return;
+    }
+
+    // Handle pending go home when no subactivity (e.g., from long press back)
     if (pendingGoHome) {
       pendingGoHome = false;
-      exitActivity();
       if (onGoHome) {
         onGoHome();
       }
       return;  // Don't access 'this' after callback
     }
-    return;
-  }
 
-  // Handle pending go home when no subactivity (e.g., from long press back)
-  if (pendingGoHome) {
-    pendingGoHome = false;
-    if (onGoHome) {
-      onGoHome();
+    // Skip button processing after returning from subactivity
+    // This prevents stale button release events from triggering actions
+    // We wait until: (1) all relevant buttons are released, AND (2) wasReleased events have been cleared
+    if (skipNextButtonCheck) {
+      const bool confirmCleared = !mappedInput.isPressed(MappedInputManager::Button::Confirm) &&
+                                  !mappedInput.wasReleased(MappedInputManager::Button::Confirm);
+      const bool backCleared = !mappedInput.isPressed(MappedInputManager::Button::Back) &&
+                              !mappedInput.wasReleased(MappedInputManager::Button::Back);
+      if (confirmCleared && backCleared) {
+        skipNextButtonCheck = false;
+      }
+      return;
     }
-    return;  // Don't access 'this' after callback
-  }
 
-  // Skip button processing after returning from subactivity
-  // This prevents stale button release events from triggering actions
-  // We wait until: (1) all relevant buttons are released, AND (2) wasReleased events have been cleared
-  if (skipNextButtonCheck) {
-    const bool confirmCleared = !mappedInput.isPressed(MappedInputManager::Button::Confirm) &&
-                                !mappedInput.wasReleased(MappedInputManager::Button::Confirm);
-    const bool backCleared = !mappedInput.isPressed(MappedInputManager::Button::Back) &&
-                             !mappedInput.wasReleased(MappedInputManager::Button::Back);
-    if (confirmCleared && backCleared) {
-      skipNextButtonCheck = false;
-    }
-    return;
-  }
-
-  // Enter reader menu activity.
-  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-    // Don't start activity transition while rendering
-    xSemaphoreTake(renderingMutex, portMAX_DELAY);
-    const int currentPage = section ? section->currentPage + 1 : 0;
-    const int totalPages = section ? section->pageCount : 0;
-    float bookProgress = 0.0f;
-    if (epub && epub->getBookSize() > 0 && section && section->pageCount > 0) {
-      const float chapterProgress = static_cast<float>(section->currentPage) / static_cast<float>(section->pageCount);
-      bookProgress = epub->calculateProgress(currentSpineIndex, chapterProgress) * 100.0f;
-    }
-    const int bookProgressPercent = clampPercent(static_cast<int>(bookProgress + 0.5f));
-    exitActivity();
-    enterNewActivity(new EpubReaderMenuActivity(
-        this->renderer, this->mappedInput, epub->getTitle(), currentPage, totalPages, bookProgressPercent,
-        SETTINGS.orientation, [this](const uint8_t orientation) { onReaderMenuBack(orientation); },
-        [this](EpubReaderMenuActivity::MenuAction action) { onReaderMenuConfirm(action); }));
-    xSemaphoreGive(renderingMutex);
-  }
-
-  // Long press BACK (1s+) goes directly to home
-  if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= goHomeMs) {
-    onGoHome();
-    return;
-  }
-
-  // Short press BACK goes to file selection
-  if (mappedInput.wasReleased(MappedInputManager::Button::Back) && mappedInput.getHeldTime() < goHomeMs) {
-    onGoBack();
-    return;
-  }
-
-  // When long-press chapter skip is disabled, turn pages on press instead of release.
-  const bool usePressForPageTurn = !SETTINGS.longPressChapterSkip;
-  const bool prevTriggered = usePressForPageTurn ? (mappedInput.wasPressed(MappedInputManager::Button::PageBack) ||
-                                                    mappedInput.wasPressed(MappedInputManager::Button::Left))
-                                                 : (mappedInput.wasReleased(MappedInputManager::Button::PageBack) ||
-                                                    mappedInput.wasReleased(MappedInputManager::Button::Left));
-  const bool powerPageTurn = SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN &&
-                             mappedInput.wasReleased(MappedInputManager::Button::Power);
-  const bool nextTriggered = usePressForPageTurn
-                                 ? (mappedInput.wasPressed(MappedInputManager::Button::PageForward) || powerPageTurn ||
-                                    mappedInput.wasPressed(MappedInputManager::Button::Right))
-                                 : (mappedInput.wasReleased(MappedInputManager::Button::PageForward) || powerPageTurn ||
-                                    mappedInput.wasReleased(MappedInputManager::Button::Right));
-
-  if (!prevTriggered && !nextTriggered) {
-    return;
-  }
-
-  // any botton press when at end of the book goes back to the last page
-  if (currentSpineIndex > 0 && currentSpineIndex >= epub->getSpineItemsCount()) {
-    currentSpineIndex = epub->getSpineItemsCount() - 1;
-    nextPageNumber = UINT16_MAX;
-    updateRequired = true;
-    return;
-  }
-
-  const bool skipChapter = SETTINGS.longPressChapterSkip && mappedInput.getHeldTime() > skipChapterMs;
-
-  if (skipChapter) {
-    // We don't want to delete the section mid-render, so grab the semaphore
-    xSemaphoreTake(renderingMutex, portMAX_DELAY);
-    nextPageNumber = 0;
-    currentSpineIndex = nextTriggered ? currentSpineIndex + 1 : currentSpineIndex - 1;
-    section.reset();
-    xSemaphoreGive(renderingMutex);
-    updateRequired = true;
-    return;
-  }
-
-  // No current section, attempt to rerender the book
-  if (!section) {
-    updateRequired = true;
-    return;
-  }
-
-  if (prevTriggered) {
-    if (section->currentPage > 0) {
-      section->currentPage--;
-    } else {
-      // We don't want to delete the section mid-render, so grab the semaphore
+    // Enter reader menu activity.
+    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+      // Don't start activity transition while rendering
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
-      nextPageNumber = UINT16_MAX;
-      currentSpineIndex--;
-      section.reset();
+      const int currentPage = section ? section->currentPage + 1 : 0;
+      const int totalPages = section ? section->pageCount : 0;
+      float bookProgress = 0.0f;
+      if (epub && epub->getBookSize() > 0 && section && section->pageCount > 0) {
+        const float chapterProgress = static_cast<float>(section->currentPage) / static_cast<float>(section->pageCount);
+        bookProgress = epub->calculateProgress(currentSpineIndex, chapterProgress) * 100.0f;
+      }
+      const int bookProgressPercent = clampPercent(static_cast<int>(bookProgress + 0.5f));
+      exitActivity();
+      enterNewActivity(new EpubReaderMenuActivity(
+          this->renderer, this->mappedInput, epub->getTitle(), currentPage, totalPages, bookProgressPercent,
+          SETTINGS.orientation, [this](const uint8_t orientation) { onReaderMenuBack(orientation); },
+          [this](EpubReaderMenuActivity::MenuAction action) { onReaderMenuConfirm(action); }));
       xSemaphoreGive(renderingMutex);
     }
-    updateRequired = true;
-  } else {
-    if (section->currentPage < section->pageCount - 1) {
-      section->currentPage++;
-    } else {
+
+    // Long press BACK (1s+) goes directly to home
+    if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= goHomeMs) {
+      onGoHome();
+      return;
+    }
+
+    // Short press BACK goes to file selection
+    if (mappedInput.wasReleased(MappedInputManager::Button::Back) && mappedInput.getHeldTime() < goHomeMs) {
+      onGoBack();
+      return;
+    }
+
+    // When long-press chapter skip is disabled, turn pages on press instead of release.
+    const bool usePressForPageTurn = !SETTINGS.longPressChapterSkip;
+    const bool prevTriggered = usePressForPageTurn ? (mappedInput.wasPressed(MappedInputManager::Button::PageBack) ||
+                                                      mappedInput.wasPressed(MappedInputManager::Button::Left))
+                                                  : (mappedInput.wasReleased(MappedInputManager::Button::PageBack) ||
+                                                      mappedInput.wasReleased(MappedInputManager::Button::Left));
+    const bool powerPageTurn = SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN &&
+                              mappedInput.wasReleased(MappedInputManager::Button::Power);
+    const bool nextTriggered = usePressForPageTurn
+                                  ? (mappedInput.wasPressed(MappedInputManager::Button::PageForward) || powerPageTurn ||
+                                      mappedInput.wasPressed(MappedInputManager::Button::Right))
+                                  : (mappedInput.wasReleased(MappedInputManager::Button::PageForward) || powerPageTurn ||
+                                      mappedInput.wasReleased(MappedInputManager::Button::Right));
+
+    if (!prevTriggered && !nextTriggered) {
+      return;
+    }
+
+    // any botton press when at end of the book goes back to the last page
+    if (currentSpineIndex > 0 && currentSpineIndex >= epub->getSpineItemsCount()) {
+      currentSpineIndex = epub->getSpineItemsCount() - 1;
+      nextPageNumber = UINT16_MAX;
+      updateRequired = true;
+      return;
+    }
+
+    const bool skipChapter = SETTINGS.longPressChapterSkip && mappedInput.getHeldTime() > skipChapterMs;
+
+    if (skipChapter) {
       // We don't want to delete the section mid-render, so grab the semaphore
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       nextPageNumber = 0;
-      currentSpineIndex++;
+      currentSpineIndex = nextTriggered ? currentSpineIndex + 1 : currentSpineIndex - 1;
       section.reset();
       xSemaphoreGive(renderingMutex);
+      updateRequired = true;
+      return;
     }
-    updateRequired = true;
-  }
+
+    // No current section, attempt to rerender the book
+    if (!section) {
+      updateRequired = true;
+      return;
+    }
+
+    if (prevTriggered) {
+      if (section->currentPage > 0) {
+        section->currentPage--;
+      } else {
+        // We don't want to delete the section mid-render, so grab the semaphore
+        xSemaphoreTake(renderingMutex, portMAX_DELAY);
+        nextPageNumber = UINT16_MAX;
+        currentSpineIndex--;
+        section.reset();
+        xSemaphoreGive(renderingMutex);
+      }
+      updateRequired = true;
+    } else {
+      if (section->currentPage < section->pageCount - 1) {
+        section->currentPage++;
+      } else {
+        // We don't want to delete the section mid-render, so grab the semaphore
+        xSemaphoreTake(renderingMutex, portMAX_DELAY);
+        nextPageNumber = 0;
+        currentSpineIndex++;
+        section.reset();
+        xSemaphoreGive(renderingMutex);
+      }
+      updateRequired = true;
+    }
+  }else if (state == EPUBState::SETTING) {
+    if (mappedInput.wasPressed(MappedInputManager::Button::Back) ) {
+      Serial.printf("[%lu] [ERS] Long press detected, entering reading\n", millis());
+      state = EPUBState::READING;
+      skipNextButtonCheck = true;
+      SETTINGS.saveToFile();
+      return;
+    }
+    if (mappedInput.wasPressed(MappedInputManager::Button::Left)) {
+      Serial.printf("[%lu] [ERS] 进入左边距设置\n", millis());
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      SETTINGS.screenMargin_Left+=5;
+      section.reset();
+      xSemaphoreGive(renderingMutex);
+      updateRequired = true;
+    }
+    if (mappedInput.wasPressed(MappedInputManager::Button::Right)) {
+      Serial.printf("[%lu] [ERS] 进入右边距设置\n", millis());
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      SETTINGS.screenMargin_Right+=5;
+      section.reset();
+      xSemaphoreGive(renderingMutex);
+
+      updateRequired = true;
+    }
+    if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
+      Serial.printf("[%lu] [ERS] 进入上边距设置\n", millis());
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      SETTINGS.screenMargin_Top+=5;
+      section.reset();
+      xSemaphoreGive(renderingMutex);
+      updateRequired = true;
+    }
+    if (mappedInput.wasPressed(MappedInputManager::Button::Down)) {
+      Serial.printf("[%lu] [ERS] 进入下边距设置\n", millis());
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      SETTINGS.screenMargin_Bottom+=5;
+      Serial.printf("[%lu] [ERS] Bottom为%d\n", millis(), SETTINGS.screenMargin_Bottom);
+      section.reset();
+      xSemaphoreGive(renderingMutex);
+      updateRequired = true;
+    }
+
+}
+
+
 }
 
 void EpubReaderActivity::onReaderMenuBack(const uint8_t orientation) {
@@ -581,25 +639,28 @@ void EpubReaderActivity::renderScreen() {
   }
 
   // Apply screen viewable areas and additional padding
+  // 1. 先获取屏幕原始可视边距（无任何叠加）
   int orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft;
   renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
                                    &orientedMarginLeft);
-  orientedMarginTop += SETTINGS.screenMargin;
-  orientedMarginLeft += SETTINGS.screenMargin;
-  orientedMarginRight += SETTINGS.screenMargin;
-  orientedMarginBottom += SETTINGS.screenMargin;
 
   auto metrics = UITheme::getInstance().getMetrics();
 
-  // Add status bar margin
+  // 2. 先处理状态栏（核心：这里用 SETTINGS.screenMargin_Bottom 调整状态栏位置）
   if (SETTINGS.statusBar != CrossPointSettings::STATUS_BAR_MODE::NONE) {
-    // Add additional margin for status bar if progress bar is shown
     const bool showProgressBar = SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::BOOK_PROGRESS_BAR ||
                                  SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::ONLY_BOOK_PROGRESS_BAR ||
                                  SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::CHAPTER_PROGRESS_BAR;
-    orientedMarginBottom += statusBarMargin - SETTINGS.screenMargin +
+    // 关键修改：状态栏位置 = 原始底部边距 + 状态栏高度 - 用户Bottom边距（保留关联）
+    orientedMarginBottom = orientedMarginBottom + statusBarMargin - SETTINGS.screenMargin_Bottom +
                             (showProgressBar ? (metrics.bookProgressBarHeight + progressBarMarginTop) : 0);
   }
+
+  // 3. 再叠加用户设置的所有边距（此时Bottom边距不会被抵消）
+  orientedMarginTop += SETTINGS.screenMargin_Top;
+  orientedMarginLeft += SETTINGS.screenMargin_Left;
+  orientedMarginRight += SETTINGS.screenMargin_Right;
+  orientedMarginBottom += SETTINGS.screenMargin_Bottom; 
 
   if (!section) {
     const auto filepath = epub->getSpineItem(currentSpineIndex).href;
@@ -609,14 +670,14 @@ void EpubReaderActivity::renderScreen() {
     const uint16_t viewportWidth = renderer.getScreenWidth() - orientedMarginLeft - orientedMarginRight;
     const uint16_t viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;
 
-    if (!section->loadSectionFile(SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
+    if (!section->loadSectionFile(SETTINGS.getReaderFontId(), SETTINGS.lineSpacing,
                                   SETTINGS.extraParagraphSpacing, SETTINGS.paragraphAlignment, viewportWidth,
                                   viewportHeight, SETTINGS.hyphenationEnabled,SETTINGS.wordSpacing,SETTINGS.firstlineintented, SETTINGS.embeddedStyle)) {
       Serial.printf("[%lu] [ERS] Cache not found, building...\n", millis());
 
       const auto popupFn = [this]() { GUI.drawPopup(renderer, "Indexing..."); };
 
-      if (!section->createSectionFile(SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
+      if (!section->createSectionFile(SETTINGS.getReaderFontId(), SETTINGS.lineSpacing,
                                       SETTINGS.extraParagraphSpacing, SETTINGS.paragraphAlignment, viewportWidth,
                                       viewportHeight, SETTINGS.hyphenationEnabled, SETTINGS.wordSpacing, SETTINGS.firstlineintented, SETTINGS.embeddedStyle, popupFn)) {
         Serial.printf("[%lu] [ERS] Failed to persist page data to SD\n", millis());
@@ -656,6 +717,12 @@ void EpubReaderActivity::renderScreen() {
   }
 
   renderer.clearScreen();
+    //加背景
+    if(SETTINGS.ReadingScreenEnabled){
+      Serial.printf("[%lu] [ERS] 壁纸屏幕开启，渲染壁纸屏幕\n");
+      renderPngSleepScreen(renderer);
+    }
+
 
   if (section->pageCount == 0) {
     Serial.printf("[%lu] [ERS] No pages to render\n", millis());
@@ -687,6 +754,8 @@ void EpubReaderActivity::renderScreen() {
   }
   saveProgress(currentSpineIndex, section->currentPage, section->pageCount);
 }
+
+
 
 void EpubReaderActivity::saveProgress(int spineIndex, int currentPage, int pageCount) {
   FsFile f;
@@ -772,7 +841,7 @@ void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const in
 
   // Position status bar near the bottom of the logical screen, regardless of orientation
   const auto screenHeight = renderer.getScreenHeight();
-  const auto textY = screenHeight - orientedMarginBottom - 8;
+  const auto textY = screenHeight - orientedMarginBottom-20 ;
   int progressTextWidth = 0;
 
   // Calculate progress in book
@@ -854,4 +923,85 @@ void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const in
                       titleMarginLeftAdjusted + orientedMarginLeft + (availableTitleSpace - titleWidth) / 2, textY,
                       title.c_str());
   }
+}
+
+
+void EpubReaderActivity::renderPngSleepScreen(GfxRenderer& renderer) const {
+
+  auto dir = SdMan.open("/bizhi");
+  if (dir && dir.isDirectory()) {
+    std::vector<std::string> files;
+    char name[500];
+    // collect all valid PNG files
+    for (auto file = dir.openNextFile(); file; file = dir.openNextFile()) {
+      if (file.isDirectory()) {
+        file.close();
+        continue;
+      }
+      file.getName(name, sizeof(name));
+      auto filename = std::string(name);
+      if (filename[0] == '.') {
+        file.close();
+        continue;
+      }
+
+      // 判断png后缀（对齐txtpng的文件格式判断）
+      std::string ext = filename.substr(filename.length() - 4);
+      for (auto& c : ext) c = tolower(c);
+      if (ext != ".png") {
+        Serial.printf("[%lu] [SLP] Skipping non-.png file name: %s\n", millis(), name);
+        file.close();
+        continue;
+      }
+    
+      // 验证PNG文件是否有效（对齐txtpng的文件打开校验）
+      ImageDimensions pngDim;
+      if (!PngToFramebufferConverter::getDimensionsStatic("/bizhi/" + filename, pngDim)) {
+        Serial.printf("[%lu] [SLP] Skipping invalid PNG file: %s\n", millis(), name);
+        file.close();
+        continue;
+      }
+      files.emplace_back(filename);
+      file.close();
+    }
+    const auto numFiles = files.size();
+    if (numFiles > 0) {
+      // 随机选文件（保留原有逻辑）
+      auto randomFileIndex = random(numFiles);
+      while (numFiles > 1 ) {
+        randomFileIndex = random(numFiles);
+      }
+    
+      const auto filename = "/bizhi/" + files[randomFileIndex];
+      Serial.printf("[%lu] [SLP] Randomly loading: %s\n", millis(), filename.c_str());
+      delay(100);
+    
+      // 配置PNG渲染参数
+      RenderConfig renderConfig;
+      renderConfig.x = 0;                
+      renderConfig.y = 0;                
+      renderConfig.maxWidth = 480;       
+      renderConfig.maxHeight = 800;      
+      renderConfig.useDithering = true;
+      renderConfig.cachePath = "";
+    
+      // 解码并渲染PNG
+      PngToFramebufferConverter pngConverter;
+      if (pngConverter.decodeToFramebuffer(filename, renderer, renderConfig)) {
+        // ========== 对齐txtpng的绘制完成后无额外操作，仅刷新 ==========
+        //renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+        //delay(200); // 给屏幕刷新时间
+        dir.close();
+        Serial.printf("[%lu] [SLP] Png draw completed (mode: %d)\n", millis(), renderer.getRenderMode());
+        return;
+      } else {
+        Serial.printf("[%lu] [SLP] Failed to render PNG: %s\n", millis(), filename.c_str());
+      }
+    }
+  }
+  if (dir) dir.close();
+
+
+  // 无有效PNG文件，保持底层显示（对齐txtpng的失败处理）
+  Serial.printf("[%lu] [SLP] No valid PNG file, keep default screen\n", millis());
 }

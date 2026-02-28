@@ -20,9 +20,9 @@ void readAndValidate(FsFile& file, uint8_t& member, const uint8_t maxValue) {
 }
 
 namespace {
-constexpr uint8_t SETTINGS_FILE_VERSION = 4;
+constexpr uint8_t SETTINGS_FILE_VERSION = 5;
 // 注意：如果修改了字段数量，需要同步更新这个值
-constexpr uint8_t SETTINGS_COUNT = 37;  // 增加1：新增sleepScreenCoverFilter
+constexpr uint8_t SETTINGS_COUNT = 43; 
 constexpr char SETTINGS_FILE[] = "/.crosspoint/settings.bin";
 
 // Validate front button mapping to ensure each hardware button is unique.
@@ -103,7 +103,10 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writePod(outputFile, paragraphAlignment);
   serialization::writePod(outputFile, sleepTimeout);
   serialization::writePod(outputFile, refreshFrequency);
-  serialization::writePod(outputFile, screenMargin);
+  serialization::writePod(outputFile, screenMargin_Top);
+  serialization::writePod(outputFile, screenMargin_Bottom);
+  serialization::writePod(outputFile, screenMargin_Left);
+  serialization::writePod(outputFile, screenMargin_Right);
   serialization::writePod(outputFile, sleepScreenCoverMode);
   serialization::writeString(outputFile, std::string(opdsServerUrl));
   serialization::writePod(outputFile, textAntiAliasing);
@@ -117,7 +120,6 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writeString(outputFile, std::string(jgBookFolder));
   serialization::writeString(outputFile, std::string(jgUsername));
   serialization::writeString(outputFile, std::string(jgAppPassword));
-  // 修复点1：新增sleepScreenCoverFilter的写入（和读取顺序对应）
   serialization::writePod(outputFile, sleepScreenCoverFilter);
   serialization::writePod(outputFile, uiTheme);
   serialization::writePod(outputFile, frontButtonBack);
@@ -126,6 +128,7 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writePod(outputFile, frontButtonRight);
   serialization::writePod(outputFile, fadingFix);
   serialization::writePod(outputFile, embeddedStyle);
+  serialization::writePod(outputFile, ReadingScreenEnabled);
   // New fields added at end for backward compatibility
   outputFile.close();
 
@@ -185,7 +188,13 @@ bool CrossPointSettings::loadFromFile() {
     if (++settingsRead >= fileSettingsCount) break;
     readAndValidate(inputFile, refreshFrequency, REFRESH_FREQUENCY_COUNT);
     if (++settingsRead >= fileSettingsCount) break;
-    serialization::readPod(inputFile, screenMargin);
+    serialization::readPod(inputFile, screenMargin_Top);
+    if (++settingsRead >= fileSettingsCount) break;
+    serialization::readPod(inputFile, screenMargin_Bottom);
+    if (++settingsRead >= fileSettingsCount) break;
+    serialization::readPod(inputFile, screenMargin_Left);
+    if (++settingsRead >= fileSettingsCount) break;
+    serialization::readPod(inputFile, screenMargin_Right);
     if (++settingsRead >= fileSettingsCount) break;
     readAndValidate(inputFile, sleepScreenCoverMode, SLEEP_SCREEN_COVER_MODE_COUNT);
     if (++settingsRead >= fileSettingsCount) break;
@@ -268,6 +277,9 @@ bool CrossPointSettings::loadFromFile() {
     serialization::readPod(inputFile, fadingFix);
     if (++settingsRead >= fileSettingsCount) break;
     serialization::readPod(inputFile, embeddedStyle);
+    if (++settingsRead >= fileSettingsCount) break;
+    //新加阅读背景
+    serialization::readPod(inputFile, ReadingScreenEnabled);
     if (++settingsRead >= fileSettingsCount) break;
     // New fields added at end for backward compatibility
   } while (false);

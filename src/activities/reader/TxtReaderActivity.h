@@ -55,8 +55,8 @@ class TxtReaderActivity final : public ActivityWithSubactivity {
   bool chapter_initialized = false;
   //排版
   bool firstLineIndent = SETTINGS.firstlineintented;
-  uint8_t wordSpacing=1+(SETTINGS.wordSpacing) * 5;
-  uint8_t lineSpacing=SETTINGS.lineSpacing*5;
+  uint8_t wordSpacing=1+(SETTINGS.wordSpacing);
+  uint8_t lineSpacing=SETTINGS.lineSpacing;
 
 
 

@@ -13,6 +13,9 @@
 #include "images/CrossLarge.h"
 #include "util/StringUtils.h"
 
+
+#include "../../lib/Epub/Epub/converters/PngToFramebufferConverter.h"
+
 void SleepActivity::onEnter() {
   Activity::onEnter();
   
@@ -31,6 +34,8 @@ void SleepActivity::onEnter() {
       return renderCoverSleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::MARSK):
       return renderpngtxtSleepScreen();
+    case (CrossPointSettings::SLEEP_SCREEN_MODE::MARSK2):
+      return renderPngSleepScreen();
     default:
     GUI.drawPopup(renderer, "Entering Sleep...");
       return renderDefaultSleepScreen();
@@ -234,6 +239,112 @@ void SleepActivity::renderCustomSleepScreen() const {
   renderDefaultSleepScreen();
 }
 
+
+void SleepActivity::renderPngSleepScreen() const {
+
+  auto dir = SdMan.open("/sleep_mask");
+  if (dir && dir.isDirectory()) {
+    std::vector<std::string> files;
+    char name[500];
+    // collect all valid PNG files
+    for (auto file = dir.openNextFile(); file; file = dir.openNextFile()) {
+      if (file.isDirectory()) {
+        file.close();
+        continue;
+      }
+      file.getName(name, sizeof(name));
+      auto filename = std::string(name);
+      if (filename[0] == '.') {
+        file.close();
+        continue;
+      }
+
+      // 判断png后缀（对齐txtpng的文件格式判断）
+      std::string ext = filename.substr(filename.length() - 4);
+      for (auto& c : ext) c = tolower(c);
+      if (ext != ".png") {
+        Serial.printf("[%lu] [SLP] Skipping non-.png file name: %s\n", millis(), name);
+        file.close();
+        continue;
+      }
+      
+      // 验证PNG文件是否有效（对齐txtpng的文件打开校验）
+      ImageDimensions pngDim;
+      if (!PngToFramebufferConverter::getDimensionsStatic("/sleep_mask/" + filename, pngDim)) {
+        Serial.printf("[%lu] [SLP] Skipping invalid PNG file: %s\n", millis(), name);
+        file.close();
+        continue;
+      }
+      files.emplace_back(filename);
+      file.close();
+    }
+    const auto numFiles = files.size();
+    if (numFiles > 0) {
+      // 随机选文件（保留原有逻辑）
+      auto randomFileIndex = random(numFiles);
+      while (numFiles > 1 && randomFileIndex == APP_STATE.lastSleepImage) {
+        randomFileIndex = random(numFiles);
+      }
+      APP_STATE.lastSleepImage = randomFileIndex;
+      APP_STATE.saveToFile();
+      const auto filename = "/sleep_mask/" + files[randomFileIndex];
+      Serial.printf("[%lu] [SLP] Randomly loading: %s\n", millis(), filename.c_str());
+      delay(100);
+      
+      // 配置PNG渲染参数
+      RenderConfig renderConfig;
+      renderConfig.x = 0;                
+      renderConfig.y = 0;                
+      renderConfig.maxWidth = 480;       
+      renderConfig.maxHeight = 800;      
+      renderConfig.useDithering = true;
+      renderConfig.cachePath = "";
+      
+      // 解码并渲染PNG
+      PngToFramebufferConverter pngConverter;
+      if (pngConverter.decodeToFramebuffer(filename, renderer, renderConfig)) {
+        renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+        delay(200); // 给屏幕刷新时间
+        dir.close();
+        Serial.printf("[%lu] [SLP] Png draw completed (mode: %d)\n", millis(), renderer.getRenderMode());
+        return;
+      } else {
+        Serial.printf("[%lu] [SLP] Failed to render PNG: %s\n", millis(), filename.c_str());
+      }
+    }
+  }
+  if (dir) dir.close();
+
+  FsFile file;
+  if (SdMan.openFileForRead("SLP", "/sleep_mask.png", file)) {
+    file.close(); // 仅验证文件存在
+    Serial.printf("[%lu] [SLP] Loading: /sleep_mask.png\n", millis());
+    delay(100);
+    
+    // 配置PNG渲染参数
+    RenderConfig renderConfig;
+    renderConfig.x = 0;
+    renderConfig.y = 0;
+    renderConfig.maxWidth = 480;
+    renderConfig.maxHeight = 800;
+    renderConfig.useDithering = false;
+    renderConfig.cachePath = "";
+    
+    // 解码并渲染根目录的sleep_mask.png
+    PngToFramebufferConverter pngConverter;
+    if (pngConverter.decodeToFramebuffer("/sleep_mask.png", renderer, renderConfig)) {
+      renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+      delay(200);
+      Serial.printf("[%lu] [SLP] Png draw completed (mode: %d)\n", millis(), renderer.getRenderMode());
+      return;
+    }
+  }
+
+  // 无有效PNG文件，保持底层显示（对齐txtpng的失败处理）
+  Serial.printf("[%lu] [SLP] No valid PNG file, keep default screen\n", millis());
+}
+
+
 void SleepActivity::renderDefaultSleepScreen() const {
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
@@ -323,6 +434,8 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
     renderer.setRenderMode(GfxRenderer::BW);
   }
 }
+
+
 
 void SleepActivity::renderCoverSleepScreen() const {
   void (SleepActivity::*renderNoCoverSleepScreen)() const;

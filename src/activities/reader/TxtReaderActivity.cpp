@@ -226,17 +226,16 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
 
   // Store current settings for cache validation
   cachedFontId = SETTINGS.getReaderFontId();
-  cachedScreenMargin = SETTINGS.screenMargin;
   cachedParagraphAlignment = SETTINGS.paragraphAlignment;
 
   // Calculate viewport dimensions
   int orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft;
   renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
                                    &orientedMarginLeft);
-  orientedMarginTop += cachedScreenMargin;
-  orientedMarginLeft += cachedScreenMargin;
-  orientedMarginRight += cachedScreenMargin;
-  orientedMarginBottom += cachedScreenMargin;
+  orientedMarginTop += SETTINGS.screenMargin_Top;
+  orientedMarginLeft += SETTINGS.screenMargin_Left;
+  orientedMarginRight += SETTINGS.screenMargin_Right;
+  orientedMarginBottom += SETTINGS.screenMargin_Bottom;
 
   auto metrics = UITheme::getInstance().getMetrics();
 
@@ -579,10 +578,10 @@ void TxtReaderActivity::renderPage() {
   int orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft;
   renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
                                    &orientedMarginLeft);
-  orientedMarginTop += cachedScreenMargin;
-  orientedMarginLeft += cachedScreenMargin;
-  orientedMarginRight += cachedScreenMargin;
-  orientedMarginBottom += statusBarMargin;
+  orientedMarginTop += SETTINGS.screenMargin_Top;
+  orientedMarginLeft += SETTINGS.screenMargin_Left;
+  orientedMarginRight += SETTINGS.screenMargin_Right;
+  orientedMarginBottom += SETTINGS.screenMargin_Bottom; 
 
   const int lineHeight = renderer.getLineHeight(cachedFontId)+lineSpacing;
   const int contentWidth = viewportWidth;

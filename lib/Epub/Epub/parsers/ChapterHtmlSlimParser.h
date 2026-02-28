@@ -77,6 +77,22 @@ class ChapterHtmlSlimParser {
   // 先新增辅助函数：判断是否是英文字母（a-z/A-Z）
   static bool isEnglishPunctuation(unsigned char c);
   static bool isOnlyWhitespace(const char* buf, int len);
+  //抄点koreader
+    // 1. 字符类型判断（核心：区分CJK/西文/标点/空格）
+  enum CharType {
+      CHAR_TYPE_SPACE,    // 空白字符
+      CHAR_TYPE_CJK,      // 中日韩字符（中文核心）
+      CHAR_TYPE_ASCII,    // 英文/数字等ASCII字符
+      CHAR_TYPE_PUNCT,    // 标点符号
+      CHAR_TYPE_OTHER     // 其他字符
+  };
+      // 新增函数声明
+  bool isWhitespaceChar(unsigned int c);
+  bool isCJKChar(unsigned int c);
+  bool isEnglishPunctChar(unsigned int c);
+  bool isChinesePunctChar(unsigned int c);
+  CharType getCharType(unsigned int c);
+  int utf8ToUnicode(const char* str, int len, int& pos, unsigned int& out_c);
  public:
   explicit ChapterHtmlSlimParser(std::shared_ptr<Epub> epub, const std::string& filepath, GfxRenderer& renderer, const int fontId,
                                  const float lineCompression, const bool extraParagraphSpacing,

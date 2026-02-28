@@ -1,7 +1,7 @@
 #include "PngToFramebufferConverter.h"
 
 #include <GfxRenderer.h>
-#include <HardwareSerial.h>
+#include <Hardwareserial.h>
 #include <PNGdec.h>
 #include <SDCardManager.h>
 #include <SdFat.h>
@@ -35,6 +35,7 @@ struct PngContext {
   bool caching;
 
   uint8_t* grayLineBuffer;
+  uint8_t* alphaLineBuffer; // 仅新增：Alpha通道缓冲（用于判断透明）
 
   PngContext()
       : renderer(nullptr),
@@ -48,7 +49,8 @@ struct PngContext {
         dstHeight(0),
         lastDstY(-1),
         caching(false),
-        grayLineBuffer(nullptr) {}
+        grayLineBuffer(nullptr),
+        alphaLineBuffer(nullptr) {} // 仅初始化新增的Alpha缓冲
 };
 
 // File I/O callbacks use pFile->fHandle to access the FsFile*,
@@ -116,19 +118,20 @@ int requiredPngInternalBufferBytes(int srcWidth, int pixelType) {
   return ((pitch + 1) * 2) + 32;
 }
 
-// Convert entire source line to grayscale with alpha blending to white background.
-// For indexed PNGs with tRNS chunk, alpha values are stored at palette[768] onwards.
-// Processing the whole line at once improves cache locality and reduces per-pixel overhead.
-void convertLineToGray(uint8_t* pPixels, uint8_t* grayLine, int width, int pixelType, uint8_t* palette, int hasAlpha) {
+// 仅修改：拆分灰度和Alpha，保留原有灰度计算逻辑，单独提取Alpha值
+void convertLineToGrayAndAlpha(uint8_t* pPixels, uint8_t* grayLine, uint8_t* alphaLine, int width, int pixelType, uint8_t* palette, int hasAlpha) {
   switch (pixelType) {
     case PNG_PIXEL_GRAYSCALE:
       memcpy(grayLine, pPixels, width);
+      memset(alphaLine, 255, width); // 无Alpha=完全不透明
       break;
 
     case PNG_PIXEL_TRUECOLOR:
       for (int x = 0; x < width; x++) {
         uint8_t* p = &pPixels[x * 3];
+        // 保留原有灰度计算逻辑
         grayLine[x] = (uint8_t)((p[0] * 77 + p[1] * 150 + p[2] * 29) >> 8);
+        alphaLine[x] = 255; // 无Alpha=完全不透明
       }
       break;
 
@@ -138,18 +141,21 @@ void convertLineToGray(uint8_t* pPixels, uint8_t* grayLine, int width, int pixel
           for (int x = 0; x < width; x++) {
             uint8_t idx = pPixels[x];
             uint8_t* p = &palette[idx * 3];
+            // 保留原有灰度计算逻辑
             uint8_t gray = (uint8_t)((p[0] * 77 + p[1] * 150 + p[2] * 29) >> 8);
-            uint8_t alpha = palette[768 + idx];
-            grayLine[x] = (uint8_t)((gray * alpha + 255 * (255 - alpha)) / 255);
+            grayLine[x] = gray;
+            alphaLine[x] = palette[768 + idx]; // 单独提取Alpha值
           }
         } else {
           for (int x = 0; x < width; x++) {
             uint8_t* p = &palette[pPixels[x] * 3];
             grayLine[x] = (uint8_t)((p[0] * 77 + p[1] * 150 + p[2] * 29) >> 8);
+            alphaLine[x] = 255;
           }
         }
       } else {
         memcpy(grayLine, pPixels, width);
+        memset(alphaLine, 255, width);
       }
       break;
 
@@ -157,7 +163,9 @@ void convertLineToGray(uint8_t* pPixels, uint8_t* grayLine, int width, int pixel
       for (int x = 0; x < width; x++) {
         uint8_t gray = pPixels[x * 2];
         uint8_t alpha = pPixels[x * 2 + 1];
+        // 保留原有灰度计算逻辑（和透明混合）
         grayLine[x] = (uint8_t)((gray * alpha + 255 * (255 - alpha)) / 255);
+        alphaLine[x] = alpha; // 单独提取Alpha值
       }
       break;
 
@@ -166,19 +174,22 @@ void convertLineToGray(uint8_t* pPixels, uint8_t* grayLine, int width, int pixel
         uint8_t* p = &pPixels[x * 4];
         uint8_t gray = (uint8_t)((p[0] * 77 + p[1] * 150 + p[2] * 29) >> 8);
         uint8_t alpha = p[3];
+        // 保留原有灰度计算逻辑（和透明混合）
         grayLine[x] = (uint8_t)((gray * alpha + 255 * (255 - alpha)) / 255);
+        alphaLine[x] = alpha; // 单独提取Alpha值
       }
       break;
 
     default:
       memset(grayLine, 128, width);
+      memset(alphaLine, 255, width);
       break;
   }
 }
 
 int pngDrawCallback(PNGDRAW* pDraw) {
   PngContext* ctx = reinterpret_cast<PngContext*>(pDraw->pUser);
-  if (!ctx || !ctx->config || !ctx->renderer || !ctx->grayLineBuffer) return 0;
+  if (!ctx || !ctx->config || !ctx->renderer || !ctx->grayLineBuffer || !ctx->alphaLineBuffer) return 0;
 
   int srcY = pDraw->y;
   int srcWidth = ctx->srcWidth;
@@ -196,9 +207,9 @@ int pngDrawCallback(PNGDRAW* pDraw) {
   int outY = ctx->config->y + dstY;
   if (outY >= ctx->screenHeight) return 1;
 
-  // Convert entire source line to grayscale (improves cache locality)
-  convertLineToGray(pDraw->pPixels, ctx->grayLineBuffer, srcWidth, pDraw->iPixelType, pDraw->pPalette,
-                    pDraw->iHasAlpha);
+  // 仅修改：调用拆分后的灰度+Alpha转换函数
+  convertLineToGrayAndAlpha(pDraw->pPixels, ctx->grayLineBuffer, ctx->alphaLineBuffer, 
+                           srcWidth, pDraw->iPixelType, pDraw->pPalette, pDraw->iHasAlpha);
 
   // Render scaled row using Bresenham-style integer stepping (no floating-point division)
   int dstWidth = ctx->dstWidth;
@@ -213,17 +224,32 @@ int pngDrawCallback(PNGDRAW* pDraw) {
   for (int dstX = 0; dstX < dstWidth; dstX++) {
     int outX = outXBase + dstX;
     if (outX < screenWidth) {
-      uint8_t gray = ctx->grayLineBuffer[srcX];
+      // 防护：srcX不能越界
+      if (srcX >= srcWidth) break;
 
-      uint8_t ditheredGray;
-      if (useDithering) {
-        ditheredGray = applyBayerDither4Level(gray, outX, outY);
-      } else {
-        ditheredGray = gray / 85;
-        if (ditheredGray > 3) ditheredGray = 3;
+      uint8_t gray = ctx->grayLineBuffer[srcX];
+      uint8_t alpha = ctx->alphaLineBuffer[srcX]; // 读取单独的Alpha值
+
+      // 核心新增：Alpha=0（完全透明）时不绘制，保留残留；Alpha>0时正常绘制
+      if (alpha > 0) {
+          // 获取渲染模式（和Bitmap逻辑对齐）
+          auto renderMode = ctx->renderer->getRenderMode();
+          //先清空区域
+          if (renderMode == GfxRenderer::BW) {
+              ctx->renderer->drawPixel(outX, outY, false);
+          }
+
+
+        uint8_t ditheredGray;
+        if (useDithering) {
+          ditheredGray = applyBayerDither4Level(gray, outX, outY);
+        } else {
+          ditheredGray = gray / 85;
+          if (ditheredGray > 3) ditheredGray = 3;
+        }
+        drawPixelWithRenderMode(*ctx->renderer, outX, outY, ditheredGray);
+        if (caching) ctx->cache.setPixel(outX, outY, ditheredGray);
       }
-      drawPixelWithRenderMode(*ctx->renderer, outX, outY, ditheredGray);
-      if (caching) ctx->cache.setPixel(outX, outY, ditheredGray);
     }
 
     // Bresenham-style stepping: advance srcX based on ratio srcWidth/dstWidth
@@ -242,13 +268,13 @@ int pngDrawCallback(PNGDRAW* pDraw) {
 bool PngToFramebufferConverter::getDimensionsStatic(const std::string& imagePath, ImageDimensions& out) {
   size_t freeHeap = ESP.getFreeHeap();
   if (freeHeap < MIN_FREE_HEAP_FOR_PNG) {
-    Serial.printf("[%lu] [PNG] Not enough heap for PNG decoder (%u free, need %u)\n", millis(), freeHeap, MIN_FREE_HEAP_FOR_PNG);
+    Serial.printf("PNG", "Not enough heap for PNG decoder (%u free, need %u)", freeHeap, MIN_FREE_HEAP_FOR_PNG);
     return false;
   }
 
   PNG* png = new (std::nothrow) PNG();
   if (!png) {
-    Serial.printf("[%lu] [PNG] Failed to allocate PNG decoder for dimensions\n", millis());
+    Serial.printf("PNG", "Failed to allocate PNG decoder for dimensions");
     return false;
   }
 
@@ -256,7 +282,7 @@ bool PngToFramebufferConverter::getDimensionsStatic(const std::string& imagePath
                      nullptr);
 
   if (rc != 0) {
-    Serial.printf("[%lu] [PNG] Failed to open PNG for dimensions: %d\n", millis(), rc);
+    Serial.printf("PNG", "Failed to open PNG for dimensions: %d", rc);
     delete png;
     return false;
   }
@@ -271,18 +297,18 @@ bool PngToFramebufferConverter::getDimensionsStatic(const std::string& imagePath
 
 bool PngToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath, GfxRenderer& renderer,
                                                     const RenderConfig& config) {
-  Serial.printf("[%lu] [PNG] Decoding PNG: %s\n", millis(), imagePath.c_str());
+  Serial.printf("PNG", "Decoding PNG: %s", imagePath.c_str());
 
   size_t freeHeap = ESP.getFreeHeap();
   if (freeHeap < MIN_FREE_HEAP_FOR_PNG) {
-    Serial.printf("[%lu] [PNG] Not enough heap for PNG decoder (%u free, need %u)\n", millis(), freeHeap, MIN_FREE_HEAP_FOR_PNG);
+    Serial.printf("PNG", "Not enough heap for PNG decoder (%u free, need %u)", freeHeap, MIN_FREE_HEAP_FOR_PNG);
     return false;
   }
 
   // Heap-allocate PNG decoder (~42 KB) - freed at end of function
   PNG* png = new (std::nothrow) PNG();
   if (!png) {
-    Serial.printf("[%lu] [PNG] Failed to allocate PNG decoder\n", millis());
+    Serial.printf("PNG", "Failed to allocate PNG decoder");
     return false;
   }
 
@@ -295,7 +321,7 @@ bool PngToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath
   int rc = png->open(imagePath.c_str(), pngOpenWithHandle, pngCloseWithHandle, pngReadWithHandle, pngSeekWithHandle,
                      pngDrawCallback);
   if (rc != PNG_SUCCESS) {
-    Serial.printf("[%lu] [PNG] Failed to open PNG: %d\n", millis(), rc);
+    Serial.printf("PNG", "Failed to open PNG: %d", rc);
     delete png;
     return false;
   }
@@ -327,14 +353,16 @@ bool PngToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath
   }
   ctx.lastDstY = -1;  // Reset row tracking
 
-  Serial.printf("[%lu] [PNG] PNG %dx%d -> %dx%d (scale %.2f), bpp: %d\n", millis(), ctx.srcWidth, ctx.srcHeight, ctx.dstWidth, ctx.dstHeight,
+  Serial.printf("PNG", "PNG %dx%d -> %dx%d (scale %.2f), bpp: %d", ctx.srcWidth, ctx.srcHeight, ctx.dstWidth, ctx.dstHeight,
           ctx.scale, png->getBpp());
 
   const int pixelType = png->getPixelType();
   const int requiredInternal = requiredPngInternalBufferBytes(ctx.srcWidth, pixelType);
   if (requiredInternal > PNG_MAX_BUFFERED_PIXELS) {
-    Serial.printf("[%lu] [PNG] PNG row buffer too small: need %d bytes for width=%d type=%d, configured PNG_MAX_BUFFERED_PIXELS=%d\n", millis(), requiredInternal, ctx.srcWidth, pixelType, PNG_MAX_BUFFERED_PIXELS);
-    Serial.printf("[%lu] [PNG] Aborting decode to avoid PNGdec internal buffer overflow\n", millis());
+    Serial.printf("PNG",
+            "PNG row buffer too small: need %d bytes for width=%d type=%d, configured PNG_MAX_BUFFERED_PIXELS=%d",
+            requiredInternal, ctx.srcWidth, pixelType, PNG_MAX_BUFFERED_PIXELS);
+    Serial.printf("PNG", "Aborting decode to avoid PNGdec internal buffer overflow");
     png->close();
     delete png;
     return false;
@@ -344,11 +372,14 @@ bool PngToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath
     warnUnsupportedFeature("bit depth (" + std::to_string(png->getBpp()) + "bpp)", imagePath);
   }
 
-  // Allocate grayscale line buffer on demand (~3.2 KB) - freed after decode
+  // 仅修改：分配Alpha缓冲，和灰度缓冲同大小
   const size_t grayBufSize = PNG_MAX_BUFFERED_PIXELS / 2;
   ctx.grayLineBuffer = static_cast<uint8_t*>(malloc(grayBufSize));
-  if (!ctx.grayLineBuffer) {
-    Serial.printf("[%lu] [PNG] Failed to allocate gray line buffer\n", millis());
+  ctx.alphaLineBuffer = static_cast<uint8_t*>(malloc(grayBufSize));
+  if (!ctx.grayLineBuffer || !ctx.alphaLineBuffer) {
+    Serial.printf("PNG", "Failed to allocate gray/alpha line buffer");
+    free(ctx.grayLineBuffer);
+    free(ctx.alphaLineBuffer);
     png->close();
     delete png;
     return false;
@@ -358,7 +389,7 @@ bool PngToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath
   ctx.caching = !config.cachePath.empty();
   if (ctx.caching) {
     if (!ctx.cache.allocate(ctx.dstWidth, ctx.dstHeight, config.x, config.y)) {
-      Serial.printf("[%lu] [PNG] Failed to allocate cache buffer, continuing without caching\n", millis());
+      Serial.printf("PNG", "Failed to allocate cache buffer, continuing without caching");
       ctx.caching = false;
     }
   }
@@ -367,11 +398,14 @@ bool PngToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath
   rc = png->decode(&ctx, 0);
   unsigned long decodeTime = millis() - decodeStart;
 
+  // 仅修改：释放Alpha缓冲
   free(ctx.grayLineBuffer);
+  free(ctx.alphaLineBuffer);
   ctx.grayLineBuffer = nullptr;
+  ctx.alphaLineBuffer = nullptr;
 
   if (rc != PNG_SUCCESS) {
-    Serial.printf("[%lu] [PNG] Decode failed: %d\n", millis(), rc);
+    Serial.printf("PNG", "Decode failed: %d", rc);
     png->close();
     delete png;
     return false;
@@ -379,7 +413,7 @@ bool PngToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath
 
   png->close();
   delete png;
-  Serial.printf("[%lu] [PNG] PNG decoding complete - render time: %lu ms\n", millis(), decodeTime);
+  Serial.printf("PNG", "PNG decoding complete - render time: %lu ms", decodeTime);
 
   // Write cache file if caching was enabled and buffer was allocated
   if (ctx.caching) {
@@ -388,6 +422,8 @@ bool PngToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath
 
   return true;
 }
+
+
 
 bool PngToFramebufferConverter::supportsFormat(const std::string& extension) {
   std::string ext = extension;

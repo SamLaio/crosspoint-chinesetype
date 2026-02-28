@@ -8,7 +8,19 @@
 #include "EpubReaderMenuActivity.h"
 #include "activities/ActivityWithSubactivity.h"
 
+#include "../lib/Epub/Epub/converters/PngToFramebufferConverter.h"
+
 class EpubReaderActivity final : public ActivityWithSubactivity {
+  enum class EPUBState {
+      READING,
+      SETTING,
+      LEFT_MARGIN_SETTING,
+      RIGHT_MARGIN_SETTING,
+      TOP_MARGIN_SETTING, 
+      BOTTOM_MARGIN_SETTING
+  };
+
+
   std::shared_ptr<Epub> epub;
   std::unique_ptr<Section> section = nullptr;
   TaskHandle_t displayTaskHandle = nullptr;
@@ -42,6 +54,10 @@ class EpubReaderActivity final : public ActivityWithSubactivity {
   void onReaderMenuBack(uint8_t orientation);
   void onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction action);
   void applyOrientation(uint8_t orientation);
+
+  void renderPngSleepScreen(GfxRenderer& renderer) const;
+
+  static EPUBState state;
 
  public:
   explicit EpubReaderActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, std::unique_ptr<Epub> epub,

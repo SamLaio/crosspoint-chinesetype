@@ -21,8 +21,9 @@ class CrossPointSettings {
     CUSTOM = 2,
     COVER = 3,
     MARSK =4,
-    BLANK = 5,
-    COVER_CUSTOM = 6,
+    MARSK2 = 5,
+    BLANK = 6,
+    COVER_CUSTOM = 7,
     SLEEP_SCREEN_MODE_COUNT
   };
   enum SLEEP_SCREEN_COVER_MODE { FIT = 0, CROP = 1, SLEEP_SCREEN_COVER_MODE_COUNT };
@@ -151,9 +152,10 @@ class CrossPointSettings {
   uint8_t customFontSize = 0;  // 0 means use enum mapping
   char customFontFamily[64] = "";
   uint8_t fontSize = MEDIUM;
-  uint8_t lineSpacing = NORMAL;
+  //修改行距和字距为更自由的形式
+  uint8_t lineSpacing = 0;
   uint8_t firstlineintented = 0;
-  uint8_t wordSpacing = NORMAL;
+  uint8_t wordSpacing = 0;
   uint8_t paragraphAlignment = LEFT_ALIGN;
   // Auto-sleep timeout setting (default 10 minutes)
   uint8_t sleepTimeout = SLEEP_10_MIN;
@@ -162,7 +164,10 @@ class CrossPointSettings {
   uint8_t hyphenationEnabled = 0;
 
   // Reader screen margin settings
-  uint8_t screenMargin = 5;
+  uint8_t screenMargin_Top = 5;
+  uint8_t screenMargin_Left = 5;
+  uint8_t screenMargin_Bottom = 5;
+  uint8_t screenMargin_Right = 5;
   // OPDS browser settings
   char opdsServerUrl[128] = "";
   char opdsUsername[64] = "";
@@ -174,8 +179,8 @@ class CrossPointSettings {
   char jgBookFolder[128] = ""; // 电子书文件夹路径
 
   // Z-Library 配置
-char zlibEmail[64] = "13608489150@163.com";
-char zlibPassword[64] = "xi10147374";
+char zlibEmail[64] = "";
+char zlibPassword[64] = "";
   // Hide battery percentage
   uint8_t hideBatteryPercentage = HIDE_NEVER;
   // Long-press chapter skip on side buttons
@@ -186,6 +191,8 @@ char zlibPassword[64] = "xi10147374";
   uint8_t fadingFix = 0;
   // Use book's embedded CSS styles for EPUB rendering (1 = enabled, 0 = disabled)
   uint8_t embeddedStyle = 1;
+  //阅读背景设置
+  uint8_t ReadingScreenEnabled = 0; // Whether to show the reading screen background image
 
   ~CrossPointSettings() = default;
 

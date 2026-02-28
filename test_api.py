@@ -353,8 +353,8 @@ class Zlibrary:
 # -------------------------- 核心使用代码 --------------------------
 def main():
     # 1. 初始化并登录（替换成你的账号信息）
-    email = "13608489150@163.com"
-    password = "xi10147374"
+    email = ""
+    password = ""
     try:
         zlib = Zlibrary(email=email, password=password)
         if not zlib.isLoggedIn():

@@ -442,7 +442,7 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
   self->depth += 1;
 }
 
-// 在文件的其他辅助函数附近添加
+// 以下为自加
 bool ChapterHtmlSlimParser::isEnglishPunctuation(unsigned char c) {
     return c == '.' || c == ',' || c == '!' || c == '?' || c == ';' || c == ':' || 
            c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
@@ -465,7 +465,99 @@ bool ChapterHtmlSlimParser::isOnlyWhitespace(const char* buf, int len) {
     return true;
 }
 
+// 2. 判断字符是否为空白（基于lvstring的空白定义）
+bool ChapterHtmlSlimParser::isWhitespaceChar(unsigned int c) {
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v' ||
+           c == 0x00A0 || // 不换行空格
+           c == 0x3000;   // 中文全角空格
+}
 
+// 3. 判断是否为CJK字符（复刻lvstring.h的lStr_isCJK）
+bool ChapterHtmlSlimParser::isCJKChar(unsigned int c) {
+    if (c >= 0x2E80) {
+        if (c < 0xA000) {
+            return true; // 核心中文字符区（2E80-9FFF）
+        } else if (c >= 0xAC00 && c < 0xD800) {
+            return true; // 韩文
+        } else if (c >= 0xF900 && c <= 0xFAFF) {
+            return true; // CJK兼容字符
+        } else if (c >= 0xFF00 && c <= 0xFFEF) {
+            return true; // 全角ASCII（中文排版中视为CJK）
+        }
+    }
+    return false;
+}
+
+// 4. 判断是否为英文标点（基于lvstring的标点定义）
+bool ChapterHtmlSlimParser::isEnglishPunctChar(unsigned int c) {
+    return (c >= 0x21 && c <= 0x2F) || (c >= 0x3A && c <= 0x40) ||
+           (c >= 0x5B && c <= 0x60) || (c >= 0x7B && c <= 0x7E) ||
+           c == 0x2013 || c == 0x2014; // 英文破折号
+}
+
+// 5. 判断是否为中文标点
+bool ChapterHtmlSlimParser::isChinesePunctChar(unsigned int c) {
+    return (c >= 0x3001 && c <= 0x3003) || // 、。！
+           (c >= 0xFF01 && c <= 0xFF0F) || // 全角!@#$%^&*()_+
+           (c >= 0xFF1A && c <= 0xFF1F) || // 全角:;"'<>=?
+           (c >= 0xFF3B && c <= 0xFF40) || // 全角[]^`
+           (c >= 0xFF5B && c <= 0xFF65);   // 全角{}|~、。
+}
+
+// 6. 获取字符类型（核心分发函数）
+ChapterHtmlSlimParser::CharType ChapterHtmlSlimParser::getCharType(unsigned int c) {
+    if (isWhitespaceChar(c)) {
+        return CHAR_TYPE_SPACE;
+    } else if (isCJKChar(c)) {
+        return CHAR_TYPE_CJK;
+    } else if (c <= 0x7F) { // ASCII字符
+        if (isEnglishPunctChar(c)) {
+            return CHAR_TYPE_PUNCT;
+        } else {
+            return CHAR_TYPE_ASCII;
+        }
+    } else if (isChinesePunctChar(c)) {
+        return CHAR_TYPE_PUNCT;
+    } else {
+        return CHAR_TYPE_OTHER;
+    }
+}
+
+// 7. UTF-8转Unicode（处理多字节字符，关键！）
+int ChapterHtmlSlimParser::utf8ToUnicode(const char* str, int len, int& pos, unsigned int& out_c) {
+    if (pos >= len) return -1;
+    
+    unsigned char b = static_cast<unsigned char>(str[pos]);
+    int bytes = 0;
+    
+    if ((b & 0x80) == 0) {
+        // 单字节（ASCII）
+        out_c = b;
+        bytes = 1;
+    } else if ((b & 0xE0) == 0xC0) {
+        // 双字节
+        if (pos + 1 >= len) return -1;
+        out_c = ((b & 0x1F) << 6) | (static_cast<unsigned char>(str[pos+1]) & 0x3F);
+        bytes = 2;
+    } else if ((b & 0xF0) == 0xE0) {
+        // 三字节（中文核心）
+        if (pos + 2 >= len) return -1;
+        out_c = ((b & 0x0F) << 12) | ((static_cast<unsigned char>(str[pos+1]) & 0x3F) << 6) | 
+                (static_cast<unsigned char>(str[pos+2]) & 0x3F);
+        bytes = 3;
+    } else if ((b & 0xF8) == 0xF0) {
+        // 四字节
+        if (pos + 3 >= len) return -1;
+        out_c = ((b & 0x07) << 18) | ((static_cast<unsigned char>(str[pos+1]) & 0x3F) << 12) |
+                ((static_cast<unsigned char>(str[pos+2]) & 0x3F) << 6) | (static_cast<unsigned char>(str[pos+3]) & 0x3F);
+        bytes = 4;
+    } else {
+        return -1; // 无效UTF-8
+    }
+    
+    pos += bytes;
+    return bytes;
+}
 
 void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char* s, const int len) {
   auto* self = static_cast<ChapterHtmlSlimParser*>(userData);
@@ -474,129 +566,117 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
     return;
   }
 
-  // 修复：通过self调用（或直接调用静态函数）
+  // 快速判断整段空白（保留原有逻辑）
   if (self->isOnlyWhitespace(reinterpret_cast<const char*>(s), len)) {
-    return; // 整段都是空白，直接忽略
+    return;
   }
 
-  // 修复2：跳过开头连续空白（仅缓冲区为空时）
-  int start = 0;
-  while (start < len) {
-    unsigned char c = static_cast<unsigned char>(s[start]);
-    if ((c & 0x80) == 0 && isWhitespace(c) && self->partWordBufferIndex == 0) {
-      start++;
-    } else {
-      break;
-    }
-  }
+  int pos = 0;
+  unsigned int current_c;
+  CharType last_type = CHAR_TYPE_SPACE; // 上一个字符类型
+  int word_start = 0; // 当前单词/字符的起始位置
 
-  int i = start;
-  while (i < len) {
-    // 跳过BOM/零宽空格
-    if (s[i] == 0xEF && (i + 2 < len) && s[i + 1] == 0xBB && s[i + 2] == 0xBF) {
-      i += 3;
+  while (pos < len) {
+    // 解析当前UTF-8字符为Unicode
+    int bytes = self->utf8ToUnicode(reinterpret_cast<const char*>(s), len, pos, current_c);
+    if (bytes < 0) {
+      pos++; // 无效字符，跳过
       continue;
     }
 
-    unsigned char currentChar = static_cast<unsigned char>(s[i]);
-    // 处理空白字符：仅保留单个空格，且仅当缓冲区有内容时
-    if ((currentChar & 0x80) == 0 && isWhitespace(currentChar)) {
+    CharType current_type = self->getCharType(current_c);
+
+    // ========== 核心分词逻辑 ==========
+    // 1. 空白字符：刷新当前缓冲区，仅保留单个空格
+    if (current_type == CHAR_TYPE_SPACE) {
       if (self->partWordBufferIndex > 0) {
         self->flushPartWordBuffer();
-        // 仅写入单个空格，避免连续空白/换行
-        if (MAX_WORD_SIZE >= 2) {
-          self->partWordBuffer[0] = ' ';
-          self->partWordBuffer[1] = '\0';
-          self->partWordBufferIndex = 1;
-          self->flushPartWordBuffer();
-        }
       }
-      i++;
+      // 仅写入单个空格（避免连续空白）
+      if (MAX_WORD_SIZE >= 2) {
+        self->partWordBuffer[0] = ' ';
+        self->partWordBuffer[1] = '\0';
+        self->partWordBufferIndex = 1;
+        self->flushPartWordBuffer();
+      }
+      last_type = CHAR_TYPE_SPACE;
       continue;
     }
 
-    // ASCII字符处理（保留之前的英文标点修复）
-    if ((currentChar & 0x80) == 0) {
-      if (self->isEnglishPunctuation(currentChar)) {
-        if (self->partWordBufferIndex > 0) {
-          self->flushPartWordBuffer();
-        }
-        if (MAX_WORD_SIZE >= 2) {
-          self->partWordBuffer[0] = currentChar;
-          self->partWordBuffer[1] = '\0';
-          self->partWordBufferIndex = 1;
-          self->flushPartWordBuffer();
-        }
-        i++;
-      } else {
-        if (self->partWordBufferIndex >= MAX_WORD_SIZE - 1) {
-          self->flushPartWordBuffer();
-        }
-        self->partWordBuffer[self->partWordBufferIndex++] = currentChar;
-        i++;
-        
-        if (self->partWordBufferIndex == MAX_WORD_SIZE - 1) {
-          self->flushPartWordBuffer();
-        }
+    // 2. CJK字符（中文）：单字分词
+    if (current_type == CHAR_TYPE_CJK) {
+      // 先刷新之前的非CJK内容
+      if (self->partWordBufferIndex > 0 && last_type != CHAR_TYPE_CJK) {
+        self->flushPartWordBuffer();
       }
-    } else {
-      // 多字节字符处理
+      // 写入当前CJK字符（保留完整多字节）
+      if (self->partWordBufferIndex + bytes < MAX_WORD_SIZE) {
+        for (int i = 0; i < bytes; i++) {
+          self->partWordBuffer[self->partWordBufferIndex++] = s[pos - bytes + i];
+        }
+        // CJK单字直接刷新（按字分词）
+        self->flushPartWordBuffer();
+      }
+      last_type = CHAR_TYPE_CJK;
+      continue;
+    }
+
+    // 3. 标点符号：独立分词（或跟随前一个单词）
+    if (current_type == CHAR_TYPE_PUNCT) {
+      // 先刷新之前的内容
       if (self->partWordBufferIndex > 0) {
         self->flushPartWordBuffer();
       }
-      
-      int charBytes = 1;
-      if ((currentChar & 0xE0) == 0xC0) {
-        charBytes = 2;
-      } else if ((currentChar & 0xF0) == 0xE0) {
-        charBytes = 3;
-      } else if ((currentChar & 0xF8) == 0xF0) {
-        charBytes = 4;
-      }
-      
-      if (i + charBytes > len) {
-        int remaining = len - i;
-        if (self->partWordBufferIndex + remaining < MAX_WORD_SIZE) {
-          for (int j = 0; j < remaining; j++) {
-            self->partWordBuffer[self->partWordBufferIndex++] = s[i + j];
-          }
-        }
-        break;
-      }
-      
-      if (self->partWordBufferIndex + charBytes < MAX_WORD_SIZE) {
-        for (int j = 0; j < charBytes; j++) {
-          self->partWordBuffer[self->partWordBufferIndex++] = s[i + j];
+      // 写入标点
+      if (self->partWordBufferIndex + bytes < MAX_WORD_SIZE) {
+        for (int i = 0; i < bytes; i++) {
+          self->partWordBuffer[self->partWordBufferIndex++] = s[pos - bytes + i];
         }
         self->flushPartWordBuffer();
       }
-      
-      i += charBytes;
+      last_type = CHAR_TYPE_PUNCT;
+      continue;
     }
+
+    // 4. ASCII字符（英文/数字）：按单词分词（直到空白/标点/CJK）
+    if (current_type == CHAR_TYPE_ASCII) {
+      // 如果上一个字符不是ASCII，先刷新缓冲区
+      if (self->partWordBufferIndex > 0 && last_type != CHAR_TYPE_ASCII) {
+        self->flushPartWordBuffer();
+      }
+      // 写入当前ASCII字符，避免缓冲区溢出
+      if (self->partWordBufferIndex >= MAX_WORD_SIZE - 1) {
+        self->flushPartWordBuffer();
+      }
+      self->partWordBuffer[self->partWordBufferIndex++] = static_cast<char>(current_c);
+      last_type = CHAR_TYPE_ASCII;
+      continue;
+    }
+
+    // 5. 其他字符：默认处理
+    if (self->partWordBufferIndex > 0 && last_type != CHAR_TYPE_OTHER) {
+      self->flushPartWordBuffer();
+    }
+    if (self->partWordBufferIndex + bytes < MAX_WORD_SIZE) {
+      for (int i = 0; i < bytes; i++) {
+        self->partWordBuffer[self->partWordBufferIndex++] = s[pos - bytes + i];
+      }
+      self->flushPartWordBuffer();
+    }
+    last_type = CHAR_TYPE_OTHER;
   }
 
-  // 循环结束后刷新ASCII缓冲区（纯英文场景）
+  // 循环结束后，刷新剩余的ASCII单词（避免英文单词截断）
   if (self->partWordBufferIndex > 0) {
-    // 修复3：刷新前检查——仅当内容非纯空白时才输出（兜底防空行）
     if (!self->isOnlyWhitespace(self->partWordBuffer, self->partWordBufferIndex)) {
-      bool isAllAscii = true;
-      for (int k = 0; k < self->partWordBufferIndex; k++) {
-        if ((static_cast<unsigned char>(self->partWordBuffer[k]) & 0x80) != 0) {
-          isAllAscii = false;
-          break;
-        }
-      }
-      if (isAllAscii) {
-        self->flushPartWordBuffer();
-      }
+      self->flushPartWordBuffer();
     } else {
-      // 清空纯空白的缓冲区，不输出
       self->partWordBufferIndex = 0;
       memset(self->partWordBuffer, 0, MAX_WORD_SIZE);
     }
   }
 
-  // 原有长文本拆分逻辑保留
+  // 保留原有长文本拆分逻辑
   if (self->currentTextBlock->size() > 750) {
     Serial.printf("[%lu] [EHP] Text block too long, splitting into multiple pages\n", millis());
     self->currentTextBlock->layoutAndExtractLines(
@@ -604,8 +684,6 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
         [self](const std::shared_ptr<TextBlock>& textBlock) { self->addLineToPage(textBlock); }, false);
   }
 }
-
-
 
 
 void XMLCALL ChapterHtmlSlimParser::endElement(void* userData, const XML_Char* name) {

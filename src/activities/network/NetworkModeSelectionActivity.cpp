@@ -8,11 +8,11 @@
 
 namespace {
 constexpr int MENU_ITEM_COUNT = 3;
-const char* MENU_ITEMS[MENU_ITEM_COUNT] = {"Join a Network", "Connect to Calibre", "Create Hotspot"};
+const char* MENU_ITEMS[MENU_ITEM_COUNT] = {"加入现有网络", "连接到 Calibre", "创建热点"};
 const char* MENU_DESCRIPTIONS[MENU_ITEM_COUNT] = {
-    "Connect to an existing WiFi network",
-    "Use Calibre wireless device transfers",
-    "Create a WiFi network others can join",
+    "连接到现有的 WiFi 网络",
+    "使用 Calibre 无线设备传输",
+    "创建热点，让其他设备连接传书",
 };
 }  // namespace
 
@@ -106,14 +106,14 @@ void NetworkModeSelectionActivity::render() const {
   const auto pageHeight = renderer.getScreenHeight();
 
   // Draw header
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "File Transfer", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, "文件传输", true, EpdFontFamily::BOLD);
 
   // Draw subtitle
-  renderer.drawCenteredText(UI_10_FONT_ID, 50, "How would you like to connect?");
+  renderer.drawCenteredText(UI_10_FONT_ID, 50, "您希望如何连接？");
 
   // Draw menu items centered on screen
-  constexpr int itemHeight = 50;  // Height for each menu item (including description)
-  const int startY = (pageHeight - (MENU_ITEM_COUNT * itemHeight)) / 2 + 10;
+  constexpr int itemHeight = 70;  // Height for each menu item (including description)
+  const int startY = (pageHeight - (MENU_ITEM_COUNT * itemHeight)) / 2 + 20;
 
   for (int i = 0; i < MENU_ITEM_COUNT; i++) {
     const int itemY = startY + i * itemHeight;

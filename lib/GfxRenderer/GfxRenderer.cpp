@@ -1142,7 +1142,6 @@ void GfxRenderer::drawPngFromTxtpng(const char* txtpng_file_path) const {
             if (renderMode == BW && val < 4) {
               drawPixel(screenX, screenY,false);
             }
-
           if (renderMode == BW && val < 3) {
             drawPixel(screenX, screenY);
           } else if (renderMode == GRAYSCALE_MSB && (val == 1 || val == 2)) {
@@ -1164,3 +1163,5 @@ void GfxRenderer::drawPngFromTxtpng(const char* txtpng_file_path) const {
     txtpng_file.close();
     Serial.printf("[%lu] [GFX] Png draw completed (mode: %d)\n", millis(), renderMode);
 }
+
+

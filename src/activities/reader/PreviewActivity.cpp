@@ -69,17 +69,16 @@ void PreviewActivity::onEnter() {
 
   // 初始化渲染参数（和原阅读器完全一致）
   cachedFontId = SETTINGS.getReaderFontId();
-  cachedScreenMargin = SETTINGS.screenMargin;
   cachedParagraphAlignment = SETTINGS.paragraphAlignment;
 
   // 计算视口尺寸（和原阅读器完全一致）
   int orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft;
   renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
                                    &orientedMarginLeft);
-  orientedMarginTop += cachedScreenMargin;
-  orientedMarginLeft += cachedScreenMargin;
-  orientedMarginRight += cachedScreenMargin;
-  orientedMarginBottom += cachedScreenMargin;
+  orientedMarginTop += SETTINGS.screenMargin_Top;
+  orientedMarginLeft += SETTINGS.screenMargin_Left;
+  orientedMarginRight += SETTINGS.screenMargin_Right;
+  orientedMarginBottom += SETTINGS.screenMargin_Bottom;
 
   auto metrics = UITheme::getInstance().getMetrics();
   if (SETTINGS.statusBar != CrossPointSettings::STATUS_BAR_MODE::NONE) {

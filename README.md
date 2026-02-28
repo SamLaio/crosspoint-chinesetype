@@ -71,6 +71,7 @@ Windows用户：
 
 
 # 透明壁纸
+
 效果：
 <!-- 第一张图：宽度480px，高度自动等比缩放 -->
 <img src="README_img/tou1.jpg" alt="透明壁纸效果" width="200"><img src="README_img/tou2.jpg" alt="透明壁纸效果" width="200"><img src="README_img/tou3.jpg" alt="透明壁纸效果" width="200">
@@ -80,13 +81,21 @@ Windows用户：
 
 [教程网址](http://xhslink.com/o/3BmHclU630Z)
 
+# epub阅读背景
+
+在设置-阅读设置-阅读背景里开启
+将png文件放入sd卡的bizhi/文件夹
+
+# 键盘输入
+[-] 点击QR可以连接热点后输入文本
+[-] 主页-wifi设置-创建热点-手机连接热点后扫描第二个二维码-手机输入设置
 
 
 # 云端支持
 
 ##zlibrary下载
 
-即将支持
+下版支持
 
 ## 下载书籍
 
