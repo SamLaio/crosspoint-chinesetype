@@ -16,7 +16,7 @@
 
 namespace {
 constexpr unsigned long goHomeMs = 1000;
-constexpr int statusBarMargin = 25;
+constexpr int statusBarMargin = 20;
 constexpr int progressBarMarginTop = 1;
 constexpr size_t CHUNK_SIZE = 8 * 1024;  // 8KB chunk for reading
 
@@ -232,10 +232,7 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
   int orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft;
   renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
                                    &orientedMarginLeft);
-  orientedMarginTop += SETTINGS.screenMargin_Top;
-  orientedMarginLeft += SETTINGS.screenMargin_Left;
-  orientedMarginRight += SETTINGS.screenMargin_Right;
-  orientedMarginBottom += SETTINGS.screenMargin_Bottom;
+
 
   auto metrics = UITheme::getInstance().getMetrics();
 
@@ -244,10 +241,14 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
     const bool showProgressBar = SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::BOOK_PROGRESS_BAR ||
                                  SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::ONLY_BOOK_PROGRESS_BAR ||
                                  SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::CHAPTER_PROGRESS_BAR;
-    orientedMarginBottom += statusBarMargin - cachedScreenMargin +
-                            (showProgressBar ? (metrics.bookProgressBarHeight + progressBarMarginTop) : 0);
+    orientedMarginBottom = orientedMarginBottom + statusBarMargin +
+                          (showProgressBar ? (metrics.bookProgressBarHeight + progressBarMarginTop) : 0);
   }
-
+  orientedMarginTop += SETTINGS.screenMargin_Top;
+  orientedMarginLeft += SETTINGS.screenMargin_Left;
+  orientedMarginRight += SETTINGS.screenMargin_Right;
+  orientedMarginBottom += SETTINGS.screenMargin_Bottom;
+  
   viewportWidth = renderer.getScreenWidth() - orientedMarginLeft - orientedMarginRight;
   const int viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;
   //行距加这里？
@@ -679,7 +680,7 @@ void TxtReaderActivity::renderStatusBar(const int orientedMarginRight, const int
   auto metrics = UITheme::getInstance().getMetrics();
   const auto screenHeight = renderer.getScreenHeight();
   // Adjust text position upward when progress bar is shown to avoid overlap
-  const auto textY = screenHeight - orientedMarginBottom - 8;
+  const auto textY = screenHeight - orientedMarginBottom - statusBarMargin;
   int progressTextWidth = 0;
 
   const float progress = totalPages > 0 ? (currentPage + 1) * 100.0f / totalPages : 0;
