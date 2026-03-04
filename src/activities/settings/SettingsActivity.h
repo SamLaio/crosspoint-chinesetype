@@ -82,10 +82,7 @@ struct SettingInfo {
     return s;
   }
 
-// 新增 Value 相关成员
-uint8_t minValue = 0;       // 最小值
-uint8_t maxValue = 40;       // 最大值
-uint8_t step = 5;           // 调节步长
+
 static SettingInfo Value(const char* name, uint8_t CrossPointSettings::* ptr,
                          uint8_t minVal, uint8_t maxVal, uint8_t stepVal,
                          const char* key = nullptr,
@@ -97,9 +94,9 @@ static SettingInfo Value(const char* name, uint8_t CrossPointSettings::* ptr,
     s.valuePtr = ptr;            
     
     // 2. 数值范围属性（适配0-40、步长5）
-    s.minValue = minVal;   // 最小值：0
-    s.maxValue = maxVal;   // 最大值：40
-    s.step = stepVal;      // 步长：5
+    s.valueRange.min = minVal;
+    s.valueRange.max = maxVal;
+    s.valueRange.step = stepVal;
 
     s.key = key;
     s.category = category;

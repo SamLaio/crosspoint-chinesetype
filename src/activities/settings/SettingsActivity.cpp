@@ -186,16 +186,16 @@ void SettingsActivity::toggleCurrentSetting() {
   } else if (setting.type == SettingType::ENUM && setting.valuePtr != nullptr) {
     const uint8_t currentValue = SETTINGS.*(setting.valuePtr);
     SETTINGS.*(setting.valuePtr) = (currentValue + 1) % static_cast<uint8_t>(setting.enumValues.size());
-  }  else if (setting.type == SettingType::VALUE && setting.valuePtr != nullptr) {
-    // ========== 完全匹配你定义的 VALUE 逻辑 ==========
+} else if (setting.type == SettingType::VALUE && setting.valuePtr != nullptr) {
+    // ========== 匹配 ValueRange 结构体的 VALUE 逻辑 ==========
     // 1. 读取当前值（类型匹配：uint8_t，避免有符号/无符号错误）
     const uint8_t currentValue = SETTINGS.*(setting.valuePtr); 
-    // 2. 计算新值：当前值 + 步长（从小到大调节）
-    uint8_t newValue = currentValue + setting.step;
-    // 3. 循环逻辑：超过最大值则回到最小值（0-40，步长5的核心）
+    // 2. 计算新值：当前值 + 步长（改用 valueRange.step）
+    uint8_t newValue = currentValue + setting.valueRange.step;
+    // 3. 循环逻辑：超过最大值则回到最小值（改用 valueRange.min/max）
     // 比如 40 + 5 = 45 > 40 → 重置为 0；35 + 5 = 40 ≤40 → 保留40
-    if (newValue > setting.maxValue) {
-        newValue = setting.minValue;
+    if (newValue > setting.valueRange.max) {
+        newValue = setting.valueRange.min;
     }   
     // 4. 写回新值（这一步是真正改变数值的核心）
     SETTINGS.*(setting.valuePtr) = newValue;

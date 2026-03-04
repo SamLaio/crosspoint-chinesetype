@@ -449,7 +449,7 @@ void KeyboardEntryActivity::renderQRScreen() const {
   renderer.clearScreen();
 
   // Title - matching File Transfer style
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "Remote Text Input", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, "输入文字", true, EpdFontFamily::BOLD);
 
   if (webInputServer && webInputServer->isRunning()) {
     if (webInputServer->isApMode()) {
@@ -461,10 +461,10 @@ void KeyboardEntryActivity::renderQRScreen() const {
       std::string ssidInfo = "Network: " + webInputServer->getApSSID();
       renderer.drawCenteredText(UI_10_FONT_ID, apStartY + LINE_SPACING, ssidInfo.c_str());
 
-      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 2, "Connect your device to this WiFi network");
+      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 2, "连接wifi:");
 
       renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 3,
-                                "or scan QR code with your phone to connect to Wifi.");
+                                "或扫描二维码连接wifi.");
 
       // WiFi QR code (same size as File Transfer)
       const std::string wifiQR = webInputServer->getWifiQRString();
@@ -480,9 +480,9 @@ void KeyboardEntryActivity::renderQRScreen() const {
       std::string ipUrl = "or http://" + webInputServer->getIP() + "/";
       renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 4, ipUrl.c_str());
 
-      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 5, "Open this URL in your browser");
+      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 5, "在您的浏览器中打开此 URL");
 
-      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 6, "or scan QR code with your phone:");
+      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 6, "或使用手机扫描二维码：");
 
       // URL QR code (same size as File Transfer)
       QRCodeHelper::drawQRCode(renderer, (pageWidth - QR_TOTAL) / 2, apStartY + LINE_SPACING * 7, url);
@@ -504,9 +504,9 @@ void KeyboardEntryActivity::renderQRScreen() const {
       std::string hostnameUrl = std::string("or http://") + NetworkConstants::AP_HOSTNAME + ".local/";
       renderer.drawCenteredText(SMALL_FONT_ID, staStartY + LINE_SPACING * 3, hostnameUrl.c_str());
 
-      renderer.drawCenteredText(SMALL_FONT_ID, staStartY + LINE_SPACING * 4, "Open this URL in your browser");
+      renderer.drawCenteredText(SMALL_FONT_ID, staStartY + LINE_SPACING * 4, "在您的浏览器中打开此 URL");
 
-      renderer.drawCenteredText(SMALL_FONT_ID, staStartY + LINE_SPACING * 5, "or scan QR code with your phone:");
+      renderer.drawCenteredText(SMALL_FONT_ID, staStartY + LINE_SPACING * 5, "或使用手机扫描二维码：");
 
       // URL QR code (same size as File Transfer)
       QRCodeHelper::drawQRCode(renderer, (pageWidth - QR_TOTAL) / 2, staStartY + LINE_SPACING * 6, webUrl);
