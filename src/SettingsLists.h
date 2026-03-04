@@ -31,11 +31,11 @@ inline std::vector<SettingInfo> getSettingsList() {
 
       // --- Reader ---
       SettingInfo::Enum("字体", &CrossPointSettings::fontFamily, {"汉仪空山楷","汉仪空山楷", "汉仪空山楷", "自定义"}, "字体", "Reader"),
-    SettingInfo::Value("行间距", &CrossPointSettings::lineSpacing, 0,40,5, "行间距", "Reader"),
+    SettingInfo::Enum("行间距", &CrossPointSettings::lineSpacing,  {"Tight", "Normal", "Wide"}, "行间距", "Reader"),
     SettingInfo::Toggle("首行缩进", &CrossPointSettings::firstlineintented, "首行缩进","Reader"),
-    SettingInfo::Value("字间距", &CrossPointSettings::wordSpacing, 0,40,5, "字间距", "Reader"),
-    SettingInfo::Value("上边距", &CrossPointSettings::screenMargin_Top, 0,40,5, "上边距", "Reader"),
-    SettingInfo::Value("下边距", &CrossPointSettings::screenMargin_Bottom, 0,40,5, "下边距", "Reader"),
+    SettingInfo::Value("字间距", &CrossPointSettings::wordSpacing, 0,10,2, "字间距", "Reader"),
+    SettingInfo::Value("上边距", &CrossPointSettings::screenMargin_Top, 0,80,5, "上边距", "Reader"),
+    SettingInfo::Value("下边距", &CrossPointSettings::screenMargin_Bottom, 0,80,5, "下边距", "Reader"),
     SettingInfo::Value("左边距", &CrossPointSettings::screenMargin_Left, 0,40,5,"左边距", "Reader"),
     SettingInfo::Value("右边距", &CrossPointSettings::screenMargin_Right, 0,40,5, "右边距", "Reader"),
     SettingInfo::Toggle("阅读背景", &CrossPointSettings::ReadingScreenEnabled,"阅读背景","Reader"),

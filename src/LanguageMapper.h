@@ -107,10 +107,10 @@ static const char* getChineseName(const char* englishName) {
     if (strcmp(englishName, "Right") == 0) return "右对齐";
     if (strcmp(englishName, "Book's Style") == 0) return "书籍原有样式";
     // 阅读方向
-    if (strcmp(englishName, "Portrait") == 0) return "竖屏";
-    if (strcmp(englishName, "Landscape CW") == 0) return "横屏顺时针";
-    if (strcmp(englishName, "Inverted") == 0) return "反转";
-    if (strcmp(englishName, "Landscape CCW") == 0) return "横屏逆时针";
+    if (strcmp(englishName, "Portrait") == 0) return "默认方向";
+    if (strcmp(englishName, "Landscape CW") == 0) return "按钮在左边";
+    if (strcmp(englishName, "Inverted") == 0) return "按钮在上边";
+    if (strcmp(englishName, "Landscape CCW") == 0) return "按钮在右边";
     // 按键布局
     if (strcmp(englishName, "Prev, Next") == 0) return "上一页, 下一页";
     if (strcmp(englishName, "Next, Prev") == 0) return "下一页, 上一页";

@@ -23,7 +23,7 @@ namespace {
 // pagesPerRefresh now comes from SETTINGS.getRefreshFrequency()
 constexpr unsigned long skipChapterMs = 700;
 constexpr unsigned long goHomeMs = 1000;
-constexpr int statusBarMargin = 19;
+constexpr int statusBarMargin = 20;
 constexpr int progressBarMarginTop = 1;
 
 int clampPercent(int percent) {
@@ -651,9 +651,9 @@ void EpubReaderActivity::renderScreen() {
     const bool showProgressBar = SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::BOOK_PROGRESS_BAR ||
                                  SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::ONLY_BOOK_PROGRESS_BAR ||
                                  SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::CHAPTER_PROGRESS_BAR;
-    // 关键修改：状态栏位置 = 原始底部边距 + 状态栏高度 - 用户Bottom边距（保留关联）
-    orientedMarginBottom = orientedMarginBottom + statusBarMargin - SETTINGS.screenMargin_Bottom +
-                            (showProgressBar ? (metrics.bookProgressBarHeight + progressBarMarginTop) : 0);
+
+    orientedMarginBottom = orientedMarginBottom + statusBarMargin +
+                          (showProgressBar ? (metrics.bookProgressBarHeight + progressBarMarginTop) : 0);
   }
 
   // 3. 再叠加用户设置的所有边距（此时Bottom边距不会被抵消）
@@ -669,15 +669,18 @@ void EpubReaderActivity::renderScreen() {
 
     const uint16_t viewportWidth = renderer.getScreenWidth() - orientedMarginLeft - orientedMarginRight;
     const uint16_t viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;
+    Serial.printf("[%lu] [ERS] Calculated viewport: %dx%d (Screen: %dx%d, Margins L:%d R:%d T:%d B:%d)\n", millis(),
+                  viewportWidth, viewportHeight, renderer.getScreenWidth(), renderer.getScreenHeight(),
+                  orientedMarginLeft, orientedMarginRight, orientedMarginTop, orientedMarginBottom);
 
-    if (!section->loadSectionFile(SETTINGS.getReaderFontId(), SETTINGS.lineSpacing,
+    if (!section->loadSectionFile(SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
                                   SETTINGS.extraParagraphSpacing, SETTINGS.paragraphAlignment, viewportWidth,
                                   viewportHeight, SETTINGS.hyphenationEnabled,SETTINGS.wordSpacing,SETTINGS.firstlineintented, SETTINGS.embeddedStyle)) {
       Serial.printf("[%lu] [ERS] Cache not found, building...\n", millis());
 
       const auto popupFn = [this]() { GUI.drawPopup(renderer, "Indexing..."); };
 
-      if (!section->createSectionFile(SETTINGS.getReaderFontId(), SETTINGS.lineSpacing,
+      if (!section->createSectionFile(SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
                                       SETTINGS.extraParagraphSpacing, SETTINGS.paragraphAlignment, viewportWidth,
                                       viewportHeight, SETTINGS.hyphenationEnabled, SETTINGS.wordSpacing, SETTINGS.firstlineintented, SETTINGS.embeddedStyle, popupFn)) {
         Serial.printf("[%lu] [ERS] Failed to persist page data to SD\n", millis());
@@ -841,7 +844,7 @@ void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const in
 
   // Position status bar near the bottom of the logical screen, regardless of orientation
   const auto screenHeight = renderer.getScreenHeight();
-  const auto textY = screenHeight - orientedMarginBottom-20 ;
+  const auto textY = screenHeight - orientedMarginBottom-statusBarMargin ;
   int progressTextWidth = 0;
 
   // Calculate progress in book
@@ -924,6 +927,8 @@ void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const in
                       title.c_str());
   }
 }
+
+
 
 
 void EpubReaderActivity::renderPngSleepScreen(GfxRenderer& renderer) const {

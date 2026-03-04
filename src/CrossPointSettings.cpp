@@ -302,12 +302,12 @@ float CrossPointSettings::getReaderLineCompression() const {
     default:
       switch (lineSpacing) {
         case TIGHT:
-          return 0.95f;
+          return 0.8f;
         case NORMAL:
         default:
           return 1.0f;
         case WIDE:
-          return 1.1f;
+          return 1.2f;
       }
     case NOTOSANS:
       switch (lineSpacing) {
