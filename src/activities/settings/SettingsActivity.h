@@ -81,29 +81,26 @@ struct SettingInfo {
     s.category = category;
     return s;
   }
-// 仅支持int
-// 新增 Value 相关成员
-int minValue = 0;       // 最小值
-int maxValue = 40;       // 最大值
-int step = 5;           // 调节步长
 
-// 完全对齐Enum的写法：Value（0-40，步长5）
+// 新增 Value 相关成员
+uint8_t minValue = 0;       // 最小值
+uint8_t maxValue = 40;       // 最大值
+uint8_t step = 5;           // 调节步长
 static SettingInfo Value(const char* name, uint8_t CrossPointSettings::* ptr,
                          uint8_t minVal, uint8_t maxVal, uint8_t stepVal,
                          const char* key = nullptr,
                          const char* category = nullptr) {
     SettingInfo s;
-    // 1. 基础属性（和Enum一致）
+    
     s.name = name;
-    s.type = SettingType::VALUE; // 新增VALUE类型（需在SettingType枚举中补充）
-    s.valuePtr = ptr;            // 成员指针（和Enum的enumPtr类型完全一致）
+    s.type = SettingType::VALUE; 
+    s.valuePtr = ptr;            
     
     // 2. 数值范围属性（适配0-40、步长5）
     s.minValue = minVal;   // 最小值：0
     s.maxValue = maxVal;   // 最大值：40
     s.step = stepVal;      // 步长：5
-    
-    // 3. 可选属性（和Enum的key/category对齐）
+
     s.key = key;
     s.category = category;
     
