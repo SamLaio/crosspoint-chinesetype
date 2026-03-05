@@ -204,8 +204,11 @@ void TxtReaderActivity::displayTaskLoop() {
   while (true) {
     if (updateRequired) {
       updateRequired = false;
+      APP_STATE.isRenderComplete = false; // 标记渲染开始
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       renderScreen();
+      APP_STATE.isRenderComplete = true;  // 标记渲染完成（包括 saveProgress）
+      APP_STATE.saveToFile();
       xSemaphoreGive(renderingMutex);
     }
     vTaskDelay(10 / portTICK_PERIOD_MS);

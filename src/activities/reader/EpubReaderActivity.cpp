@@ -607,11 +607,15 @@ void EpubReaderActivity::displayTaskLoop() {
   while (true) {
     if (updateRequired) {
       updateRequired = false;
+      // 加锁保证渲染过程独占
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
-      renderScreen();
-      xSemaphoreGive(renderingMutex);
+      APP_STATE.isRenderComplete = false; // 标记渲染开始
+      renderScreen(); // 执行核心渲染逻辑
+      APP_STATE.isRenderComplete = true;  // 标记渲染完成（包括 saveProgress）
+      APP_STATE.saveToFile();
+      xSemaphoreGive(renderingMutex);     // 释放锁
     }
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(10 / portTICK_PERIOD_MS); // 降低轮询频率，节省资源
   }
 }
 
@@ -969,14 +973,14 @@ void EpubReaderActivity::renderPngSleepScreen(GfxRenderer& renderer) const {
       files.emplace_back(filename);
       file.close();
     }
+    Serial.printf("[%lu] [SLP] Found %d valid PNG files\n", millis(), files.size());
     const auto numFiles = files.size();
     if (numFiles > 0) {
-      // 随机选文件（保留原有逻辑）
-      auto randomFileIndex = random(numFiles);
-      while (numFiles > 1 ) {
-        randomFileIndex = random(numFiles);
-      }
-    
+      // 只选一个
+      auto randomFileIndex = 1;
+      
+      
+      Serial.printf("[%lu] [SLP] randomFileIndex: %d\n", millis(), randomFileIndex);
       const auto filename = "/bizhi/" + files[randomFileIndex];
       Serial.printf("[%lu] [SLP] Randomly loading: %s\n", millis(), filename.c_str());
       delay(100);

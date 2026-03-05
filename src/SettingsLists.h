@@ -31,6 +31,7 @@ inline std::vector<SettingInfo> getSettingsList() {
 
       // --- Reader ---
       SettingInfo::Enum("字体", &CrossPointSettings::fontFamily, {"汉仪空山楷","汉仪空山楷", "汉仪空山楷", "自定义"}, "字体", "Reader"),
+      SettingInfo::Enum("字号", &CrossPointSettings::fontSize, {"小", "中", "大", "特大"}, "字号", "Reader"),
     SettingInfo::Enum("行间距", &CrossPointSettings::lineSpacing,  {"Tight", "Normal", "Wide"}, "行间距", "Reader"),
     SettingInfo::Toggle("首行缩进", &CrossPointSettings::firstlineintented, "首行缩进","Reader"),
     SettingInfo::Value("字间距", &CrossPointSettings::wordSpacing, 0,10,2, "字间距", "Reader"),

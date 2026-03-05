@@ -282,11 +282,11 @@ void SleepActivity::renderPngSleepScreen() const {
     if (numFiles > 0) {
       // 随机选文件（保留原有逻辑）
       auto randomFileIndex = random(numFiles);
-      while (numFiles > 1 && randomFileIndex == APP_STATE.lastSleepImage) {
-        randomFileIndex = random(numFiles);
-      }
-      APP_STATE.lastSleepImage = randomFileIndex;
-      APP_STATE.saveToFile();
+      // while (numFiles > 1 && randomFileIndex == APP_STATE.lastSleepImage) {
+      //   randomFileIndex = random(numFiles);
+      // }
+      // APP_STATE.lastSleepImage = randomFileIndex;
+      // APP_STATE.saveToFile();
       const auto filename = "/sleep_mask/" + files[randomFileIndex];
       Serial.printf("[%lu] [SLP] Randomly loading: %s\n", millis(), filename.c_str());
       delay(100);
@@ -343,6 +343,8 @@ void SleepActivity::renderPngSleepScreen() const {
   // 无有效PNG文件，保持底层显示（对齐txtpng的失败处理）
   Serial.printf("[%lu] [SLP] No valid PNG file, keep default screen\n", millis());
 }
+
+
 
 
 void SleepActivity::renderDefaultSleepScreen() const {
