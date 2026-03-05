@@ -199,6 +199,21 @@ void waitForPowerRelease() {
 
 // Enter deep sleep mode
 void enterDeepSleep() {
+  //等待渲染完成
+  uint32_t waitStart = millis();
+  const uint32_t MAX_WAIT_TIME = 5000; // 最多等5秒
+  while (!APP_STATE.isRenderComplete) {
+    Serial.printf("[%lu] [MAIN] Waiting for main render to complete...\n", millis());
+    vTaskDelay(100 / portTICK_PERIOD_MS); // 每100ms检查一次
+    
+    // 超时保护：避免卡死
+    if (millis() - waitStart > MAX_WAIT_TIME) {
+      Serial.printf("[%lu] [MAIN] Wait timeout, proceed with PNG render\n", millis());
+      break;
+    }
+  }
+  //原逻辑
+
   APP_STATE.lastSleepFromReader = currentActivity && currentActivity->isReaderActivity();
   APP_STATE.saveToFile();
   exitActivity();
@@ -210,6 +225,7 @@ void enterDeepSleep() {
 
   gpio.startDeepSleep();
 }
+
 
 void onGoHome();
 void onGoToMyLibraryWithPath(const std::string& path);

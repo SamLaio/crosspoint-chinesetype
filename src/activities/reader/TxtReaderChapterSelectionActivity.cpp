@@ -13,11 +13,12 @@ constexpr int PAGE_OFFSET_100_CHAPTER = 4;
 // 新增：顶部特殊选项的索引定义
 constexpr int ITEM_SKIP_100_BACK = -2;    // 向前100章选项索引
 constexpr int ITEM_SKIP_100_FORWARD = -1; // 向后100章选项索引
+constexpr int lineHeight = 30;
 }  // namespace
 
 int TxtReaderChapterSelectionActivity::getPageItems() const {
   constexpr int startY = 60;
-  constexpr int lineHeight = 30;
+  
 
   const int screenHeight = renderer.getScreenHeight();
   const int availableHeight = screenHeight - startY;
@@ -184,7 +185,7 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
   int page_chapter=getPageItems();
   static int parsedPage = -1;
 
-  // 相隔25章加载一次
+  // 每页加载一次
   if (parsedPage != page) {
     txt->parseChapterIndexAndOffset(pagebegin);
     parsedPage = page;
@@ -199,7 +200,7 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
   }
 
   // ========== 核心新增：顶部特殊选项的绘制参数 ==========
-  const int FIX_LINE_HEIGHT = 25;
+  const int FIX_LINE_HEIGHT = lineHeight; // 固定行高，确保顶部选项和章节列表行距一致
   // 基准Y值：先绘制顶部两个特殊选项，再绘制章节列表
   const int BASE_Y_SPECIAL = 40;    // 顶部选项起始Y
   const int BASE_Y_CHAPTER = 80;    // 章节列表起始Y（两个选项占2行）

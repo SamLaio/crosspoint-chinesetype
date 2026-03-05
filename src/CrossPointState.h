@@ -19,6 +19,7 @@ class CrossPointState {
   bool saveToFile() const;
 
   bool loadFromFile();
+  bool isRenderComplete = false;
 };
 
 // Helper macro to access settings
