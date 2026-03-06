@@ -22,6 +22,7 @@
 
 namespace {
 constexpr int SKIP_PAGE_MS = 700;
+int matchOffset = 0; // 新增：记录匹配到的偏移差值（核心）
 }  // namespace
 
 // 静态成员变量初始化
@@ -133,39 +134,58 @@ void JianGuoSyncActivity::loop() {
   }
 
   // 显示结果状态：左右选择，确认执行
-  if (state == BrowserState::SHOWING_RESULT) {
-    // 左右切换选项
-    if (mappedInput.wasReleased(MappedInputManager::Button::Left)) {
-      selectedOption = 0;  // 下载
-      updateRequired = true;
-    } else if (mappedInput.wasReleased(MappedInputManager::Button::Right)) {
-      selectedOption = 1;  // 上传
-      updateRequired = true;
+// 显示结果状态：左右选择，确认执行
+if (state == BrowserState::SHOWING_RESULT) {
+  // 新增：先清空残留的按键事件，必须等用户重新操作
+  if (skipFirstButtonCheck) {
+    // 检查 Confirm/Back 按键是否都已释放，且没有残留的释放事件
+    const bool confirmCleared = !mappedInput.isPressed(MappedInputManager::Button::Confirm) &&
+                                !mappedInput.wasReleased(MappedInputManager::Button::Confirm);
+    const bool backCleared = !mappedInput.isPressed(MappedInputManager::Button::Back) &&
+                            !mappedInput.wasReleased(MappedInputManager::Button::Back);
+    const bool leftRightCleared = !mappedInput.isPressed(MappedInputManager::Button::Left) &&
+                                  !mappedInput.wasReleased(MappedInputManager::Button::Left) &&
+                                  !mappedInput.isPressed(MappedInputManager::Button::Right) &&
+                                  !mappedInput.wasReleased(MappedInputManager::Button::Right);
+    
+    if (confirmCleared && backCleared && leftRightCleared) {
+      skipFirstButtonCheck = false;  // 隔离完成，开始响应新按键
     }
-
-    // 确认执行
-    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-      if (selectedOption == 0) {
-        // 下载：应用云端进度
-        Serial.printf("[%lu] [JG] 选择下载，章节：%d\n", millis(), lastExtractedChapterIndex);
-        onSelectChapter(lastExtractedChapterIndex);
-        onGoBack();
-      } else {
-        // 上传：上传当前进度
-        Serial.printf("[%lu] [JG] 选择上传，当前章节：%d\n", millis(), currentSpineIndex);
-        state = BrowserState::UPLOADING;
-        statusMessage = "上传中...";
-        updateRequired = true;
-        uploadProgressFile();
-      }
-    }
-
-    // 返回取消
-    if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-      onGoBack();
-    }
-    return;
+    return;  // 隔离期间不处理任何按键
   }
+
+  //左右切换选项
+  if (mappedInput.wasReleased(MappedInputManager::Button::Left)) {
+    selectedOption = 0;  // 下载
+    updateRequired = true;
+  } else if (mappedInput.wasReleased(MappedInputManager::Button::Right)) {
+    selectedOption = 1;  // 上传
+    updateRequired = true;
+  }
+
+  // 确认执行
+  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    if (selectedOption == 0) {
+      // 下载：应用云端进度
+      Serial.printf("[%lu] [JG] 选择下载，章节：%d\n", millis(), lastExtractedChapterIndex);
+      onSelectChapter(lastExtractedChapterIndex);
+      onGoBack();
+    } else {
+      // 上传：上传当前进度
+      Serial.printf("[%lu] [JG] 选择上传，当前章节：%d\n", millis(), currentSpineIndex);
+      state = BrowserState::UPLOADING;
+      statusMessage = "上传中...";
+      updateRequired = true;
+      uploadProgressFile();
+    }
+  }
+
+  // 原有逻辑：返回取消
+  if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+    onGoBack();
+  }
+  return;
+}
 
   // 完成状态
   if (state == BrowserState::COMPLETE) {
@@ -266,7 +286,7 @@ void JianGuoSyncActivity::render() const {
       renderer.drawText(UI_10_FONT_ID, 20, optionY + optionHeight, "  上传本地进度", true);
     }
 
-    const auto labels = mappedInput.mapLabels("返回", "选择", "左/右", "");
+    const auto labels = mappedInput.mapLabels("返回", "选择", "左", "右");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
@@ -546,59 +566,72 @@ void JianGuoSyncActivity::parseAndCleanup() {
   Serial.printf("[JG] 云端章节标题：%s\n", durChapterTitle.c_str());
   Serial.printf("[JG] 初始章节索引：%d\n", chapterIndex);
 
-  // === 通过标题匹配校准章节索引 ===
-  if (!durChapterTitle.isEmpty() && chapterIndex >= 0) {
-      int tocCount = epub->getTocItemsCount();  // 获取目录总数
-      int maxIndex = tocCount - 1;
-      
-      // 从云端记录的索引开始，前后搜索匹配
-      bool found = false;
-      
-      // 先在附近搜索（±5 章）
-      for (int offset = 0; offset <= 5; offset++) {
-          // 先检查 +offset
-          if (chapterIndex + offset <= maxIndex) {
-              String localTitle = epub->getTocItem(chapterIndex + offset).title.c_str();
-              if (localTitle == durChapterTitle) {
-                  chapterIndex = chapterIndex + offset;
-                  found = true;
-                  Serial.printf("[JG] 标题匹配成功（+%d）：%d\n", offset, chapterIndex);
-                  break;
-              }
-          }
-          // 再检查 -offset
-          if (offset > 0 && chapterIndex - offset >= 0) {
-              String localTitle = epub->getTocItem(chapterIndex - offset).title.c_str();
-              if (localTitle == durChapterTitle) {
-                  chapterIndex = chapterIndex - offset;
-                  found = true;
-                  Serial.printf("[JG] 标题匹配成功（-%d）：%d\n", offset, chapterIndex);
-                  break;
-              }
-          }
-      }
-      
-      // 如果附近没找到，遍历整个目录
-      if (!found) {
-          Serial.printf("[JG] 附近未找到，遍历整个目录...\n");
-          for (int i = 0; i < tocCount; i++) {
-              String localTitle = epub->getTocItem(i).title.c_str();
-              if (localTitle == durChapterTitle) {
-                  chapterIndex = i;
-                  found = true;
-                  Serial.printf("[JG] 标题匹配成功（遍历）：%d\n", chapterIndex);
-                  break;
-              }
-          }
-      }
-      
-      if (!found) {
-          Serial.printf("[JG] 警告：未找到匹配的章节标题，使用原始索引：%d\n", chapterIndex);
-      }
-  } else {
-      Serial.printf("[JG] 跳过标题匹配（标题为空或索引无效）\n");
-  }
-
+ // === 通过标题匹配校准章节索引（新增差值记录）===
+if (!durChapterTitle.isEmpty() && chapterIndex >= 0) {
+    int tocCount = epub->getTocItemsCount();  // 获取目录总数
+    int maxIndex = tocCount - 1;
+    
+    // 新增：记录原始索引（用于计算差值）
+    int originalChapterIndex = chapterIndex;
+    bool found = false;
+    
+    
+    // 先在附近搜索（±5 章）
+    for (int offset = 0; offset <= 5; offset++) {
+        // 先检查 +offset
+        if (chapterIndex + offset <= maxIndex) {
+            String localTitle = epub->getTocItem(chapterIndex + offset).title.c_str();
+            if (localTitle == durChapterTitle) {
+                matchOffset = offset;  // 记录+偏移值
+                chapterIndex = chapterIndex + offset;
+                found = true;
+                Serial.printf("[JG] 标题匹配成功（+%d）：原始索引%d → 匹配索引%d，差值：+%d\n", 
+                             offset, originalChapterIndex, chapterIndex, matchOffset);
+                break;
+            }
+        }
+        // 再检查 -offset
+        if (offset > 0 && chapterIndex - offset >= 0) {
+            String localTitle = epub->getTocItem(chapterIndex - offset).title.c_str();
+            if (localTitle == durChapterTitle) {
+                matchOffset = -offset; // 记录-偏移值
+                chapterIndex = chapterIndex - offset;
+                found = true;
+                Serial.printf("[JG] 标题匹配成功（-%d）：原始索引%d → 匹配索引%d，差值：%d\n", 
+                             offset, originalChapterIndex, chapterIndex, matchOffset);
+                break;
+            }
+        }
+    }
+    
+    // 如果附近没找到，遍历整个目录
+    if (!found) {
+        Serial.printf("[JG] 附近未找到，遍历整个目录...\n");
+        for (int i = 0; i < tocCount; i++) {
+            String localTitle = epub->getTocItem(i).title.c_str();
+            if (localTitle == durChapterTitle) {
+                matchOffset = i - originalChapterIndex; // 计算遍历匹配的差值
+                chapterIndex = i;
+                found = true;
+                Serial.printf("[JG] 标题匹配成功（遍历）：原始索引%d → 匹配索引%d，差值：%d\n", 
+                             originalChapterIndex, chapterIndex, matchOffset);
+                break;
+            }
+        }
+    }
+    
+    if (!found) {
+        matchOffset = 0; // 未匹配到，差值为0
+        Serial.printf("[JG] 警告：未找到匹配的章节标题，使用原始索引：%d，差值：%d\n", 
+                     chapterIndex, matchOffset);
+    } else {
+        // 新增：全局记录匹配差值（可根据需要保存到类成员变量）
+        Serial.printf("[JG] 【最终差值记录】原始索引%d → 匹配索引%d，偏移差值：%d\n", 
+                     originalChapterIndex, chapterIndex, matchOffset);
+    }
+} else {
+    Serial.printf("[JG] 跳过标题匹配（标题为空或索引无效）\n");
+}
   Serial.printf("[JG] 最终章节索引：%d\n", chapterIndex);
     // === 删除临时文件 ===
     SdMan.remove("/temp.json");
@@ -613,6 +646,7 @@ void JianGuoSyncActivity::parseAndCleanup() {
     // === 显示选项界面（而不是直接完成）===
     state = BrowserState::SHOWING_RESULT;
     selectedOption = 0;  // 默认选中下载
+    skipFirstButtonCheck = true;  // 新增：开启按键隔离
     updateRequired = true;
 }
 
@@ -686,10 +720,13 @@ void JianGuoSyncActivity::uploadProgressFile() {
         oldChapterIndex = jsonContent.substring(startVal, endVal).toInt();
         
         // 设置为当前章节
+        //int currentTocIndex = getTocIndexFromSpine(currentSpineIndex);  // 更新当前章节索引
         String newJson = jsonContent.substring(0, startVal) + 
-                        String(currentSpineIndex) + 
+                        String(currentSpineIndex-matchOffset) + 
                         jsonContent.substring(endVal);
         jsonContent = newJson;
+
+        Serial.printf("[JG] Spline索引：%d,Toc索引:%d,\n", currentSpineIndex, getTocIndexFromSpine(currentSpineIndex));
         
         Serial.printf("[%lu] [JG] 修改 durChapterIndex: %d → %d\n", millis(), 
                       oldChapterIndex, currentSpineIndex);

@@ -633,7 +633,7 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
         SdMan.mkdir(targetDir.c_str());
     }
 
-    std::string safeFilename = StringUtils::sanitizeFilename(book.title);
+    std::string safeFilename = StringUtils::sanitizeFilename(book.title,200);
     std::string localPath;
     if (targetDir.empty()) {
         localPath = "/" + safeFilename;

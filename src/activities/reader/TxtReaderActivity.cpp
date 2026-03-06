@@ -255,7 +255,7 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
   viewportWidth = renderer.getScreenWidth() - orientedMarginLeft - orientedMarginRight;
   const int viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;
   //行距加这里？
-  const int lineHeight = renderer.getLineHeight(cachedFontId)+lineSpacing;
+  float lineHeight = renderer.getLineHeight(cachedFontId)* SETTINGS.getReaderLineCompression();
 
   linesPerPage = viewportHeight / lineHeight;
   if (linesPerPage < 1) linesPerPage = 1;
@@ -268,15 +268,29 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
     const int page=chapter_num/25+1;
     static int parsedPage = -1;
     const int pagebegin=(page-1)*25;
-    // 相隔25章加载一次
+    // 相隔24章加载一次
     if (parsedPage != page) {
       txt->parseChapterIndexAndOffset(pagebegin);
       parsedPage = page;
     }
     Serial.printf("[%lu] [TRS] load txtchapter: %d \n", millis(), chapter_num);
     //当前章节的范围
-    size_t chapterOffsetbegin = txt->getChapterOffsetByIndex(chapter_num);
-    size_t chapterOffsetend = txt->getChapterOffsetByIndex(chapter_num + 1);
+    //加一个多次尝试，避免empty file出现过多
+    // 带5次重试的章节起始偏移量获取
+    size_t chapterOffsetbegin = 0;
+    for(int r=0; r<5 && (chapterOffsetbegin=txt->getChapterOffsetByIndex(chapter_num))==0; r++) {
+      txt->parseChapterIndexAndOffset(pagebegin);
+        vTaskDelay(50/portTICK_PERIOD_MS);
+        Serial.printf("[TRS] Retry get chapter %d offset (attempt %d)\n", chapter_num, r+1);
+    }
+
+    // 带5次重试的章节结束偏移量获取
+    size_t chapterOffsetend = 0;
+    for(int r=0; r<5 && (chapterOffsetend=txt->getChapterendOffsetByIndex(chapter_num))==0; r++) {
+      txt->parseChapterIndexAndOffset(pagebegin);
+        vTaskDelay(50/portTICK_PERIOD_MS);
+        Serial.printf("[TRS] Retry get chapter %d offset (attempt %d)\n", chapter_num, r+1);
+    }
 
 
     // 处理最后一章：结束位置为文件末尾
@@ -328,7 +342,7 @@ void TxtReaderActivity::buildPageIndex(size_t beginByte, size_t endByte) {
     std::vector<std::string> tempLines;
     size_t nextOffset = offset;
 
-    if (!loadPageAtOffset(offset, tempLines, nextOffset)) {
+    if (!loadPageAtOffset(offset, endByte,tempLines, nextOffset)) {
       Serial.printf("[%lu] [TRS] Failed to load page at offset %zu, stopping index build\n", millis(), offset);
       break;
     }
@@ -358,9 +372,10 @@ void TxtReaderActivity::buildPageIndex(size_t beginByte, size_t endByte) {
 
 
 
-bool TxtReaderActivity::loadPageAtOffset(size_t offset, std::vector<std::string>& outLines, size_t& nextOffset) {
+bool TxtReaderActivity::loadPageAtOffset(size_t offset,size_t endOffset, std::vector<std::string>& outLines, size_t& nextOffset) {
   outLines.clear();
   const size_t fileSize = txt->getFileSize();
+ // const size_t fileSize = endOffset; // 章节结束位置作为文件末尾，避免越界
 
   if (offset >= fileSize) {
     return false;
@@ -385,8 +400,9 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset, std::vector<std::string>
 
   // 首行缩进控制变量
   const std::string indentStr = "\xe3\x80\x80\xe3\x80\x80"; // 两个全角空格
+  //const std::string indentStr ="\u200B\u200B"; // 两个普通空格（测试用，实际使用全角空格）
   const int indentWidth = renderer.getTextWidth(cachedFontId, "中")*2; // 缩进宽度
-  bool needIndent = true; // 换段后需要缩进（仅对原生行生效）
+  //bool needIndent = true; // 换段后需要缩进（仅对原生行生效）
   bool isFirstLineOfPage = true; // 每页第一行不缩进
   bool isOriginalLine = true; // 标记是否是原生行（未拆行）
 
@@ -445,6 +461,8 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset, std::vector<std::string>
       int lineWidth = renderer.getTextWidth(cachedFontId, line.c_str());
       // 缩进判断：仅原生行 + 需要缩进 + 不是页首 + 无已有空格
       const bool doIndent = isOriginalLine && needIndent && !isFirstLineOfPage && !hasLeadingIndent;
+      //测试
+      //const bool doIndent = true;
       
       if (doIndent) {
         lineWidth += indentWidth; // 仅原生行预留缩进宽度
@@ -531,50 +549,14 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset, std::vector<std::string>
   nextOffset = offset + pos;
 
   // Make sure we don't go past the file
-  if (nextOffset > fileSize) {
-    nextOffset = fileSize;
+  // 章节结束位置作为文件末尾，避免越界
+  if (nextOffset > endOffset) {
+    nextOffset = endOffset;
   }
 
   free(buffer);
 
   return !outLines.empty();
-}
-
-
-
-void TxtReaderActivity::renderScreen() {
-  if (!txt) {
-    return;
-  }
-
-  // Initialize reader if not done
-  if (!chapter_initialized) {
-    chapter_initializeReader(chapternum);
-  }
-
-  if (pageOffsets.empty()) {
-    renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Empty file", true, EpdFontFamily::BOLD);
-    renderer.displayBuffer();
-    return;
-  }
-
-
-  if (currentPage < 0) currentPage = 0;
-  // 仅当currentPage超过总页数时修正（避免无效页码）
-  if (currentPage >= totalPages) currentPage = totalPages - 1;
-
-  // Load current page content
-  size_t offset = pageOffsets[currentPage];
-  size_t nextOffset;
-  currentPageLines.clear();
-  loadPageAtOffset(offset, currentPageLines, nextOffset);
-
-  renderer.clearScreen();
-  renderPage();
-
-  // Save progress
-  saveProgress();
 }
 
 
@@ -587,7 +569,7 @@ void TxtReaderActivity::renderPage() {
   orientedMarginRight += SETTINGS.screenMargin_Right;
   orientedMarginBottom += SETTINGS.screenMargin_Bottom; 
 
-  const int lineHeight = renderer.getLineHeight(cachedFontId)+lineSpacing;
+  float lineHeight = renderer.getLineHeight(cachedFontId)* SETTINGS.getReaderLineCompression();
   const int contentWidth = viewportWidth;
 
   // Render text lines with alignment
@@ -659,6 +641,48 @@ void TxtReaderActivity::renderPage() {
     renderer.restoreBwBuffer();
   }
 }
+
+
+
+
+
+void TxtReaderActivity::renderScreen() {
+  if (!txt) {
+    return;
+  }
+
+  // Initialize reader if not done
+  if (!chapter_initialized) {
+    chapter_initializeReader(chapternum);
+  }
+
+  if (pageOffsets.empty()) {
+    renderer.clearScreen();
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Empty file", true, EpdFontFamily::BOLD);
+    renderer.displayBuffer();
+    return;
+  }
+
+
+  if (currentPage < 0) currentPage = 0;
+  // 仅当currentPage超过总页数时修正（避免无效页码）
+  if (currentPage >= totalPages) currentPage = totalPages - 1;
+
+  // Load current page content
+  size_t offset = pageOffsets[currentPage];
+  size_t nextOffset;
+  currentPageLines.clear();
+  size_t endoffset=txt->getChapterOffsetByIndex(chapternum );
+  loadPageAtOffset(offset,endoffset, currentPageLines, nextOffset);
+
+  renderer.clearScreen();
+  renderPage();
+
+  // Save progress
+  saveProgress();
+}
+
+
 
 void TxtReaderActivity::renderStatusBar(const int orientedMarginRight, const int orientedMarginBottom,
                                         const int orientedMarginLeft) const {
@@ -771,167 +795,6 @@ void TxtReaderActivity::loadProgress() {
 
 
 
-bool TxtReaderActivity::loadPageIndexCache() {
-  // Cache file format (using serialization module):
-  // - uint32_t: magic "TXTI"
-  // - uint8_t: cache version
-  // - uint32_t: file size (to validate cache)
-  // - int32_t: viewport width
-  // - int32_t: lines per page
-  // - int32_t: font ID (to invalidate cache on font change)
-  // - int32_t: screen margin (to invalidate cache on margin change)
-  // - uint8_t: paragraph alignment (to invalidate cache on alignment change)
-  // - uint32_t: total pages count
-  // - N * uint32_t: page offsets
-
-  std::string cachePath = txt->getCachePath() + "/index.bin";
-  FsFile f;
-  if (!SdMan.openFileForRead("TRS", cachePath, f)) {
-    Serial.printf("[%lu] [TRS] No page index cache found\n", millis());
-    return false;
-  }
-
-  // Read and validate header using serialization module
-  uint32_t magic;
-  serialization::readPod(f, magic);
-  if (magic != CACHE_MAGIC) {
-    Serial.printf("[%lu] [TRS] Cache magic mismatch, rebuilding\n", millis());
-    f.close();
-    return false;
-  }
-
-  uint8_t version;
-  serialization::readPod(f, version);
-  if (version != CACHE_VERSION) {
-    Serial.printf("[%lu] [TRS] Cache version mismatch (%d != %d), rebuilding\n", millis(), version, CACHE_VERSION);
-    f.close();
-    return false;
-  }
-
-  uint32_t fileSize;
-  serialization::readPod(f, fileSize);
-  if (fileSize != txt->getFileSize()) {
-    Serial.printf("[%lu] [TRS] Cache file size mismatch, rebuilding\n", millis());
-    f.close();
-    return false;
-  }
-
-  int32_t cachedWidth;
-  serialization::readPod(f, cachedWidth);
-  if (cachedWidth != viewportWidth) {
-    Serial.printf("[%lu] [TRS] Cache viewport width mismatch, rebuilding\n", millis());
-    f.close();
-    return false;
-  }
-
-  int32_t cachedLines;
-  serialization::readPod(f, cachedLines);
-  if (cachedLines != linesPerPage) {
-    Serial.printf("[%lu] [TRS] Cache lines per page mismatch, rebuilding\n", millis());
-    f.close();
-    return false;
-  }
-
-  int32_t fontId;
-  serialization::readPod(f, fontId);
-  if (fontId != cachedFontId) {
-    Serial.printf("[%lu] [TRS] Cache font ID mismatch (%d != %d), rebuilding\n", millis(), fontId, cachedFontId);
-    f.close();
-    return false;
-  }
-  //把字距行间距首行缩进记录进去
-  uint8_t wordSpacing;
-  serialization::readPod(f, wordSpacing);
-  if (wordSpacing != this->wordSpacing) {
-    Serial.printf("[%lu] [TRS] Cache word spacing mismatch, rebuilding\n", millis());
-    f.close();
-    return false;
-  }
-
-  uint8_t lineSpacing;
-  serialization::readPod(f, lineSpacing);
-  if (lineSpacing != this->lineSpacing) {
-    Serial.printf("[%lu] [TRS] Cache line spacing mismatch, rebuilding\n", millis());
-    f.close();
-    return false;
-  }
-
-  bool firstLineIndent;
-  serialization::readPod(f, firstLineIndent);
-  if (firstLineIndent != this->firstLineIndent) {
-    Serial.printf("[%lu] [TRS] Cache first line indent mismatch, rebuilding\n", millis());
-    f.close();
-    return false;
-  }
-//结束
-
-  int32_t margin;
-  serialization::readPod(f, margin);
-  if (margin != cachedScreenMargin) {
-    Serial.printf("[%lu] [TRS] Cache screen margin mismatch, rebuilding\n", millis());
-    f.close();
-    return false;
-  }
-
-  uint8_t alignment;
-  serialization::readPod(f, alignment);
-  if (alignment != cachedParagraphAlignment) {
-    Serial.printf("[%lu] [TRS] Cache paragraph alignment mismatch, rebuilding\n", millis());
-    f.close();
-    return false;
-  }
-
-  uint32_t numPages;
-  serialization::readPod(f, numPages);
-
-  // Read page offsets
-  pageOffsets.clear();
-  pageOffsets.reserve(numPages);
-
-  for (uint32_t i = 0; i < numPages; i++) {
-    uint32_t offset;
-    serialization::readPod(f, offset);
-    pageOffsets.push_back(offset);
-  }
-
-  f.close();
-  totalPages = pageOffsets.size();
-  Serial.printf("[%lu] [TRS] Loaded page index cache: %d pages\n", millis(), totalPages);
-  return true;
-}
-
-void TxtReaderActivity::savePageIndexCache() const {
-  std::string cachePath = txt->getCachePath() + "/index.bin";
-  FsFile f;
-  if (!SdMan.openFileForWrite("TRS", cachePath, f)) {
-    Serial.printf("[%lu] [TRS] Failed to save page index cache\n", millis());
-    return;
-  }
-
-  // Write header using serialization module
-  serialization::writePod(f, CACHE_MAGIC);
-  serialization::writePod(f, CACHE_VERSION);
-  serialization::writePod(f, static_cast<uint32_t>(txt->getFileSize()));
-  serialization::writePod(f, static_cast<int32_t>(viewportWidth));
-  serialization::writePod(f, static_cast<int32_t>(linesPerPage));
-  serialization::writePod(f, static_cast<int32_t>(cachedFontId));
-  //把字距行间距首行缩进记录进去
-  serialization::writePod(f, wordSpacing);
-  serialization::writePod(f, lineSpacing);
-  serialization::writePod(f, firstLineIndent);
-  //结束
-  serialization::writePod(f, static_cast<int32_t>(cachedScreenMargin));
-  serialization::writePod(f, cachedParagraphAlignment);
-  serialization::writePod(f, static_cast<uint32_t>(pageOffsets.size()));
-
-  // Write page offsets
-  for (size_t offset : pageOffsets) {
-    serialization::writePod(f, static_cast<uint32_t>(offset));
-  }
-
-  f.close();
-  Serial.printf("[%lu] [TRS] Saved page index cache: %d pages\n", millis(), totalPages);
-}
 
 bool TxtReaderActivity::chapter_loadPageIndexCache(int chapternum) {
   // Cache file format (using serialization module):
@@ -1001,7 +864,32 @@ bool TxtReaderActivity::chapter_loadPageIndexCache(int chapternum) {
     f.close();
     return false;
   }
+  //把字距行间距首行缩进记录进去
+  uint8_t wordSpacing;
+  serialization::readPod(f, wordSpacing);
+  if (wordSpacing != this->wordSpacing) {
+    Serial.printf("[%lu] [TRS] Cache word spacing mismatch, rebuilding\n", millis());
+    f.close();
+    return false;
+  }
 
+  uint8_t lineSpacing;
+  serialization::readPod(f, lineSpacing);
+  if (lineSpacing != SETTINGS.lineSpacing) {
+    Serial.printf("[%lu] [TRS] Cache line spacing mismatch, rebuilding\n", millis());
+    f.close();
+    return false;
+  }
+
+  bool needIndent;
+  Serial.printf("[%lu] [TRS] first line indent: %d\n", millis(), needIndent);
+  serialization::readPod(f, needIndent);
+  if (needIndent != SETTINGS.firstlineintented) {
+    Serial.printf("[%lu] [TRS] Cache first line indent mismatch, rebuilding\n", millis());
+    f.close();
+    return false;
+  }
+//结束
   int32_t margin;
   serialization::readPod(f, margin);
   if (margin != cachedScreenMargin) {
@@ -1052,6 +940,11 @@ void TxtReaderActivity::chapter_savePageIndexCache(int chapternum) const {
   serialization::writePod(f, static_cast<int32_t>(viewportWidth));
   serialization::writePod(f, static_cast<int32_t>(linesPerPage));
   serialization::writePod(f, static_cast<int32_t>(cachedFontId));
+  //把字距行间距首行缩进记录进去
+  serialization::writePod(f, wordSpacing);
+  serialization::writePod(f, SETTINGS.lineSpacing);
+  serialization::writePod(f, SETTINGS.firstlineintented);
+  //结束
   serialization::writePod(f, static_cast<int32_t>(cachedScreenMargin));
   serialization::writePod(f, cachedParagraphAlignment);
   serialization::writePod(f, static_cast<uint32_t>(pageOffsets.size()));

@@ -155,7 +155,7 @@ void EpubReaderActivity::onExit() {
 
 void EpubReaderActivity::loop() {
   if(state== EPUBState::READING){
-    if (mappedInput.isPressed(MappedInputManager::Button::Confirm) && mappedInput.getHeldTime() >= 1000) {
+    if (mappedInput.isPressed(MappedInputManager::Button::Confirm) && mappedInput.getHeldTime() >= 100000) {
       Serial.printf("[%lu] [ERS] Long press detected, entering settings\n", millis());
       state = EPUBState::SETTING;
       skipNextButtonCheck = true; // 避免按钮事件冲突
@@ -308,6 +308,7 @@ void EpubReaderActivity::loop() {
       }
       updateRequired = true;
     }
+    //暂不启用，易起冲突，后面修改
   }else if (state == EPUBState::SETTING) {
     if (mappedInput.wasPressed(MappedInputManager::Button::Back) ) {
       Serial.printf("[%lu] [ERS] Long press detected, entering reading\n", millis());
@@ -977,7 +978,7 @@ void EpubReaderActivity::renderPngSleepScreen(GfxRenderer& renderer) const {
     const auto numFiles = files.size();
     if (numFiles > 0) {
       // 只选一个
-      auto randomFileIndex = 1;
+      auto randomFileIndex = 0;
       
       
       Serial.printf("[%lu] [SLP] randomFileIndex: %d\n", millis(), randomFileIndex);

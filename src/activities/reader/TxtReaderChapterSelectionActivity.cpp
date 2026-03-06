@@ -241,6 +241,17 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
       static char title[64];
       strncpy(title, dirTitle.c_str(), sizeof(title)-1);
       title[sizeof(title)-1] = '\0';
+      //暴力修复空白
+      if(strlen(title) == 0){
+          Serial.printf("[%lu] [TRC] 章节标题为空，主动修复\n", millis());
+          txt->parseChapterIndexAndOffset(pagebegin);
+          size_t currOffset = this->txt->getChapterOffsetByIndex(i);
+          std::string dirTitle = this->txt->getChapterTitleByIndex(i);
+          static char title[64];
+          strncpy(title, dirTitle.c_str(), sizeof(title)-1);
+          title[sizeof(title)-1] = '\0';
+      }
+
       
       int relativeIdx = i - pagebegin;
       int drawY = BASE_Y_CHAPTER + relativeIdx * FIX_LINE_HEIGHT;

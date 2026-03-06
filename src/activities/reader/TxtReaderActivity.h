@@ -24,6 +24,7 @@ class TxtReaderActivity final : public ActivityWithSubactivity {
   // Streaming text reader - stores file offsets for each page
   std::vector<size_t> pageOffsets;  // File offset for start of each page
   std::vector<std::string> currentPageLines;
+  std::vector<int> currentPageIndentOffsets;//首行缩进需要
   int linesPerPage = 0;
   int viewportWidth = 0;
   bool initialized = false;
@@ -39,12 +40,9 @@ class TxtReaderActivity final : public ActivityWithSubactivity {
   void renderPage();
   void renderStatusBar(int orientedMarginRight, int orientedMarginBottom, int orientedMarginLeft) const;
 
-  void initializeReader();
-  bool loadPageAtOffset(size_t offset, std::vector<std::string>& outLines, size_t& nextOffset);
+  bool loadPageAtOffset(size_t offset,size_t endoffset, std::vector<std::string>& outLines, size_t& nextOffset);
   void buildPageIndex(size_t beginByte, size_t endByte);
  
-  bool loadPageIndexCache();
-  void savePageIndexCache() const;
   void saveProgress() const;
   void loadProgress();
   //加章节必需
@@ -54,9 +52,9 @@ class TxtReaderActivity final : public ActivityWithSubactivity {
   void chapter_initializeReader(int chapternum);
   bool chapter_initialized = false;
   //排版
-  bool firstLineIndent = SETTINGS.firstlineintented;
-  uint8_t wordSpacing=1+(SETTINGS.wordSpacing);
-  uint8_t lineSpacing=SETTINGS.lineSpacing;
+  bool needIndent = SETTINGS.firstlineintented;
+  uint8_t wordSpacing=1+(SETTINGS.wordSpacing)*5;
+
 
 
 

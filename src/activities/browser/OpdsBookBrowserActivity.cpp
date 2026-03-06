@@ -347,7 +347,7 @@ void OpdsBookBrowserActivity::downloadBook(const OpdsEntry& book) {
   if (!book.author.empty()) {
     baseName += " - " + book.author;
   }
-  std::string filename = "/" + StringUtils::sanitizeFilename(baseName) + ".epub";
+  std::string filename = "/" + StringUtils::sanitizeFilename(baseName,200) + ".epub";
 
   Serial.printf("[%lu] [OPDS] Downloading: %s -> %s\n", millis(), downloadUrl.c_str(), filename.c_str());
 

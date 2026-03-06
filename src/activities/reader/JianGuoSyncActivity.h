@@ -60,6 +60,20 @@ private:
   static int lastExtractedChapterIndex;
   static std::string lastExtractedBookName;
   static std::string lastExtractedChapterTitle; 
+  bool skipFirstButtonCheck = false;  // 新增：跳过初始残留按键
+
+  // 极简版：Spine → TOC 校准
+int getTocIndexFromSpine(int spineIndex) {
+    return epub->getTocIndexForSpineIndex(spineIndex); // 直接复用KOReader同款方法
+}
+
+// 极简版：TOC → Spine 校准
+int getSpineIndexFromToc(int tocIndex) {
+    if (tocIndex >= 0 && tocIndex < epub->getTocItemsCount()) {
+        return epub->getTocItem(tocIndex).spineIndex; // 和KOReader映射逻辑完全一致
+    }
+    return -1;
+}
  
  public:
   using OnCancelCallback = std::function<void()>;

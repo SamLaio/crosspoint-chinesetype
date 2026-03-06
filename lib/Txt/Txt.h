@@ -16,6 +16,7 @@ struct ChapterData {
     int chapterIndex;        // 章节序号
     uint32_t byteOffset;     // 字节偏移量
     char shortTitle[TITLE_BUF_SIZE]; // 截取后的标题，char数组格式
+    uint32_t endOffset;      // 章节结束的字节偏移（可选，预留字段）
 };
 
 class Txt {
@@ -61,6 +62,14 @@ class Txt {
       for(int i = 0; i < chapterActualCount; i++) {
           if(chapterDataList[i].chapterIndex == chapterIndex) {
               return chapterDataList[i].byteOffset;
+          }
+      }
+      return 0; // 无此章节返回0
+  }
+uint32_t getChapterendOffsetByIndex(int chapterIndex) {
+      for(int i = 0; i < chapterActualCount; i++) {
+          if(chapterDataList[i].chapterIndex == chapterIndex) {
+              return chapterDataList[i].endOffset;
           }
       }
       return 0; // 无此章节返回0
