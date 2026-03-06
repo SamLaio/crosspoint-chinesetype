@@ -226,6 +226,7 @@ void enterDeepSleep() {
   gpio.startDeepSleep();
 }
 
+
 void onGoHome();
 void onGoToMyLibraryWithPath(const std::string& path);
 void onGoToRecentBooks();
