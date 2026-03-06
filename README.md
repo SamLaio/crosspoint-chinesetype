@@ -6,6 +6,7 @@
 - 参考改版项目：[crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
 - 自选字体功能参考：[ruby-builds/crosspoint-reader (custom-fonts分支)](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
 - 字体制作工具：[ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYFDroid/crosspointcn-fontcreator)
+- 键盘[QR]功能增加：[la-lo-go/crosspoint-reader/tree/feat/qr-text-input](https://github.com/la-lo-go/crosspoint-reader/tree/feat/qr-text-input)
 
 ---
 
