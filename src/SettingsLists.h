@@ -40,6 +40,7 @@ inline std::vector<SettingInfo> getSettingsList() {
     SettingInfo::Value("左边距", &CrossPointSettings::screenMargin_Left, 0,40,5,"左边距", "Reader"),
     SettingInfo::Value("右边距", &CrossPointSettings::screenMargin_Right, 0,40,5, "右边距", "Reader"),
     SettingInfo::Toggle("阅读背景", &CrossPointSettings::ReadingScreenEnabled,"阅读背景","Reader"),
+    SettingInfo::Toggle("划线", &CrossPointSettings::extraline,"划线","Reader"),
     SettingInfo::Enum("对齐方式", &CrossPointSettings::paragraphAlignment,
                       {"两边对齐", "左对齐", "居中", "右对齐", "书本样式"}, "对齐方式", "Reader"),
     SettingInfo::Toggle("是否使用书籍内嵌样式", &CrossPointSettings::embeddedStyle,"是否使用书籍内嵌样式","Reader"),

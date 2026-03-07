@@ -656,9 +656,9 @@ void EpubReaderActivity::renderScreen() {
     const bool showProgressBar = SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::BOOK_PROGRESS_BAR ||
                                  SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::ONLY_BOOK_PROGRESS_BAR ||
                                  SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::CHAPTER_PROGRESS_BAR;
-
-    orientedMarginBottom = orientedMarginBottom + statusBarMargin +
-                          (showProgressBar ? (metrics.bookProgressBarHeight + progressBarMarginTop) : 0);
+    //这个地方是留位置，位置可以多留一点
+    orientedMarginBottom += statusBarMargin  +
+                            (showProgressBar ? (metrics.bookProgressBarHeight + progressBarMarginTop) : 0);
   }
 
   // 3. 再叠加用户设置的所有边距（此时Bottom边距不会被抵消）
@@ -735,7 +735,7 @@ void EpubReaderActivity::renderScreen() {
   if (section->pageCount == 0) {
     Serial.printf("[%lu] [ERS] No pages to render\n", millis());
     renderer.drawCenteredText(UI_12_FONT_ID, 300, "Empty chapter", true, EpdFontFamily::BOLD);
-    renderStatusBar(orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
+    renderStatusBar(orientedMarginRight, orientedMarginBottom,orientedMarginTop, orientedMarginLeft);
     renderer.displayBuffer();
     return;
   }
@@ -743,7 +743,7 @@ void EpubReaderActivity::renderScreen() {
   if (section->currentPage < 0 || section->currentPage >= section->pageCount) {
     Serial.printf("[%lu] [ERS] Page out of bounds: %d (max %d)\n", millis(), section->currentPage, section->pageCount);
     renderer.drawCenteredText(UI_12_FONT_ID, 300, "Out of bounds", true, EpdFontFamily::BOLD);
-    renderStatusBar(orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
+    renderStatusBar(orientedMarginRight, orientedMarginBottom,orientedMarginTop, orientedMarginLeft);
     renderer.displayBuffer();
     return;
   }
@@ -789,7 +789,7 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   // as grayscale tones require half refresh to display correctly
   bool forceFullRefresh = page->hasImages() && SETTINGS.textAntiAliasing;
   page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
-  renderStatusBar(orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
+  renderStatusBar(orientedMarginRight, orientedMarginBottom,orientedMarginTop, orientedMarginLeft);
   if (forceFullRefresh || pagesUntilFullRefresh <= 1) {
     renderer.displayBuffer(HalDisplay::HALF_REFRESH);
     pagesUntilFullRefresh = SETTINGS.getRefreshFrequency();
@@ -825,7 +825,7 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
 }
 
 void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const int orientedMarginBottom,
-                                         const int orientedMarginLeft) const {
+                                         const int orientedMarginTop, const int orientedMarginLeft) const {
   auto metrics = UITheme::getInstance().getMetrics();
 
   // determine visible status bar elements
@@ -849,8 +849,10 @@ void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const in
 
   // Position status bar near the bottom of the logical screen, regardless of orientation
   const auto screenHeight = renderer.getScreenHeight();
-  const auto textY = screenHeight - orientedMarginBottom-statusBarMargin ;
+  //int statusBarMargin = renderer.getFontAscenderSize(SMALL_FONT_ID)/2;
+  const auto textY = screenHeight - orientedMarginBottom - 8;
   int progressTextWidth = 0;
+  //Serial.printf("[%lu] [ERS] 测试一下位置变了吗: %d", millis(),textY);
 
   // Calculate progress in book
   const float sectionChapterProg = static_cast<float>(section->currentPage) / section->pageCount;

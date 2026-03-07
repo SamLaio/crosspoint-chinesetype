@@ -3,10 +3,50 @@
 #include <HardwareSerial.h>
 #include <Serialization.h>
 #include <GfxRenderer.h>
+//gd
+#include "../../src/CrossPointSettings.h"
 
+// gd:专门绘制水平虚线的函数（仅适配你的场景，参数：渲染器、起始X、Y、结束X、虚线段长/间隔）
+void PageLine::drawDashedLine(GfxRenderer& renderer, int x1, int y, int x2, bool isDark) const {
+  int startX = std::min(x1, x2);
+  int endX = std::max(x1, x2);
+  int currentX = startX;
+
+  // 放大参数：段长=12（间隔×4），间隔=3（480px屏幕肉眼清晰）
+  const int actualDash = 20;  
+  const int actualGap = 10;    
+
+  while (currentX < endX) {
+    int segmentEndX = std::min(currentX + actualDash, endX);
+    // 关键：先把!isDark改成true，强制画黑色实线段（排除颜色问题）
+    renderer.drawLine(currentX, y, segmentEndX, y, true);
+    currentX = segmentEndX + actualGap;
+  }
+}
 
 void PageLine::render(GfxRenderer& renderer, const int fontId, const int xOffset, const int yOffset) {
   block->render(renderer, fontId, xPos + xOffset, yPos + yOffset);
+  //加线
+    if (CrossPointSettings::getInstance().extraline){
+  // 用屏幕宽度 + 文字高度计算虚线 ----
+  int screenWidth = renderer.getScreenWidth(); // 获取屏幕总宽度
+  int textHeight = renderer.getLineHeight(fontId); // 文字高度
+  //Serial.printf("[%lu] [ERS] 测试能否读取文字高度: %d", millis(),textHeight);
+
+  // 计算虚线坐标
+  int orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft;
+  renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
+                                  &orientedMarginLeft);
+  orientedMarginLeft += SETTINGS.screenMargin_Left;
+  orientedMarginRight += SETTINGS.screenMargin_Right;
+  int viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;
+  int lineXStart = orientedMarginLeft; // 从屏幕最左侧开始
+  int lineXEnd = screenWidth-orientedMarginRight; // 到屏幕最右侧结束
+  int lineY = (yPos + yOffset) + textHeight+2; // 在文字下方绘制，+2像素间距
+
+  // 绘制全屏宽度的水平虚线
+  drawDashedLine(renderer, lineXStart, lineY, lineXEnd, lineY);
+  }
 }
 
 bool PageLine::serialize(FsFile& file) {

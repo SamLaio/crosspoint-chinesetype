@@ -27,6 +27,8 @@ class PageElement {
 // a line from a block element
 class PageLine final : public PageElement {
   std::shared_ptr<TextBlock> block;
+  //加虚线
+  void drawDashedLine(GfxRenderer& renderer, int x1, int y, int x2, bool isDark) const;
 
  public:
   PageLine(std::shared_ptr<TextBlock> block, const int16_t xPos, const int16_t yPos)

@@ -52,7 +52,7 @@ class EpubReaderMenuActivity final : public ActivityWithSubactivity {
   SemaphoreHandle_t renderingMutex = nullptr;
   std::string title = "Reader Menu";
   uint8_t pendingOrientation = 0;
-  const std::vector<const char*> orientationLabels = {getChineseName("Portrait"), getChineseName("Landscape CW"), getChineseName("Inverted"), getChineseName("Landscape CCW")};
+  const std::vector<const char*> orientationLabels = {getChineseName("Portrait"), getChineseName("Landscape CW"), "按钮在上面", getChineseName("Landscape CCW")};
   int currentPage = 0;
   int totalPages = 0;
   int bookProgressPercent = 0;

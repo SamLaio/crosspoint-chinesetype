@@ -181,6 +181,10 @@ class CrossPointSettings {
   // Z-Library 配置
 char zlibEmail[64] = "";
 char zlibPassword[64] = "";
+//新加划线
+uint8_t extraline = 1;
+
+
  //阅读背景设置
   uint8_t ReadingScreenEnabled = 0; // Whether to show the reading screen background image
   // Hide battery percentage
