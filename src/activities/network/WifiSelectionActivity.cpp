@@ -10,6 +10,7 @@
 #include "activities/util/KeyboardEntryActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "BluetoothHIDManager.h"
 
 void WifiSelectionActivity::taskTrampoline(void* param) {
   auto* self = static_cast<WifiSelectionActivity*>(param);
@@ -228,6 +229,17 @@ void WifiSelectionActivity::attemptConnection() {
   connectedIP.clear();
   connectionError.clear();
   updateRequired = true;
+    // CRITICAL: Disable Bluetooth when enabling WiFi
+  // ESP32-C3 cannot have both WiFi and BLE enabled simultaneously
+  try {
+    auto& btMgr = BluetoothHIDManager::getInstance();
+    if (btMgr.isEnabled()) {
+      Serial.printf("WIFI", "Disabling Bluetooth to enable WiFi (mutual exclusion)");
+      btMgr.disable();
+    }
+  } catch (...) {
+    Serial.printf("WIFI", "Could not access Bluetooth manager");
+  }
 
   WiFi.mode(WIFI_STA);
 

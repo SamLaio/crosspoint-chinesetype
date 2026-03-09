@@ -22,7 +22,7 @@ void readAndValidate(FsFile& file, uint8_t& member, const uint8_t maxValue) {
 namespace {
 constexpr uint8_t SETTINGS_FILE_VERSION = 5;
 // 注意：如果修改了字段数量，需要同步更新这个值
-constexpr uint8_t SETTINGS_COUNT = 44;  // 增加1：新增sleepScreenCoverFilter
+constexpr uint8_t SETTINGS_COUNT = 45;  // 增加1：新增sleepScreenCoverFilter
 constexpr char SETTINGS_FILE[] = "/.crosspoint/settings.bin";
 
 // Validate front button mapping to ensure each hardware button is unique.
@@ -131,6 +131,8 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writePod(outputFile, embeddedStyle);
   serialization::writePod(outputFile, ReadingScreenEnabled);
   serialization::writePod(outputFile, extraline);
+  //把蓝牙写上
+  serialization::writePod(outputFile, bluetoothEnabled );
   // New fields added at end for backward compatibility
   outputFile.close();
 
@@ -285,6 +287,9 @@ bool CrossPointSettings::loadFromFile() {
     if (++settingsRead >= fileSettingsCount) break;
     //新加划线功能
     serialization::readPod(inputFile, extraline);
+    if (++settingsRead >= fileSettingsCount) break;
+        //新加蓝牙功能
+    serialization::readPod(inputFile, bluetoothEnabled);
     if (++settingsRead >= fileSettingsCount) break;
     // New fields added at end for backward compatibility
   } while (false);

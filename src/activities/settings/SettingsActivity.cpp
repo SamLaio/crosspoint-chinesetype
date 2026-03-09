@@ -16,9 +16,10 @@
 #include "fontIds.h"
 #include "JianGuoYunSettingsActivity.h"
 #include "languageMapper.h"
-//#include "../reader/PreviewActivity.h"
+#include "BluetoothSettingsActivity.h"
 
 #include "SettingsLists.h"
+
 
 
 const char* SettingsActivity::categoryNames[categoryCount] = {"Display", "Reader", "Controls", "System"};
@@ -59,6 +60,7 @@ void SettingsActivity::onEnter() {
 
   // Append device-only ACTION items
   controlsSettings.insert(controlsSettings.begin(), SettingInfo::Action("Remap Front Buttons"));
+  systemSettings.push_back(SettingInfo::Action("bluetooth"));
   systemSettings.push_back(SettingInfo::Action("KOReader Sync"));
   systemSettings.push_back(SettingInfo::Action("OPDS Browser"));
   systemSettings.push_back(SettingInfo::Action("坚果云信息配置"));
@@ -252,6 +254,14 @@ void SettingsActivity::toggleCurrentSetting() {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       exitActivity();
       enterNewActivity(new FontSelectionActivity(renderer, mappedInput, [this] {
+        exitActivity();
+        updateRequired = true;
+      }));
+      xSemaphoreGive(renderingMutex);
+      } else if (strcmp(setting.name, "bluetooth") == 0) {
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      exitActivity();
+      enterNewActivity(new BluetoothSettingsActivity(renderer, mappedInput, [this] {
         exitActivity();
         updateRequired = true;
       }));

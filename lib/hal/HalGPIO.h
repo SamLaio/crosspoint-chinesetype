@@ -22,6 +22,9 @@ class HalGPIO {
 #if CROSSPOINT_EMULATED == 0
   InputManager inputMgr;
 #endif
+  uint8_t virtualButtonEvents = 0;   // Current frame virtual button events
+  uint8_t virtualButtonQueue = 0;    // Persistent queue for virtual buttons
+  uint8_t previousVirtualButtonEvents = 0;  // Track previous frame for release detection
 
  public:
   HalGPIO() = default;
@@ -43,6 +46,10 @@ class HalGPIO {
 
   // Get battery percentage (range 0-100)
   int getBatteryPercentage() const;
+
+  // Virtual button injection (for Bluetooth HID)
+  void injectButtonPress(uint8_t buttonIndex);
+  void clearVirtualButtons();
 
   // Check if USB is connected
   bool isUsbConnected() const;

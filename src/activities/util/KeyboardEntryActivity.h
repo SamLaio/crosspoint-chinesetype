@@ -59,6 +59,8 @@ class KeyboardEntryActivity : public Activity {
   void onEnter() override;
   void onExit() override;
   void loop() override;
+  void show();
+  void hide();
 
  private:
   std::string title;
@@ -83,6 +85,10 @@ class KeyboardEntryActivity : public Activity {
 
   // Remote text input server
   std::unique_ptr<KeyboardWebInputServer> webInputServer;
+
+  // visibility controls (keyboard may float as overlay)
+  bool isVisible = true;
+
 
   // Keyboard layout
   static constexpr int NUM_ROWS = 6;

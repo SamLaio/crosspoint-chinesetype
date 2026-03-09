@@ -5,6 +5,7 @@
 #include "fontIds.h"
 #include "network/NetworkConstants.h"
 #include "util/QRCodeHelper.h"
+#include <Utf8.h>
 
 // Keyboard layouts - lowercase
 const char* const KeyboardEntryActivity::keyboard[NUM_ROWS] = {
@@ -123,9 +124,9 @@ void KeyboardEntryActivity::handleKeyPress() {
     }
 
     if (selectedCol >= BACKSPACE_COL && selectedCol < DONE_COL) {
-      // Backspace
+      // Backspace (UTF-8 aware to handle Chinese and other multi-byte chars)
       if (!text.empty()) {
-        text.pop_back();
+        utf8RemoveLastChar(text);
       }
       return;
     }
@@ -157,6 +158,9 @@ void KeyboardEntryActivity::handleKeyPress() {
 }
 
 void KeyboardEntryActivity::loop() {
+  // If not visible (hidden by parent) ignore all input except maybe QR exit
+  if (!isVisible) return;
+
   // In QR mode, only handle Back button and web server polling
   if (showingQR) {
     if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
@@ -188,12 +192,15 @@ void KeyboardEntryActivity::loop() {
   if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
     if (selectedRow > 0) {
       selectedRow--;
-      // Clamp column to valid range for new row
-      const int maxCol = getRowLength(selectedRow) - 1;
-      if (selectedCol > maxCol) selectedCol = maxCol;
     } else {
       // Wrap to bottom row
       selectedRow = NUM_ROWS - 1;
+    }
+    // Clamp column to valid range for new row
+    if (selectedRow == 0) {
+      // always land on QR key when moving into top row
+      selectedCol = 0;
+    } else {
       const int maxCol = getRowLength(selectedRow) - 1;
       if (selectedCol > maxCol) selectedCol = maxCol;
     }
@@ -216,10 +223,9 @@ void KeyboardEntryActivity::loop() {
 
   if (mappedInput.wasPressed(MappedInputManager::Button::Left)) {
     const int maxCol = getRowLength(selectedRow) - 1;
-    if(selectedRow == 0){
-      selectedCol =QR_COL;
+    if (selectedRow == 0) {
+      selectedCol = 0;
     }
-
     // Special bottom row case
     if (selectedRow == SPECIAL_ROW) {
       // Bottom row has special key widths
@@ -251,8 +257,8 @@ void KeyboardEntryActivity::loop() {
 
     if (mappedInput.wasPressed(MappedInputManager::Button::Right)) {
     const int maxCol = getRowLength(selectedRow) - 1;
-      if(selectedRow == 0){
-      selectedCol =QR_COL;
+      if (selectedRow == 0) {
+      selectedCol = 0;
       }
     // Special bottom row case
     if (selectedRow == SPECIAL_ROW) {
@@ -299,6 +305,9 @@ void KeyboardEntryActivity::loop() {
 }
 
 void KeyboardEntryActivity::render() const {
+  // do nothing when hidden; parent should redraw its own contents
+  if (!isVisible) return;
+
   if (showingQR) {
     renderQRScreen();
     return;
@@ -436,6 +445,17 @@ void KeyboardEntryActivity::renderItemWithSelector(const int x, const int y, con
     renderer.drawText(UI_10_FONT_ID, x + itemWidth, y, "]");
   }
   renderer.drawText(UI_10_FONT_ID, x, y, item);
+}
+
+// visibility helpers
+void KeyboardEntryActivity::show() {
+    isVisible = true;
+    updateRequired = true;
+}
+
+void KeyboardEntryActivity::hide() {
+    isVisible = false;
+    updateRequired = true;
 }
 
 void KeyboardEntryActivity::renderQRScreen() const {

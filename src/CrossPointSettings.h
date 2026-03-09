@@ -183,6 +183,8 @@ char zlibEmail[64] = "";
 char zlibPassword[64] = "";
 //新加划线
 uint8_t extraline = 1;
+  // Bluetooth enabled state (persistent)
+  uint8_t bluetoothEnabled = 0;
 
 
  //阅读背景设置

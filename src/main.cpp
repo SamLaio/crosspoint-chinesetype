@@ -30,6 +30,9 @@
 #include "fontIds.h"
 #include "activities/browser/JianGuoBrowserActivity.h"
 
+#include <BluetoothHIDManager.h>
+#include "util/ButtonNavigator.h"
+
 
 
 HalDisplay display;
@@ -216,6 +219,19 @@ void enterDeepSleep() {
 
   APP_STATE.lastSleepFromReader = currentActivity && currentActivity->isReaderActivity();
   APP_STATE.saveToFile();
+
+  //bluetooth
+  try {
+    auto& btMgr = BluetoothHIDManager::getInstance();
+    if (btMgr.isEnabled()) {
+      Serial.printf("SLP", "Disabling Bluetooth before deep sleep");
+      btMgr.disable();
+    }
+  } catch (...) {
+    Serial.printf("SLP", "Could not disable Bluetooth");
+  }
+
+
   exitActivity();
   enterNewActivity(new SleepActivity(renderer, mappedInputManager));
 
@@ -336,6 +352,29 @@ void setup() {
   KOREADER_STORE.loadFromFile();
   UITheme::getInstance().reload();
 
+  ButtonNavigator::setMappedInputManager(mappedInputManager);
+  
+  // Initialize Bluetooth HID button injection
+  try {
+    auto& btMgr = BluetoothHIDManager::getInstance();
+    btMgr.setButtonInjector([](uint8_t buttonIndex) {
+      gpio.injectButtonPress(buttonIndex);
+    });
+    
+    // Enable Bluetooth on boot if configured
+    if (SETTINGS.bluetoothEnabled) {
+      if (btMgr.enable()) {
+        Serial.printf("MAIN", "Bluetooth enabled on boot");
+      } else {
+        Serial.printf("MAIN", "Failed to enable Bluetooth on boot");
+      }
+    }
+    
+    Serial.printf("MAIN", "Bluetooth HID initialized with button injection");
+  } catch (...) {
+    Serial.printf("MAIN", "Failed to initialize Bluetooth HID");
+  }
+
   switch (gpio.getWakeupReason()) {
     case HalGPIO::WakeupReason::PowerButton:
       // For normal wakeups, verify power button press duration
@@ -397,6 +436,14 @@ void loop() {
 
   gpio.update();
 
+    // Check for Bluetooth inactivity timeouts and auto-reconnect
+  try {
+    BluetoothHIDManager::getInstance().updateActivity();
+    BluetoothHIDManager::getInstance().checkAutoReconnect();
+  } catch (...) {
+    // Ignore errors in Bluetooth management
+  }
+
   renderer.setFadingFix(SETTINGS.fadingFix);
 
   if (Serial && millis() - lastMemPrint >= 10000) {
@@ -407,7 +454,24 @@ void loop() {
 
   // Check for any user activity (button press or release) or active background work
   static unsigned long lastActivityTime = millis();
-  if (gpio.wasAnyPressed() || gpio.wasAnyReleased() || (currentActivity && currentActivity->preventAutoSleep())) {
+  // Check for physical button presses, virtual button presses, or activity prevention
+  bool hasActivity = gpio.wasAnyPressed() || gpio.wasAnyReleased() || 
+                     (currentActivity && currentActivity->preventAutoSleep());
+  
+  // Also check for recent BLE activity to prevent power sleep during BLE use
+  try {
+    const auto& btMgr = BluetoothHIDManager::getInstance();
+    if (btMgr.isEnabled()) {
+      // If BLE is enabled, check if there's been recent activity
+      // We consider that activity if the manager has been tracking it
+      // (This prevents the system from sleeping while using BLE controller)
+      hasActivity = hasActivity || btMgr.hasRecentActivity();
+    }
+  } catch (...) {
+    // Ignore BLE check errors
+  }
+  
+  if (hasActivity) {
     lastActivityTime = millis();  // Reset inactivity timer
   }
 

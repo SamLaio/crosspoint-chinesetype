@@ -1,25 +1,47 @@
 #include <HalGPIO.h>
 #include <SPI.h>
-#include <esp_sleep.h>
 
 void HalGPIO::begin() {
   inputMgr.begin();
   SPI.begin(EPD_SCLK, SPI_MISO, EPD_MOSI, EPD_CS);
-  pinMode(BAT_GPIO0, INPUT);
   pinMode(UART0_RXD, INPUT);
 }
 
-void HalGPIO::update() { inputMgr.update(); }
+void HalGPIO::update() { 
+  // Save previous virtual button state BEFORE updating current state
+  // This allows wasReleased() to detect buttons that were pressed last frame but not this frame
+  previousVirtualButtonEvents = virtualButtonEvents;
+  
+  // Move queued virtual buttons to current events for this frame
+  // Then clear the queue so only buttons pressed this frame show in events
+  virtualButtonEvents = virtualButtonQueue;
+  virtualButtonQueue = 0;
+  
+  inputMgr.update();
+}
 
 bool HalGPIO::isPressed(uint8_t buttonIndex) const { return inputMgr.isPressed(buttonIndex); }
 
-bool HalGPIO::wasPressed(uint8_t buttonIndex) const { return inputMgr.wasPressed(buttonIndex); }
+bool HalGPIO::wasPressed(uint8_t buttonIndex) const { 
+  return inputMgr.wasPressed(buttonIndex) || (virtualButtonEvents & (1 << buttonIndex));
+}
 
-bool HalGPIO::wasAnyPressed() const { return inputMgr.wasAnyPressed(); }
+bool HalGPIO::wasAnyPressed() const { 
+  return inputMgr.wasAnyPressed() || (virtualButtonEvents > 0);
+}
 
-bool HalGPIO::wasReleased(uint8_t buttonIndex) const { return inputMgr.wasReleased(buttonIndex); }
+bool HalGPIO::wasReleased(uint8_t buttonIndex) const { 
+  // Check both physical button releases AND virtual button releases
+  // Virtual release = was pressed last frame but not this frame
+  const uint8_t virtualRelease = previousVirtualButtonEvents & ~virtualButtonEvents;
+  return inputMgr.wasReleased(buttonIndex) || (virtualRelease & (1 << buttonIndex));
+}
 
-bool HalGPIO::wasAnyReleased() const { return inputMgr.wasAnyReleased(); }
+bool HalGPIO::wasAnyReleased() const { 
+  // Check both physical and virtual button releases
+  const uint8_t virtualRelease = previousVirtualButtonEvents & ~virtualButtonEvents;
+  return inputMgr.wasAnyReleased() || (virtualRelease > 0);
+}
 
 unsigned long HalGPIO::getHeldTime() const { return inputMgr.getHeldTime(); }
 
@@ -38,6 +60,19 @@ void HalGPIO::startDeepSleep() {
 int HalGPIO::getBatteryPercentage() const {
   static const BatteryMonitor battery = BatteryMonitor(BAT_GPIO0);
   return battery.readPercentage();
+}
+
+
+void HalGPIO::injectButtonPress(uint8_t buttonIndex) {
+  // Queue the button for the next update() call
+  // This ensures the reader gets a chance to check wasPressed() 
+  // before the button is cleared
+  virtualButtonQueue |= (1 << buttonIndex);
+}
+
+void HalGPIO::clearVirtualButtons() {
+  virtualButtonEvents = 0;
+  virtualButtonQueue = 0;
 }
 
 bool HalGPIO::isUsbConnected() const {
