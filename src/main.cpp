@@ -365,6 +365,19 @@ void setup() {
     if (SETTINGS.bluetoothEnabled) {
       if (btMgr.enable()) {
         Serial.printf("MAIN", "Bluetooth enabled on boot");
+
+        // Auto-reconnect: attempt to connect to the last paired device up to 3 times
+        std::string lastAddr, lastName;
+        btMgr.startScan(2000);
+        if (btMgr.loadLastConnectedDevice(lastAddr, lastName)) {
+          Serial.printf("MAIN", "Auto-connecting to last device %s (%s)", lastName.c_str(), lastAddr.c_str());
+          if (btMgr.connectToDeviceWithRetries(lastAddr, 1)) {
+            Serial.printf("MAIN", "Auto-connect successful");
+          } else {
+            Serial.printf("MAIN", "Auto-connect failed after retries");
+          }
+        }
+
       } else {
         Serial.printf("MAIN", "Failed to enable Bluetooth on boot");
       }
@@ -379,7 +392,7 @@ void setup() {
     case HalGPIO::WakeupReason::PowerButton:
       // For normal wakeups, verify power button press duration
       Serial.printf("[%lu] [   ] Verifying power button press duration\n", millis());
-      verifyPowerButtonDuration();
+      //verifyPowerButtonDuration();
       break;
     case HalGPIO::WakeupReason::AfterUSBPower:
       // If USB power caused a cold boot, go back to sleep
@@ -414,6 +427,7 @@ void setup() {
   // crashed (indicated by readerActivityLoadCount > 0)
   if (APP_STATE.openEpubPath.empty() || !APP_STATE.lastSleepFromReader ||
       mappedInputManager.isPressed(MappedInputManager::Button::Back) || APP_STATE.readerActivityLoadCount > 0) {
+        Serial.printf("home1\n");
     onGoHome();
   } else {
     // Clear app state to avoid getting into a boot loop if the epub doesn't load
@@ -421,6 +435,7 @@ void setup() {
     APP_STATE.openEpubPath = "";
     APP_STATE.readerActivityLoadCount++;
     APP_STATE.saveToFile();
+    Serial.printf("reader\n");
     onGoToReader(path);
     //onGoHome();
   }
@@ -428,6 +443,8 @@ void setup() {
   // Ensure we're not still holding the power button before leaving setup
   waitForPowerRelease();
 }
+
+
 
 void loop() {
   static unsigned long maxLoopDuration = 0;

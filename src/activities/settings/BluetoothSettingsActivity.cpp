@@ -271,12 +271,13 @@ void BluetoothSettingsActivity::handleDeviceListInput() {
       lastError = "Connecting...";
       updateRequired = true;
       
-      if (btMgr->connectToDevice(device.address)) {
+      // try up to 3 times to avoid crashing if the peripheral is bad
+      if (btMgr->connectToDeviceWithRetries(device.address, 3)) {
         lastError = std::string("Connected to ") + device.name;
         Serial.printf("BT Successfully connected to %s", device.name.c_str());
       } else {
         lastError = btMgr->lastError.empty() ? "Connection failed" : btMgr->lastError;
-        Serial.printf("BT Failed to connect: %s", lastError.c_str());
+        Serial.printf("BT Failed to connect after retries: %s", lastError.c_str());
       }
       updateRequired = true;
     }

@@ -236,7 +236,13 @@ void MyLibraryActivity::taskTrampoline(void* param) {
 void MyLibraryActivity::loadFiles() {
   files.clear();
 
-  auto root = SdMan.open(basepath.c_str());
+  // 修复：确保路径以/结尾，否则SdMan.open可能识别失败
+  std::string realBasePath = basepath;
+  if (realBasePath != "/" && realBasePath.back() != '/') {
+    realBasePath += "/";
+  }
+
+  auto root = SdMan.open(realBasePath.c_str()); // 用修复后的路径打开
   if (!root || !root.isDirectory()) {
     if (root) root.close();
     return;
@@ -253,7 +259,7 @@ void MyLibraryActivity::loadFiles() {
     }
 
     if (file.isDirectory()) {
-      files.emplace_back(std::string(name) + "/");
+      files.emplace_back(std::string(name) + "/"); // 目录名保留/结尾
     } else {
       auto filename = std::string(name);
       if (StringUtils::checkFileExtension(filename, ".epub") || StringUtils::checkFileExtension(filename, ".xtch") ||
@@ -387,10 +393,14 @@ void MyLibraryActivity::loop() {
           // 搜索模式：直接打开（selectedItem是完整路径，且只有文件）
           onSelectBook(fullPath);
         } else {
-          // 普通模式：原有文件夹/文件逻辑
+          // 普通模式：修复嵌套目录路径拼接
           if (selectedItem.back() == '/') {
+            // 正确拼接嵌套路径：basepath + "/" + 子目录名（去掉末尾的/）
+            if (basepath != "/") {
+              basepath += "/"; // 确保basepath以/结尾
+            }
             basepath += selectedItem.substr(0, selectedItem.length() - 1);
-            loadFiles();
+            loadFiles(); // 重新加载当前嵌套目录的文件
             selectorIndex = 0;
           } else {
             onSelectBook(fullPath);
@@ -492,26 +502,29 @@ void MyLibraryActivity::loop() {
   //这里去掉了
   //后面没动
 
-  if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-    // Short press: go up one directory, or go home if at root
-    if (mappedInput.getHeldTime() < GO_HOME_MS) {
-      if (basepath != "/") {
-        const std::string oldPath = basepath;
+if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+  // Short press: go up one directory, or go home if at root
+  if (mappedInput.getHeldTime() < GO_HOME_MS) {
+    if (basepath != "/") {
+      const std::string oldPath = basepath;
 
-        basepath.replace(basepath.find_last_of('/'), std::string::npos, "");
-        if (basepath.empty()) basepath = "/";
-        loadFiles();
+      // 修复：正确截取上级目录（处理嵌套路径）
+      size_t lastSlash = basepath.find_last_of('/');
+      // 避免截取后为空（比如 /dir1 → 截取后是 ""，要改成 "/"）
+      basepath = (lastSlash == 0) ? "/" : basepath.substr(0, lastSlash);
+      
+      loadFiles(); // 重新加载上级目录内容
 
-        const auto pos = oldPath.find_last_of('/');
-        const std::string dirName = oldPath.substr(pos + 1) + "/";
-        selectorIndex = findEntry(dirName);
+      // 修复：返回上级后定位到之前的目录项
+      const std::string dirName = oldPath.substr(lastSlash + 1) + "/";
+      selectorIndex = findEntry(dirName);
 
-        updateRequired = true;
-      } else {
-        onGoHome();
-      }
+      updateRequired = true;
+    } else {
+      onGoHome();
     }
   }
+}
 
   const auto& displayList = isSearchMode ? searchResults : files;
   int listSize = static_cast<int>(displayList.size());

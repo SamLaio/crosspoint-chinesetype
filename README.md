@@ -6,6 +6,7 @@
 - 参考改版项目：[crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
 - 自选字体功能参考：[ruby-builds/crosspoint-reader (custom-fonts分支)](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
 - 字体制作工具：[ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYFDroid/crosspointcn-fontcreator)
+- 蓝牙功能参考：[thedrunkpenguin/crosspoint-reader-ble](https://github.com/thedrunkpenguin/crosspoint-reader-ble)
 
 ---
 

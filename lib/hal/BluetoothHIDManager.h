@@ -51,6 +51,12 @@ public:
 
   // Connection
   bool connectToDevice(const std::string& address);
+  /**
+   * Attempt to connect up to `maxAttempts` times before giving up.
+   * This is useful for UI code that may try to connect to non‑responsive
+   * devices and must not crash the system.
+   */
+  bool connectToDeviceWithRetries(const std::string& address, int maxAttempts = 3);
   bool disconnectFromDevice(const std::string& address);
   bool isConnected(const std::string& address) const;
   std::vector<std::string> getConnectedDevices() const;
@@ -73,9 +79,13 @@ public:
   bool loadLastConnectedDevice(std::string& address, std::string& name);
 
   std::string lastError;
+  //防止崩溃，让外部可读取信息
+  void onScanResult(NimBLEAdvertisedDevice* advertisedDevice);
+
+private:
 
   // BLE callbacks (public for NimBLE callbacks)
-  void onScanResult(NimBLEAdvertisedDevice* advertisedDevice);
+  
   static void onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t* pData, size_t length, bool isNotify);
 
 private:

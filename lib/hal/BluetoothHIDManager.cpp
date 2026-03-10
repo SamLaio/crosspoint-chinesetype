@@ -98,21 +98,10 @@ bool BluetoothHIDManager::enable() {
     Serial.printf("BT Bluetooth enabled successfully");
     loadState();
     
-    // Auto-connect to last connected device if bluetoothEnabled is set
-    if (SETTINGS.bluetoothEnabled) {
-      std::string lastAddress, lastName;
-      if (loadLastConnectedDevice(lastAddress, lastName)) {
-        Serial.printf("BT Auto-connecting to last device: %s (%s)", lastName.c_str(), lastAddress.c_str());
-        // Start connection in background (don't block enable())
-        auto* param = new std::pair<BluetoothHIDManager*, std::string>(this, lastAddress);
-        xTaskCreate([](void* p) {
-          auto* tp = static_cast<std::pair<BluetoothHIDManager*, std::string>*>(p);
-          tp->first->connectToDevice(tp->second);
-          delete tp;
-          vTaskDelete(NULL);
-        }, "AutoConnect", 4096, param, 1, NULL);
-      }
-    }
+    // NOTE: background auto‑connect was removed in order to conserve memory
+    // and avoid multiple concurrent connection attempts.  callers such as
+    // main.cpp or the settings UI should invoke connectToDeviceWithRetries()
+    // explicitly when appropriate.
     
     return true;
   } catch (const std::exception& e) {
@@ -209,6 +198,7 @@ void BluetoothHIDManager::startScan(uint32_t durationMs) {
   }
 }
 
+
 void BluetoothHIDManager::stopScan() {
   if (!_scanning) return;
   
@@ -262,10 +252,17 @@ void BluetoothHIDManager::onScanResult(NimBLEAdvertisedDevice* advertisedDevice)
           device.name.c_str(), device.address.c_str(), rssi, isHID);
 }
 
+
+
 bool BluetoothHIDManager::connectToDevice(const std::string& address) {
   if (!_enabled) {
     Serial.printf("BT Cannot connect: Bluetooth not enabled");
     lastError = "Bluetooth not enabled";
+    return false;
+  }
+  if (address.empty()) {
+    Serial.printf("BT Invalid address (empty) passed to connectToDevice");
+    lastError = "Invalid address";
     return false;
   }
   
@@ -275,28 +272,57 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
     return true;
   }
   
+  // we used to require that the address appear in the most recent scan
+  // results and advertise HID; this check consumed memory and was a problem
+  // on low‑RAM builds, and since we save the last connected address we can
+  // simply trust it.  keep the check as a warning only.
+  bool seen = false;
+  for (const auto& dev : _discoveredDevices) {
+    if (dev.address == address) {
+      seen = true;
+      if (!dev.isHID) {
+        Serial.printf("BT Device %s not advertising HID, aborting connect", address.c_str());
+        lastError = "Not HID device";
+        return false;
+      }
+      break;
+    }
+  }
+  if (!seen) {
+    Serial.printf("BT Device %s not in scan results (skipping requirement)", address.c_str());
+    return false;
+    // do not treat as error; proceed with connection attempt
+  }
+  
   Serial.printf("BT Connecting to device %s", address.c_str());
   
+  NimBLEClient* pClient = nullptr;
   try {
     // Create client
-    NimBLEClient* pClient = NimBLEDevice::createClient();
+    pClient = NimBLEDevice::createClient();
     if (!pClient) {
       lastError = "Failed to create client";
       Serial.printf("BT Failed to create BLE client");
       return false;
     }
+    // disable NimBLE's automatic self-deletion on failure; we will manage cleanup
+    pClient->setSelfDelete(false, false);
     
     // Set connection callbacks
     static ClientCallbacks clientCallbacks;
     pClient->setClientCallbacks(&clientCallbacks);
     
     // Connect to device
-    // In NimBLE 2.x, NimBLEAddress needs a type parameter (default is PUBLIC)
     NimBLEAddress bleAddress(address, BLE_ADDR_PUBLIC);
     if (!pClient->connect(bleAddress)) {
       lastError = "Connection failed";
       Serial.printf("BT Failed to connect to %s", address.c_str());
-      NimBLEDevice::deleteClient(pClient);
+      // since we disabled self-delete, free object ourselves
+      try {
+        NimBLEDevice::deleteClient(pClient);
+      } catch (...) {
+        Serial.printf("BT Warning: failed to delete client after connection failure");
+      }
       return false;
     }
     
@@ -308,15 +334,16 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
       lastError = "HID service not found";
       Serial.printf("BT Device %s doesn't have HID service", address.c_str());
       pClient->disconnect();
-      NimBLEDevice::deleteClient(pClient);
+      try {
+        NimBLEDevice::deleteClient(pClient);
+      } catch (...) {
+        Serial.printf("BT Warning: failed to delete client after HID service failure");
+      }
       return false;
     }
     
     Serial.printf("BT Found HID service, enumerating report characteristics...");
     
-    // BLE HID has multiple report characteristics (input, output, feature)
-    // We need to find one that supports NOTIFY or INDICATE (input report)
-    // In NimBLE 2.x, getCharacteristics() returns std::vector<NimBLERemoteCharacteristic*>
     auto pCharacteristics = pService->getCharacteristics(true);
     NimBLERemoteCharacteristic* pReportChar = nullptr;
     
@@ -335,7 +362,6 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
                 reportCount, pChar->canNotify(), pChar->canIndicate(),
                 pChar->getUUID().toString().c_str());
         
-        // Check if this report supports notify or indicate (input report)
         if (pChar->canNotify() || pChar->canIndicate()) {
           reportChars.push_back(pChar);
           Serial.printf("BT Added Report char #%d for subscription", reportCount);
@@ -347,38 +373,34 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
       lastError = "No input report characteristic found";
       Serial.printf("BT No Report characteristic with notify/indicate found");
       pClient->disconnect();
+      try {
+        NimBLEDevice::deleteClient(pClient);
+      } catch (...) {
+        Serial.printf("BT Warning: failed to delete client after report char failure");
+      }
       return false;
     }
     
-    // Subscribe to ALL Report characteristics with notify capability
     Serial.printf("BT Subscribing to %d Report characteristics...", reportChars.size());
     
     for (size_t i = 0; i < reportChars.size(); i++) {
       auto* pChar = reportChars[i];
       Serial.printf("BT Subscribing to Report char #%d...", i + 1);
-      
-      // Subscribe with callback
       bool subResult = pChar->subscribe(true, onHIDNotify);
       Serial.printf("BT Report char #%d subscribe result: %d", i + 1, subResult);
-      
       if (!subResult) {
         Serial.printf("BT Failed to subscribe to Report char #%d (continuing)", i + 1);
       }
     }
     
-    Serial.printf("BT Subscribed to %d HID Report characteristics", reportChars.size());
-    
-    // Save connection with activity timestamp
     ConnectedDevice connDev;
     connDev.address = address;
     connDev.client = pClient;
     connDev.reportChars = reportChars;
     connDev.subscribed = true;
-    connDev.lastActivityTime = millis();  // Initialize activity timer
-    connDev.wasConnected = true;  // Mark for auto-reconnect if disconnected
+    connDev.lastActivityTime = millis();
+    connDev.wasConnected = true;
     
-    // Detect device profile
-    // First, try to find the device in scan results to get its name
     bool foundInScan = false;
     for (const auto& dev : _discoveredDevices) {
       if (dev.address == address) {
@@ -393,7 +415,6 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
       Serial.printf("BT Device not in scan results (may be previously paired): %s", address.c_str());
     }
     
-    // Always attempt profile matching by MAC address (and name if available)
     connDev.profile = DeviceProfiles::findDeviceProfile(address.c_str(), connDev.name.c_str());
     
     if (connDev.profile) {
@@ -408,7 +429,6 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
     Serial.printf("BT Successfully connected to %s", address.c_str());
     lastError = "Connected";
     
-    // Save the last connected device
     saveLastConnectedDevice(address, connDev.name);
     
     return true;
@@ -416,12 +436,60 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
   } catch (const std::exception& e) {
     lastError = std::string("Connection error: ") + e.what();
     Serial.printf("BT %s", lastError.c_str());
+    if (pClient) {
+      try {
+        pClient->disconnect();
+        NimBLEDevice::deleteClient(pClient);
+      } catch (...) {
+        Serial.printf("BT Warning: failed to cleanup client after exception");
+      }
+    }
     return false;
   } catch (...) {
     lastError = "Unknown connection error";
     Serial.printf("BT %s", lastError.c_str());
+    if (pClient) {
+      try {
+        pClient->disconnect();
+        NimBLEDevice::deleteClient(pClient);
+      } catch (...) {
+        Serial.printf("BT Warning: failed to cleanup client after unknown exception");
+      }
+    }
     return false;
   }
+}
+
+
+
+
+// Simple retry wrapper around connectToDevice.  It invokes the single-
+// attempt function up to `maxAttempts` times with a short delay between
+// tries.  This keeps higher-level code (UI) from having to loop itself.
+bool BluetoothHIDManager::connectToDeviceWithRetries(const std::string& address, int maxAttempts) {
+  if (!_enabled) {
+    Serial.printf("BT Cannot connect (retries): Bluetooth not enabled");
+    lastError = "Bluetooth not enabled";
+    return false;
+  }
+  if (address.empty()) {
+    Serial.printf("BT Invalid address (empty) passed to connectToDeviceWithRetries");
+    lastError = "Invalid address";
+    return false;
+  }
+  if (isConnected(address)) {
+    Serial.printf("BT Already connected to %s (retries)", address.c_str());
+    return true;
+  }
+  if (maxAttempts <= 0) maxAttempts = 1;
+  for (int i = 0; i < maxAttempts; ++i) {
+    Serial.printf("BT retry %d/%d for %s", i + 1, maxAttempts, address.c_str());
+    if (connectToDevice(address)) {
+      return true;
+    }
+    delay(200);
+  }
+  return false;
 }
 
 bool BluetoothHIDManager::disconnectFromDevice(const std::string& address) {
@@ -835,6 +903,10 @@ bool BluetoothHIDManager::loadLastConnectedDevice(std::string& address, std::str
   serialization::readString(inputFile, name);
   
   inputFile.close();
+  if (address.empty()) {
+    Serial.printf("BT Loaded bluetooth.bin but address field is empty");
+    return false;
+  }
   Serial.printf("BT Loaded last connected device: %s (%s)", name.c_str(), address.c_str());
   return true;
 }

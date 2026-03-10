@@ -80,6 +80,10 @@ class Xtc {
       return parser ? parser->getLoadedMaxPage() : 0;
   }
 
+  uint16_t getchapter(uint16_t pageNum) {
+      return parser ? parser->getChapterIndexByPage(pageNum) : 0;
+  }
+
   /**
    * 获取每次加载的批次页数（默认10）
    */
@@ -95,6 +99,27 @@ uint32_t getChapterstartpage(int chapterIndex) {
 std::string getChapterTitleByIndex(int chapterIndex) {
     return parser ? parser->getChapterTitleByIndex(chapterIndex) : "";
 }
+
+void releasePageBatchByStart(uint16_t startPage){    
+    if (parser) {
+        parser->releasePageBatchByStart(startPage);
+    }
+}
+    bool getPageInfo(uint32_t pageIndex, xtc::PageInfo& info) {
+        // 修正2：空指针校验 + 正确调用 parser 的 getPageInfo
+        if (parser) {
+            // 修正3：返回 parser->getPageInfo 的结果（bool 类型）
+            return parser->getPageInfo(pageIndex, info);
+        }
+        // 修正4：无 parser 时返回 false（补全返回值）
+        Serial.printf("[%lu] [XTC] getPageInfo失败：parser 为空\n", millis());
+        return false;
+    } 
+size_t getmaxchapter(){    
+    if (parser) {
+        return parser->maxChapterCount;
+    }
+};
 
 
   

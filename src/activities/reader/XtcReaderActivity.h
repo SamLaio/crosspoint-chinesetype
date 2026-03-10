@@ -24,6 +24,10 @@ class XtcReaderActivity final : public ActivityWithSubactivity {
   const std::function<void()> onGoBack;
   const std::function<void()> onGoHome;
 
+  // reusable page buffer to avoid malloc/free on every page
+  uint8_t* pageBuffer = nullptr;
+  size_t pageBufferCapacity = 0;
+
   static void taskTrampoline(void* param);
   [[noreturn]] void displayTaskLoop();
   void renderScreen();
@@ -32,6 +36,7 @@ class XtcReaderActivity final : public ActivityWithSubactivity {
   void loadProgress();
     //分批缓存
   uint32_t m_loadedMax = 499;
+
 
  public:
   explicit XtcReaderActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, std::unique_ptr<Xtc> xtc,

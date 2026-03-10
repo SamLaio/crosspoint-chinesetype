@@ -22,7 +22,7 @@ XtcParser::XtcParser()
       m_bitDepth(1),
       m_hasChapters(false),
       m_lastError(XtcError::OK),
-      m_loadBatchSize(2000),  // ✅ 按要求改为2000
+      m_loadBatchSize(200),  // 减小
       m_loadedMaxPage(0),
       m_loadedStartPage(0) {  // 记录当前页表的起始页 
   memset(&m_header, 0, sizeof(m_header));
@@ -354,7 +354,7 @@ XtcError XtcParser::readChapters_gd(uint16_t chapterStart) {
     uint64_t maxOffset = (m_header.pageTableOffset > 0 && m_header.pageTableOffset < fileSize) 
                         ? m_header.pageTableOffset : fileSize;
     uint64_t available = (maxOffset > chapterOffset) ? (maxOffset - chapterOffset) : 0;
-    size_t maxChapterCount = static_cast<size_t>(available / chapterSize);
+    maxChapterCount = static_cast<size_t>(available / chapterSize);
     
     Serial.printf("[%lu] [XTC-GD] 可读取章节数: %u (最大偏移: %llu, 可用空间: %llu)\n", 
                  millis(), (unsigned int)maxChapterCount, maxOffset, available);
@@ -621,44 +621,163 @@ bool XtcParser::isValidXtcFile(const char* filepath) {
   return (magic == XTC_MAGIC || magic == XTCH_MAGIC);
 }
 
+// XtcParser.cpp
 XtcError XtcParser::loadPageBatchByStart(uint16_t startPage) {
-  if(!m_isOpen) return XtcError::FILE_NOT_FOUND;
-  if(startPage >= m_header.pageCount) return XtcError::PAGE_OUT_OF_RANGE;
-
-  // 彻底清空旧页表
-  m_pageTable.clear();
-  m_pageTable.shrink_to_fit();
-
-  // 精准加载指定起始页的2000页批次
-  m_loadedStartPage = startPage;
-  uint16_t endPage = startPage + m_loadBatchSize - 1;
-  if(endPage >= m_header.pageCount) endPage = m_header.pageCount - 1;
-  uint16_t loadCount = endPage - startPage + 1;
-
-  // 定位到指定批次的页表位置
-  uint64_t seekOffset = m_header.pageTableOffset + (static_cast<uint64_t>(startPage) * sizeof(PageTableEntry));
-  if(!m_file.seek(seekOffset)) return XtcError::READ_ERROR;
-
-  // 加载新批次数据
-  m_pageTable.resize(loadCount);
-  for(uint16_t i = startPage; i <= endPage; i++) {
-    PageTableEntry entry;
-    if(m_file.read(reinterpret_cast<uint8_t*>(&entry), sizeof(PageTableEntry)) != sizeof(PageTableEntry)) {
-      return XtcError::READ_ERROR;
+    if(!m_isOpen) {
+        Serial.printf("[%lu] [XTC] 加载批次失败：文件未打开\n", millis());
+        return XtcError::FILE_NOT_FOUND;
     }
-    uint16_t relIdx = i - startPage;
-    m_pageTable[relIdx].offset = static_cast<uint32_t>(entry.dataOffset);
-    m_pageTable[relIdx].size = entry.dataSize;
-    m_pageTable[relIdx].width = entry.width;
-    m_pageTable[relIdx].height = entry.height;
-    m_pageTable[relIdx].bitDepth = m_bitDepth;
-  }
+    if(startPage >= m_header.pageCount) {
+        Serial.printf("[%lu] [XTC] 加载批次失败：起始页%u超出总页数%u\n", millis(), startPage, m_header.pageCount);
+        return XtcError::PAGE_OUT_OF_RANGE;
+    }
 
-  m_loadedMaxPage = endPage;
-  Serial.printf("[XTC] 加载批次 ✔️ : [%u~%u] (共%u页) | 内存占用恒定\n", 
-               startPage, endPage, loadCount);
-  return XtcError::OK;
+    // 保存当前状态（加载失败时回滚）
+    uint16_t oldStart = m_loadedStartPage;
+    uint16_t oldMax = m_loadedMaxPage;
+    std::vector<PageInfo> oldPageTable = m_pageTable;
+
+    // 计算批次范围（严格边界校验）
+    m_loadedStartPage = startPage;
+    uint16_t endPage = startPage + m_loadBatchSize - 1;
+    endPage = (endPage >= m_header.pageCount) ? (m_header.pageCount - 1) : endPage;
+    uint16_t loadCount = endPage - startPage + 1;
+
+    // 定位页表位置（添加64位偏移校验）
+    uint64_t seekOffset = m_header.pageTableOffset + (static_cast<uint64_t>(startPage) * sizeof(PageTableEntry));
+    if (seekOffset >= m_file.size()) {
+        Serial.printf("[%lu] [XTC] 加载批次失败：偏移%llu超出文件大小%llu\n", millis(), seekOffset, m_file.size());
+        // 回滚状态
+        m_loadedStartPage = oldStart;
+        m_loadedMaxPage = oldMax;
+        m_pageTable = oldPageTable;
+        return XtcError::READ_ERROR;
+    }
+
+    if(!m_file.seek(seekOffset)) {
+        Serial.printf("[%lu] [XTC] 加载批次失败：无法定位到偏移%llu\n", millis(), seekOffset);
+        // 回滚状态
+        m_loadedStartPage = oldStart;
+        m_loadedMaxPage = oldMax;
+        m_pageTable = oldPageTable;
+        return XtcError::READ_ERROR;
+    }
+
+    // 加载页表（逐行校验，失败则回滚）
+    m_pageTable.resize(loadCount);
+    bool loadSuccess = true;
+    for(uint16_t i = startPage; i <= endPage; i++) {
+        PageTableEntry entry;
+        if(m_file.read(reinterpret_cast<uint8_t*>(&entry), sizeof(PageTableEntry)) != sizeof(PageTableEntry)) {
+            Serial.printf("[%lu] [XTC] 加载批次失败：读取第%u页表项失败\n", millis(), i);
+            loadSuccess = false;
+            break;
+        }
+        uint16_t relIdx = i - startPage;
+        m_pageTable[relIdx].offset = static_cast<uint32_t>(entry.dataOffset);
+        m_pageTable[relIdx].size = entry.dataSize;
+        m_pageTable[relIdx].width = entry.width;
+        m_pageTable[relIdx].height = entry.height;
+        m_pageTable[relIdx].bitDepth = m_bitDepth;
+
+        // 校验页表项有效性（避免无效偏移）
+        if (m_pageTable[relIdx].offset >= m_file.size()) {
+            Serial.printf("[%lu] [XTC] 加载批次失败：第%u页偏移%lu超出文件大小\n", millis(), i, m_pageTable[relIdx].offset);
+            loadSuccess = false;
+            break;
+        }
+    }
+
+    if (!loadSuccess) {
+        // 回滚到旧状态
+        m_loadedStartPage = oldStart;
+        m_loadedMaxPage = oldMax;
+        m_pageTable = oldPageTable;
+        return XtcError::READ_ERROR;
+    }
+
+    m_loadedMaxPage = endPage;
+    Serial.printf("[%lu] [XTC] 加载批次 ✔️ : [%u~%u] (共%u页) | 页表项数=%u\n", 
+                 millis(), startPage, endPage, loadCount, (uint16_t)m_pageTable.size());
+    return XtcError::OK;
 }
 
+// ========== 新增：释放批次内存（解决内存泄漏核心） ==========
+// XtcParser.cpp
+void XtcParser::releasePageBatchByStart(uint16_t startPage) {
+    if (!m_isOpen) {
+        Serial.printf("[%lu] [XTC] 释放批次失败：文件未打开\n", millis());
+        return;
+    }
+
+    // 仅当起始页匹配当前加载批次时才释放（避免误释放）
+    if (startPage == m_loadedStartPage && m_loadedMaxPage >= m_loadedStartPage) {
+        // 清空页表但保留vector容器（避免后续resize时重新分配内存导致碎片）
+        m_pageTable.clear(); 
+        // 重置状态为"无有效批次"（关键：后续加载会检测此状态）
+        m_loadedStartPage = 0;
+        m_loadedMaxPage = 0;
+        
+        Serial.printf("[%lu] [XTC] 释放批次 ✔️ : [%u~%u] | 页表已清空\n", 
+                     millis(), startPage, m_loadedMaxPage);
+    } else {
+        Serial.printf("[%lu] [XTC] 跳过释放：批次[%u]非当前加载批次[%u~%u]\n", 
+                     millis(), startPage, m_loadedStartPage, m_loadedMaxPage);
+    }
+}
+
+// 之前写的时候没想那么多，没给自己留空，算了，用二分法查章节吧
+uint16_t XtcParser::getChapterIndexByPage(uint16_t pageNum) {
+    if (!m_isOpen || maxChapterCount == 0) {
+        Serial.printf("[%lu] [XTC] 无法找章节：文件未打开或无章节数据\n", millis());
+        return 0;
+    }
+
+    // 二分法初始化：左边界=0，右边界=最大章节数-1
+    uint16_t left = 0;
+    uint16_t right = static_cast<uint16_t>(maxChapterCount - 1);
+    uint16_t targetChapter = 0; // 最终找到的章节索引
+
+    while (left <= right) {
+        // 1. 计算中间位置（避免溢出）
+        uint16_t mid = left + ((right - left) / 2);
+        
+        // 2. 分段读取中间位置所在的章节块（每次读25章，和readChapters_gd逻辑一致）
+        uint16_t batchStart = (mid / 25) * 25; // 计算mid所在的25章块起始索引
+        readChapters_gd(batchStart); // 读取该块的章节数据到ChapterList
+        
+        // 3. 找到mid在当前ChapterList中的相对索引
+        uint8_t relMid = mid - batchStart;
+        if (relMid >= chapterActualCount) {
+            // mid超出当前读取的章节块 → 说明右边界过大，缩小右边界
+            right = mid - 1;
+            continue;
+        }
+
+        // 4. 二分核心判断
+        uint16_t midChapterStartPage = ChapterList[relMid].startPage;
+        if (midChapterStartPage <= pageNum) {
+            // 中间章节起始页 ≤ 目标页码 → 记录为候选，继续找更大的索引
+            targetChapter = mid;
+            left = mid + 1;
+        } else {
+            // 中间章节起始页 > 目标页码 → 缩小右边界
+            right = mid - 1;
+        }
+
+        Serial.printf("[%lu] [XTC] 二分查找：mid=%u, 起始页=%u, 目标页=%u → 左=%u, 右=%u\n", 
+                     millis(), mid, midChapterStartPage, pageNum, left, right);
+    }
+
+    // 5. 验证最终结果（读取目标章节所在块，确认起始页）
+    uint16_t finalBatchStart = (targetChapter / 25) * 25;
+    readChapters_gd(finalBatchStart);
+    uint8_t finalRelIdx = targetChapter - finalBatchStart;
+    uint16_t finalStartPage = ChapterList[finalRelIdx].startPage;
+    
+    Serial.printf("[%lu] [XTC] 最终结果：页码%u对应章节索引%u，章节起始页%u\n", 
+                 millis(), pageNum, targetChapter, finalStartPage);
+    return targetChapter;
+}
 
 }  // namespace xtc

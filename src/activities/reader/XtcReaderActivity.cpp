@@ -17,6 +17,7 @@
 #include "RecentBooksStore.h"
 #include "XtcReaderChapterSelectionActivity.h"
 #include "fontIds.h"
+#include "../../lib/Xtc/Xtc/XtcTypes.h"
 
 namespace {
 constexpr unsigned long skipPageMs = 700;
@@ -35,7 +36,12 @@ void XtcReaderActivity::onEnter() {
   if (!xtc) {
     return;
   }
-
+  // 新增：进入时清理旧缓冲区（避免脏数据）
+  if (pageBuffer) {
+    free(pageBuffer);
+    pageBuffer = nullptr;
+    pageBufferCapacity = 0;
+  }
   renderingMutex = xSemaphoreCreateMutex();
 
   xtc->setupCacheDir();
@@ -52,7 +58,7 @@ void XtcReaderActivity::onEnter() {
   updateRequired = true;
 
   xTaskCreate(&XtcReaderActivity::taskTrampoline, "XtcReaderActivityTask",
-              4096,               // Stack size (smaller than EPUB since no parsing needed)
+              8192,               // Stack size (smaller than EPUB since no parsing needed)
               this,               // Parameters
               1,                  // Priority
               &displayTaskHandle  // Task handle
@@ -70,7 +76,15 @@ void XtcReaderActivity::onExit() {
   }
   vSemaphoreDelete(renderingMutex);
   renderingMutex = nullptr;
+  APP_STATE.readerActivityLoadCount = 0;
+  APP_STATE.saveToFile();
   xtc.reset();
+    // 新增：退出时释放复用的缓冲区
+  if (pageBuffer) {
+    free(pageBuffer);
+    pageBuffer = nullptr;
+    pageBufferCapacity = 0;
+  }
 }
 
 void XtcReaderActivity::loop() {
@@ -196,24 +210,35 @@ void XtcReaderActivity::renderPage() {
   // XTH (2-bit): Two bit planes, column-major, ((width * height + 7) / 8) * 2 bytes
   size_t pageBufferSize;
 
-
   if (bitDepth == 2) {
     pageBufferSize = ((static_cast<size_t>(pageWidth) * pageHeight + 7) / 8) * 2;
   } else {
     pageBufferSize = ((pageWidth + 7) / 8) * pageHeight;
   }
 
-  // Allocate page buffer
-  uint8_t* pageBuffer = static_cast<uint8_t*>(malloc(pageBufferSize));
-  if (!pageBuffer) {
-    Serial.printf("[%lu] [XTR] Failed to allocate page buffer (%lu bytes)\n", millis(), pageBufferSize);
-    renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Memory error", true, EpdFontFamily::BOLD);
-    renderer.displayBuffer();
-    return;
+  // ========== 修改1：替换原有局部 malloc 逻辑为复用缓冲区 ==========
+  // 复用全局缓冲区，仅尺寸不足时重新分配（删除原有局部 pageBuffer 定义）
+  if (pageBufferCapacity < pageBufferSize) {
+    // 释放旧缓冲区
+    if (pageBuffer) {
+      free(pageBuffer);
+      pageBuffer = nullptr;
+    }
+    // 用 calloc 初始化（避免脏数据），替代原有的 malloc
+    pageBuffer = static_cast<uint8_t*>(calloc(1, pageBufferSize));
+    if (!pageBuffer) {
+      Serial.printf("[%lu] [XTR] Failed to allocate page buffer (%lu bytes)\n", millis(), pageBufferSize);
+      renderer.clearScreen();
+      renderer.drawCenteredText(UI_12_FONT_ID, 300, "Memory error", true, EpdFontFamily::BOLD);
+      renderer.displayBuffer();
+      return;
+    }
+    pageBufferCapacity = pageBufferSize; // 更新缓冲区容量
   }
+  // ========== 修改1 结束 ==========
 
   // Load page data
+  // 注意：这里直接用全局 pageBuffer，不再用局部变量
   size_t bytesRead = xtc->loadPage(currentPage, pageBuffer, pageBufferSize);
 
   if (bytesRead == 0) {
@@ -224,14 +249,17 @@ void XtcReaderActivity::renderPage() {
     updateRequired = true; 
     return;
   }
-  if (bytesRead == 0) {
-    Serial.printf("[%lu] [XTR] Failed to load page %lu\n", millis(), currentPage);
-    free(pageBuffer);
-    renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Page load error", true, EpdFontFamily::BOLD);
-    renderer.displayBuffer();
-    return;
-  }
+  // ========== 修改2：删除重复的 bytesRead == 0 判断（避免重复释放） ==========
+  // 注释/删除以下这段重复逻辑
+  // if (bytesRead == 0) {
+  //   Serial.printf("[%lu] [XTR] Failed to load page %lu\n", millis(), currentPage);
+  //   free(pageBuffer);
+  //   renderer.clearScreen();
+  //   renderer.drawCenteredText(UI_12_FONT_ID, 300, "Page load error", true, EpdFontFamily::BOLD);
+  //   renderer.displayBuffer();
+  //   return;
+  // }
+  // ========== 修改2 结束 ==========
 
   // Clear screen first
   renderer.clearScreen();
@@ -336,7 +364,9 @@ void XtcReaderActivity::renderPage() {
     // Cleanup grayscale buffers with current frame buffer
     renderer.cleanupGrayscaleWithFrameBuffer();
 
-    free(pageBuffer);
+    // ========== 修改3：删除 2-bit 分支里的 free(pageBuffer) ==========
+    // free(pageBuffer);  // 注释/删除这行，全局缓冲区统一在 onExit 释放
+    // ========== 修改3 结束 ==========
 
     Serial.printf("[%lu] [XTR] Rendered page %lu/%lu (2-bit grayscale)\n", millis(), currentPage + 1,
                   xtc->getPageCount());
@@ -362,7 +392,9 @@ void XtcReaderActivity::renderPage() {
   }
   // White pixels are already cleared by clearScreen()
 
-  free(pageBuffer);
+  // ========== 修改4：删除函数末尾的 free(pageBuffer) ==========
+  // free(pageBuffer);  // 注释/删除这行，全局缓冲区统一在 onExit 释放
+  // ========== 修改4 结束 ==========
 
   // XTC pages already have status bar pre-rendered, no need to add our own
 
@@ -380,28 +412,59 @@ void XtcReaderActivity::renderPage() {
 }
 
 // 跳转函数
+// XtcReaderActivity.cpp
 void XtcReaderActivity::gotoPage(uint32_t targetPage) {
-  const uint32_t totalPages = xtc->getPageCount();
-  // 1. 边界防护：页码不能越界
-  if (targetPage >= totalPages) targetPage = totalPages - 1;
-  if (targetPage < 0) targetPage = 0;
+    // 前置空指针+合法性校验（终极防护）
+    if (!xtc) {
+        Serial.printf("[%lu] [XTR] gotoPage失败：xtc为空\n", millis());
+        currentPage = 0;
+        updateRequired = true;
+        return;
+    }
 
-  
-  uint32_t targetBatchStart = (targetPage / loadedMaxPage_per) * loadedMaxPage_per;
-  
-  //按批次加载
-  xtc->loadPageBatchByStart(targetBatchStart);
-  
-  m_loadedMax = targetBatchStart + loadedMaxPage_per - 1; // Activity的最大值
-  if(m_loadedMax >= totalPages) m_loadedMax = totalPages - 1;
+    const uint32_t totalPages = xtc->getPageCount();
+    if (totalPages == 0) {
+        Serial.printf("[%lu] [XTR] gotoPage失败：总页数为0\n", millis());
+        currentPage = 0;
+        updateRequired = true;
+        return;
+    }
 
-  currentPage = targetPage;
-  updateRequired = true;
-  Serial.printf("[跳转] 目标页%lu → 加载批次[%lu~%lu] | 内存已释放\n", targetPage, targetBatchStart, m_loadedMax);
+    // 强制校正目标页（避免越界）
+    uint32_t safeTargetPage = targetPage;
+    safeTargetPage = (safeTargetPage >= totalPages) ? (totalPages - 1) : safeTargetPage;
+    safeTargetPage = (safeTargetPage < 0) ? 0 : safeTargetPage;
+
+    // 计算批次起始页（避免0页批次）
+    uint32_t targetBatchStart = (safeTargetPage / loadedMaxPage_per) * loadedMaxPage_per;
+    targetBatchStart = (targetBatchStart >= totalPages) ? ((totalPages / loadedMaxPage_per) * loadedMaxPage_per) : targetBatchStart;
+    if (targetBatchStart < 0) targetBatchStart = 0;
+
+    // 释放旧批次（仅当批次变化时）
+    static uint32_t lastBatchStart = 0;
+    if (targetBatchStart != lastBatchStart) {
+        xtc->releasePageBatchByStart(lastBatchStart);
+        lastBatchStart = targetBatchStart;
+    }
+
+    // 加载新批次（添加返回值校验）
+    xtc::XtcError loadErr = xtc->loadPageBatchByStart((uint16_t)targetBatchStart);
+    if (loadErr != xtc::XtcError::OK) {
+        Serial.printf("[%lu] [XTR] 加载批次失败：%u，降级为仅加载当前页\n", millis(), (uint8_t)loadErr);
+    }
+
+    // 校正加载最大页
+    m_loadedMax = targetBatchStart + loadedMaxPage_per - 1;
+    m_loadedMax = (m_loadedMax >= totalPages) ? (totalPages - 1) : m_loadedMax;
+
+    // 更新当前页并标记刷新
+    currentPage = safeTargetPage;
+    updateRequired = true;
+
+    // 打印最终状态（方便调试）
+    Serial.printf("[%lu] [跳转] 最终状态：目标页=%lu, 批次[%lu~%lu], 总页数=%lu\n", 
+                 millis(), safeTargetPage, targetBatchStart, m_loadedMax, totalPages);
 }
-
-
-
 void XtcReaderActivity::saveProgress() const {
   FsFile f;
   if (SdMan.openFileForWrite("XTR", xtc->getCachePath() + "/progress.bin", f)) {

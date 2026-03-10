@@ -128,6 +128,11 @@ std::string getChapterTitleByIndex(int chapterIndex) {
   int chapterActualCount = 0;
   XtcError loadPageBatchByStart(uint16_t startPage);
 
+  void releasePageBatchByStart(uint16_t startPage);
+
+  size_t maxChapterCount;
+  uint16_t getChapterIndexByPage(uint16_t pageNum);
+
   
 
  private:

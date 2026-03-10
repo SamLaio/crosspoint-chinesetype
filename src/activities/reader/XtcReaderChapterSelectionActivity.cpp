@@ -52,32 +52,14 @@ void XtcReaderChapterSelectionActivity::onEnter() {
       break;
     default:
       break;
-  }
+  };
 
 
   updateRequired = true;
   //循环找所在章节
 
-  int testpage=0;
-  xtc->readChapters_gd(testpage*getPageItems());
-  while(currentPage >this->xtc->getChapterstartpage(testpage*getPageItems())){
-    
-    testpage++;
-    xtc->readChapters_gd(testpage*getPageItems());
-    Serial.printf("[%lu] [XTC] 比较，所在页码：%d，目前页码：%d\n", millis(), currentPage, this->xtc->getChapterstartpage(testpage*getPageItems()));
-  }
-  //找到页
-  page = testpage;
-  int i =(testpage-1)*getPageItems();
-  xtc->readChapters_gd((testpage-1)*getPageItems());
-  while(currentPage >this->xtc->getChapterstartpage(i)){
-    
-    i++;
-    Serial.printf("[%lu] [XTC] 查找到：%d\n", millis(), i);
-    Serial.printf("[%lu] [XTC] 比较，所在页码：%d，目前页码：%d\n", millis(), currentPage, this->xtc->getChapterstartpage(i));
-  }
-  //找到章
-  selectorIndex = i; // 计算当前章节在页内的索引
+ selectorIndex = xtc->getchapter(currentPage); 
+ page = selectorIndex/getPageItems()+1;
 
   xTaskCreate(&XtcReaderChapterSelectionActivity::taskTrampoline, "XtcReaderChapterSelectionTask",
               4096,        
