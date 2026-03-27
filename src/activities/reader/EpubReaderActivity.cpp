@@ -4,6 +4,7 @@
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
 #include <SDCardManager.h>
+#include <Serialization.h>
 
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
@@ -25,6 +26,95 @@ constexpr unsigned long skipChapterMs = 700;
 constexpr unsigned long goHomeMs = 1000;
 constexpr int statusBarMargin = 20;
 constexpr int progressBarMarginTop = 1;
+constexpr uint32_t WALLPAPER_PXC_MAGIC = 0x31584350;   // "PXC1"
+constexpr uint16_t WALLPAPER_PXC_VERSION = 1;
+constexpr char WALLPAPER_PXC_PATH[] = "/.crosspoint/wallpaper_bg.pxc";
+constexpr uint8_t WALLPAPER_PXC_FIXED_ORIENTATION = CrossPointSettings::ORIENTATION::PORTRAIT;
+
+bool loadWallpaperPxcToFramebuffer(const std::string& pxcPath, GfxRenderer& renderer) {
+  FsFile input;
+  if (!SdMan.openFileForRead("SLP", pxcPath, input)) {
+    return false;
+  }
+
+  uint32_t magic = 0;
+  uint16_t version = 0;
+  uint8_t cachedOrientation = 0;
+  uint8_t reserved = 0;
+  uint32_t payloadSize = 0;
+
+  serialization::readPod(input, magic);
+  serialization::readPod(input, version);
+  serialization::readPod(input, cachedOrientation);
+  serialization::readPod(input, reserved);
+  serialization::readPod(input, payloadSize);
+
+  const uint32_t expectedPayload = static_cast<uint32_t>(renderer.getBufferSize());
+    if (magic != WALLPAPER_PXC_MAGIC || version != WALLPAPER_PXC_VERSION ||
+      cachedOrientation != WALLPAPER_PXC_FIXED_ORIENTATION ||
+      payloadSize != expectedPayload) {
+    input.close();
+    return false;
+  }
+
+  uint8_t* frameBuffer = renderer.getFrameBuffer();
+  if (!frameBuffer) {
+    input.close();
+    return false;
+  }
+
+  size_t totalRead = 0;
+  while (totalRead < payloadSize) {
+    const size_t toRead = std::min(static_cast<size_t>(1024), static_cast<size_t>(payloadSize - totalRead));
+    const int bytesRead = input.read(frameBuffer + totalRead, toRead);
+    if (bytesRead <= 0) {
+      input.close();
+      return false;
+    }
+    totalRead += static_cast<size_t>(bytesRead);
+  }
+
+  input.close();
+  return true;
+}
+
+bool saveWallpaperPxcFromFramebuffer(const std::string& pxcPath, GfxRenderer& renderer) {
+  uint8_t* frameBuffer = renderer.getFrameBuffer();
+  if (!frameBuffer) {
+    return false;
+  }
+
+  SdMan.mkdir("/.crosspoint");
+
+  FsFile output;
+  if (!SdMan.openFileForWrite("SLP", pxcPath, output)) {
+    return false;
+  }
+
+  const uint32_t payloadSize = static_cast<uint32_t>(renderer.getBufferSize());
+  const uint8_t reserved = 0;
+
+  serialization::writePod(output, WALLPAPER_PXC_MAGIC);
+  serialization::writePod(output, WALLPAPER_PXC_VERSION);
+  serialization::writePod(output, WALLPAPER_PXC_FIXED_ORIENTATION);
+  serialization::writePod(output, reserved);
+  serialization::writePod(output, payloadSize);
+
+  size_t totalWritten = 0;
+  while (totalWritten < payloadSize) {
+    const size_t toWrite = std::min(static_cast<size_t>(1024), static_cast<size_t>(payloadSize - totalWritten));
+    const size_t bytesWritten = output.write(frameBuffer + totalWritten, toWrite);
+    if (bytesWritten != toWrite) {
+      output.close();
+      return false;
+    }
+    totalWritten += bytesWritten;
+  }
+
+  output.sync();
+  output.close();
+  return true;
+}
 
 int clampPercent(int percent) {
   if (percent < 0) {
@@ -155,10 +245,11 @@ void EpubReaderActivity::onExit() {
 
 void EpubReaderActivity::loop() {
   if(state== EPUBState::READING){
-    if (mappedInput.isPressed(MappedInputManager::Button::Confirm) && mappedInput.getHeldTime() >= 100000) {
+    if (mappedInput.isPressed(MappedInputManager::Button::Confirm) && mappedInput.getHeldTime() >= 1000) {
       Serial.printf("[%lu] [ERS] Long press detected, entering settings\n", millis());
       state = EPUBState::SETTING;
       skipNextButtonCheck = true; // 避免按钮事件冲突
+      updateRequired = true;
       return;
     }
     // Pass input responsibility to sub activity if exists
@@ -312,34 +403,46 @@ void EpubReaderActivity::loop() {
   }else if (state == EPUBState::SETTING) {
     if (mappedInput.wasPressed(MappedInputManager::Button::Back) ) {
       Serial.printf("[%lu] [ERS] Long press detected, entering reading\n", millis());
+      if (pendingMarginRelayout) {
+        xSemaphoreTake(renderingMutex, portMAX_DELAY);
+        if (section) {
+          cachedSpineIndex = currentSpineIndex;
+          cachedChapterTotalPageCount = section->pageCount;
+          nextPageNumber = section->currentPage;
+        }
+        section.reset();
+        xSemaphoreGive(renderingMutex);
+        pendingMarginRelayout = false;
+      }
       state = EPUBState::READING;
       skipNextButtonCheck = true;
       SETTINGS.saveToFile();
+      updateRequired = true;
       return;
     }
     if (mappedInput.wasPressed(MappedInputManager::Button::Left)) {
       Serial.printf("[%lu] [ERS] 进入左边距设置\n", millis());
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       SETTINGS.screenMargin_Left+=5;
-      section.reset();
       xSemaphoreGive(renderingMutex);
+      pendingMarginRelayout = true;
       updateRequired = true;
     }
     if (mappedInput.wasPressed(MappedInputManager::Button::Right)) {
       Serial.printf("[%lu] [ERS] 进入右边距设置\n", millis());
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       SETTINGS.screenMargin_Right+=5;
-      section.reset();
       xSemaphoreGive(renderingMutex);
 
+      pendingMarginRelayout = true;
       updateRequired = true;
     }
     if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
       Serial.printf("[%lu] [ERS] 进入上边距设置\n", millis());
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       SETTINGS.screenMargin_Top+=5;
-      section.reset();
       xSemaphoreGive(renderingMutex);
+      pendingMarginRelayout = true;
       updateRequired = true;
     }
     if (mappedInput.wasPressed(MappedInputManager::Button::Down)) {
@@ -347,11 +450,44 @@ void EpubReaderActivity::loop() {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       SETTINGS.screenMargin_Bottom+=5;
       Serial.printf("[%lu] [ERS] Bottom为%d\n", millis(), SETTINGS.screenMargin_Bottom);
-      section.reset();
       xSemaphoreGive(renderingMutex);
+      pendingMarginRelayout = true;
       updateRequired = true;
     }
+    if (mappedInput.isPressed(MappedInputManager::Button::Left) && mappedInput.getHeldTime() >= 2000) {
+      Serial.printf("[%lu] [ERS] 进入左边距设置\n", millis());
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      SETTINGS.screenMargin_Left-=5;
+      xSemaphoreGive(renderingMutex);
+      pendingMarginRelayout = true;
+      updateRequired = true;
+    }
+    if (mappedInput.isPressed(MappedInputManager::Button::Right) && mappedInput.getHeldTime() >= 2000) {
+      Serial.printf("[%lu] [ERS] 进入右边距设置\n", millis());
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      SETTINGS.screenMargin_Right-=5;
+      xSemaphoreGive(renderingMutex);
 
+      pendingMarginRelayout = true;
+      updateRequired = true;
+    }
+    if (mappedInput.isPressed(MappedInputManager::Button::Up) && mappedInput.getHeldTime() >= 2000) {
+      Serial.printf("[%lu] [ERS] 进入上边距设置\n", millis());
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      SETTINGS.screenMargin_Top-=5;
+      xSemaphoreGive(renderingMutex);
+      pendingMarginRelayout = true;
+      updateRequired = true;
+    }
+    if (mappedInput.isPressed(MappedInputManager::Button::Down) && mappedInput.getHeldTime() >= 2000) {
+      Serial.printf("[%lu] [ERS] 进入下边距设置\n", millis());
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      SETTINGS.screenMargin_Bottom-=5;
+      Serial.printf("[%lu] [ERS] Bottom为%d\n", millis(), SETTINGS.screenMargin_Bottom);
+      xSemaphoreGive(renderingMutex);
+      pendingMarginRelayout = true;
+      updateRequired = true;
+    }
 }
 
 
@@ -667,6 +803,7 @@ void EpubReaderActivity::renderScreen() {
   orientedMarginRight += SETTINGS.screenMargin_Right;
   orientedMarginBottom += SETTINGS.screenMargin_Bottom; 
 
+
   if (!section) {
     const auto filepath = epub->getSpineItem(currentSpineIndex).href;
     Serial.printf("[%lu] [ERS] Loading file: %s, index: %d\n", millis(), filepath.c_str(), currentSpineIndex);
@@ -785,10 +922,47 @@ void EpubReaderActivity::saveProgress(int spineIndex, int currentPage, int pageC
 void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int orientedMarginTop,
                                         const int orientedMarginRight, const int orientedMarginBottom,
                                         const int orientedMarginLeft) {
-    // Force full refresh for pages with images when anti-aliasing is on,
+  auto applySettingMarginPreviewOverlay =
+      [this, orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft]() {
+    if (state != EPUBState::SETTING) {
+      return;
+    }
+
+    const int screenWidth = renderer.getScreenWidth();
+    const int screenHeight = renderer.getScreenHeight();
+    const int contentX = orientedMarginLeft;
+    const int contentY = orientedMarginTop;
+    const int contentWidth = screenWidth - orientedMarginLeft - orientedMarginRight;
+    const int contentHeight = screenHeight - orientedMarginTop - orientedMarginBottom;
+
+    if (contentWidth > 2 && contentHeight > 2) {
+      renderer.drawRect(contentX, contentY, contentWidth, contentHeight, 3, true);
+    }
+
+    const char* line1 = "进入边距设置";
+    const char* line2 = "请注意边框";
+    const char* line3 = "短按加边距";
+    const char* line4 = "长按减边距";
+    const int textW1 = renderer.getTextWidth(UI_12_FONT_ID, line1);
+    const int textW2 = renderer.getTextWidth(UI_12_FONT_ID, line2);
+    const int boxWidth = std::max(textW1, textW2) + 24;
+    const int lineHeight = 18;
+    const int boxHeight = lineHeight * 4 + 20;
+    const int boxX = (screenWidth - boxWidth) / 2;
+    const int boxY = (screenHeight - boxHeight) / 2;
+
+    renderer.fillRect(boxX, boxY, boxWidth, boxHeight,  false);
+    renderer.drawCenteredText(UI_12_FONT_ID, boxY + 8, line1, true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, boxY + 8 + lineHeight, line2, true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, boxY + 8 + 2*lineHeight, line3, true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, boxY + 8 + 3*lineHeight, line4, true, EpdFontFamily::BOLD);    
+  };
+
+  // Force full refresh for pages with images when anti-aliasing is on,
   // as grayscale tones require half refresh to display correctly
   bool forceFullRefresh = page->hasImages() && SETTINGS.textAntiAliasing;
   page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+  applySettingMarginPreviewOverlay();
   renderStatusBar(orientedMarginRight, orientedMarginBottom,orientedMarginTop, orientedMarginLeft);
   if (forceFullRefresh || pagesUntilFullRefresh <= 1) {
     renderer.displayBuffer(HalDisplay::HALF_REFRESH);
@@ -807,12 +981,14 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
     page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+    applySettingMarginPreviewOverlay();
     renderer.copyGrayscaleLsbBuffers();
 
     // Render and copy to MSB buffer
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
     page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+    applySettingMarginPreviewOverlay();
     renderer.copyGrayscaleMsbBuffers();
 
     // display grayscale part
@@ -939,81 +1115,10 @@ void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const in
 
 
 void EpubReaderActivity::renderPngSleepScreen(GfxRenderer& renderer) const {
-
-  auto dir = SdMan.open("/bizhi");
-  if (dir && dir.isDirectory()) {
-    std::vector<std::string> files;
-    char name[500];
-    // collect all valid PNG files
-    for (auto file = dir.openNextFile(); file; file = dir.openNextFile()) {
-      if (file.isDirectory()) {
-        file.close();
-        continue;
-      }
-      file.getName(name, sizeof(name));
-      auto filename = std::string(name);
-      if (filename[0] == '.') {
-        file.close();
-        continue;
-      }
-
-      // 判断png后缀（对齐txtpng的文件格式判断）
-      std::string ext = filename.substr(filename.length() - 4);
-      for (auto& c : ext) c = tolower(c);
-      if (ext != ".png") {
-        Serial.printf("[%lu] [SLP] Skipping non-.png file name: %s\n", millis(), name);
-        file.close();
-        continue;
-      }
-    
-      // 验证PNG文件是否有效（对齐txtpng的文件打开校验）
-      ImageDimensions pngDim;
-      if (!PngToFramebufferConverter::getDimensionsStatic("/bizhi/" + filename, pngDim)) {
-        Serial.printf("[%lu] [SLP] Skipping invalid PNG file: %s\n", millis(), name);
-        file.close();
-        continue;
-      }
-      files.emplace_back(filename);
-      file.close();
-    }
-    Serial.printf("[%lu] [SLP] Found %d valid PNG files\n", millis(), files.size());
-    const auto numFiles = files.size();
-    if (numFiles > 0) {
-      // 只选一个
-      auto randomFileIndex = 0;
-      
-      
-      Serial.printf("[%lu] [SLP] randomFileIndex: %d\n", millis(), randomFileIndex);
-      const auto filename = "/bizhi/" + files[randomFileIndex];
-      Serial.printf("[%lu] [SLP] Randomly loading: %s\n", millis(), filename.c_str());
-      delay(100);
-    
-      // 配置PNG渲染参数
-      RenderConfig renderConfig;
-      renderConfig.x = 0;                
-      renderConfig.y = 0;                
-      renderConfig.maxWidth = 480;       
-      renderConfig.maxHeight = 800;      
-      renderConfig.useDithering = true;
-      renderConfig.cachePath = "";
-    
-      // 解码并渲染PNG
-      PngToFramebufferConverter pngConverter;
-      if (pngConverter.decodeToFramebuffer(filename, renderer, renderConfig)) {
-        // ========== 对齐txtpng的绘制完成后无额外操作，仅刷新 ==========
-        //renderer.displayBuffer(HalDisplay::HALF_REFRESH);
-        //delay(200); // 给屏幕刷新时间
-        dir.close();
-        Serial.printf("[%lu] [SLP] Png draw completed (mode: %d)\n", millis(), renderer.getRenderMode());
-        return;
-      } else {
-        Serial.printf("[%lu] [SLP] Failed to render PNG: %s\n", millis(), filename.c_str());
-      }
-    }
+  const std::string pxcPath = WALLPAPER_PXC_PATH;
+  if (loadWallpaperPxcToFramebuffer(pxcPath, renderer)) {
+    Serial.printf("[%lu] [SLP] Loaded wallpaper PXC cache\n", millis());
+    return;
   }
-  if (dir) dir.close();
-
-
-  // 无有效PNG文件，保持底层显示（对齐txtpng的失败处理）
-  Serial.printf("[%lu] [SLP] No valid PNG file, keep default screen\n", millis());
+  Serial.printf("[%lu] [SLP] Wallpaper PXC missing, skip reader background\n", millis());
 }

@@ -272,10 +272,7 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
     return true;
   }
   
-  // we used to require that the address appear in the most recent scan
-  // results and advertise HID; this check consumed memory and was a problem
-  // on low‑RAM builds, and since we save the last connected address we can
-  // simply trust it.  keep the check as a warning only.
+  // 保留你要求的拦截逻辑：必须在扫描列表中
   bool seen = false;
   for (const auto& dev : _discoveredDevices) {
     if (dev.address == address) {
@@ -288,36 +285,34 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
       break;
     }
   }
+  // 保留拦截：不在扫描结果里 → 直接返回失败
   if (!seen) {
     Serial.printf("BT Device %s not in scan results (skipping requirement)", address.c_str());
     return false;
-    // do not treat as error; proceed with connection attempt
   }
   
   Serial.printf("BT Connecting to device %s", address.c_str());
   
   NimBLEClient* pClient = nullptr;
   try {
-    // Create client
     pClient = NimBLEDevice::createClient();
     if (!pClient) {
       lastError = "Failed to create client";
       Serial.printf("BT Failed to create BLE client");
       return false;
     }
-    // disable NimBLE's automatic self-deletion on failure; we will manage cleanup
     pClient->setSelfDelete(false, false);
     
-    // Set connection callbacks
     static ClientCallbacks clientCallbacks;
     pClient->setClientCallbacks(&clientCallbacks);
+
+    // ====================== 唯一修复：随机地址类型 ======================
+    NimBLEAddress bleAddress(address, BLE_ADDR_RANDOM);
+    // ====================================================================
     
-    // Connect to device
-    NimBLEAddress bleAddress(address, BLE_ADDR_PUBLIC);
     if (!pClient->connect(bleAddress)) {
       lastError = "Connection failed";
       Serial.printf("BT Failed to connect to %s", address.c_str());
-      // since we disabled self-delete, free object ourselves
       try {
         NimBLEDevice::deleteClient(pClient);
       } catch (...) {
@@ -328,7 +323,6 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
     
     Serial.printf("BT Connected, discovering services...");
     
-    // Get HID service
     NimBLERemoteService* pService = pClient->getService(HID_SERVICE_UUID);
     if (!pService) {
       lastError = "HID service not found";
@@ -460,9 +454,6 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
   }
 }
 
-
-
-
 // Simple retry wrapper around connectToDevice.  It invokes the single-
 // attempt function up to `maxAttempts` times with a short delay between
 // tries.  This keeps higher-level code (UI) from having to loop itself.
@@ -579,7 +570,7 @@ bool BluetoothHIDManager::hasRecentActivity() const {
 void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t* pData, size_t length, bool isNotify) {
   if (!g_instance || !pData || length == 0) return;
   
-  // Log raw data for debugging
+  // Log raw data
   char hexStr[128] = {0};
   int offset = 0;
   for (size_t i = 0; i < length && i < 16; i++) {
@@ -587,7 +578,7 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
   }
   Serial.printf("BT HID Report (%d bytes): %s", length, hexStr);
   
-  // Get the device address and find the connected device
+  // Get device
   ConnectedDevice* device = nullptr;
   if (pChar && pChar->getRemoteService()) {
     auto client = pChar->getRemoteService()->getClient();
@@ -596,129 +587,112 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
       device = g_instance->findConnectedDevice(deviceAddr);
     }
   }
-  
   if (!device) return;
-  
-  // Update activity timestamp to keep connection alive
+
   device->lastActivityTime = millis();
-  
-  // Extract keycode based on device profile or auto-detect
-  uint8_t keycode = 0xFF;
-  bool isPressed = false;
-  
-  if (length < 2) {
-    Serial.printf("BT HID report too short (%d bytes)", length);
-    return;
-  }
-  
-  // Determine keycode source and press state based on device profile
+
+  uint8_t  keycode = 0x00;
+  bool    isPressed = false;
+
+  if (length < 2) return;
+
   if (device->profile) {
-    // Use device profile's byte index for keycode
+    // 原有设备逻辑不变
     if (length >= device->profile->reportByteIndex + 1) {
       keycode = pData[device->profile->reportByteIndex];
     }
-    
-    // For Game Brick: press state from byte[0] bit 0
-    // For standard HID keyboards: press state from keycode (non-zero = pressed)
     if (strcmp(device->profile->name, "IINE Game Brick") == 0) {
-      // Game Brick: byte[0] LSB indicates press state
       isPressed = (pData[0] & 0x01) != 0;
-      Serial.printf("BT Game Brick: byte[0]=0x%02X, keycode=0x%02X, pressed=%d", pData[0], keycode, isPressed);
     } else {
-      // Standard HID keyboards: keycode presence indicates press
-      // 0x00 = not pressed, any other value = pressed
       isPressed = (keycode != 0x00);
-      Serial.printf("BT Device %s: keycode=0x%02X, pressed=%d", device->profile->name, keycode, isPressed);
     }
   } else {
-      // Auto-detect mode: 适配3字节翻页器（优先解析修饰位+按键码）
-  if (length == 3) {
-    // 3字节标准格式：[修饰位][保留][按键码]
-    uint8_t modifier = pData[0];
-    keycode = pData[2];
-    
-    // 翻页器按键规则（按需修改）：
-    // 修饰位0x01=上一页，0x02=下一页；按键码0x4B=上一页，0x4E=下一页
-    if (modifier == 0x01 || keycode == 0x4B) { // 左Ctrl / PageUp → 上一页
-      keycode = 0x4B;
-      isPressed = true;
-    } else if (modifier == 0x02 || keycode == 0x4E) { // 左Shift / PageDown → 下一页
-      keycode = 0x4E;
-      isPressed = true;
-    } else {
-      isPressed = (keycode != 0x00);
+    if (length == 3) {
+      uint8_t modifier = pData[0];
+      keycode = pData[2];
+      if (modifier == 0x01 || keycode == 0x4B) {
+        keycode = 0x4B; isPressed = true;
+      } else if (modifier == 0x02 || keycode == 0x4E) {
+        keycode = 0x4E; isPressed = true;
+      } else {
+        isPressed = (keycode != 0x00);
+      }
     }
-    Serial.printf("BT Auto-detect (翻页器): 修饰位=0x%02X, 按键码=0x%02X, pressed=%d", modifier, keycode, isPressed);
-  } 
-    // Auto-detect mode: try to intelligently detect report format
-    // Priority 1: Check for GameBrick-style codes in byte[4] (A/B buttons 0x07, 0x09)
+    // ====================== 6字节翻页器（正确边沿触发版）======================
+    else if (length == 6) {
+      uint8_t key = pData[0];
+      
+      if (key == 0x01) {
+        keycode = 0x4B;
+        isPressed = true;
+        Serial.printf("BT 6键翻页器 [上一页] 按下\n");
+      }
+      else if (key == 0x02) {
+        keycode = 0x4E;
+        isPressed = true;
+        Serial.printf("BT 6键翻页器 [下一页] 按下\n");
+      }
+      else {
+        keycode = 0x00;
+        isPressed = false;
+      }
+    }
+    // ======================================================================
     else if (length >= 5) {
       uint8_t byte4 = pData[4];
-      // If we see GameBrick button codes (0x07 or 0x09), use GameBrick format
       if (byte4 == 0x07 || byte4 == 0x09) {
         keycode = byte4;
         isPressed = (pData[0] & 0x01) != 0;
-        Serial.printf("BT Auto-detect (GameBrick codes detected): byte[4]=0x%02X, pressed=%d", keycode, isPressed);
-      } else if (byte4 == 0x00 && (pData[0] & 0x01)) {
-        // Button pressed (byte[0] bit set) but byte[4] is zero - might be in transition
-        // Fall through to standard keyboard check
-        keycode = length > 2 ? pData[2] : 0x00;
-        isPressed = (keycode != 0x00);
-        Serial.printf("BT Auto-detect (standard keyboard): keycode=0x%02X, pressed=%d", keycode, isPressed);
       } else {
-        // No GameBrick codes in byte[4], try standard keyboard byte[2]
-        keycode = length > 2 ? pData[2] : 0x00;
-        isPressed = (keycode != 0x00);
-        Serial.printf("BT Auto-detect (standard keyboard): keycode=0x%02X, pressed=%d", keycode, isPressed);
+        keycode = (length > 2) ? pData[2] : 0;
+        isPressed = (keycode != 0);
       }
     } else {
-      // Report too short for GameBrick, use standard keyboard format
-      keycode = length > 2 ? pData[2] : 0x00;
-      isPressed = (keycode != 0x00);
-      Serial.printf("BT Auto-detect (standard keyboard): keycode=0x%02X, pressed=%d", keycode, isPressed);
+      keycode = (length > 2) ? pData[2] : 0;
+      isPressed = (keycode != 0);
     }
   }
-  
-  // Ignore if no valid keycode detected
-  if (keycode == 0x00 || keycode == 0xFF) {
-    // Track state for transition detection
-    device->lastButtonState = isPressed;
-    device->lastHIDKeycode = keycode;
+
+  // ====================== 【保留边沿触发】======================
+  bool wasPressedPrevious = device->lastButtonState;
+
+  // 松开 → 更新状态，不动作
+  if (!isPressed) {
+    device->lastButtonState = false;
+    device->lastHIDKeycode = 0x00;
     return;
   }
-  
-  // Detect button PRESS transition: keycode appeared (not was before)
-  if (isPressed && !device->lastButtonState) {
-    Serial.printf("BT >>> BUTTON PRESSED: keycode=0x%02X <<<", keycode);
-    
-    // Try to map to button and inject with cooldown
-    if (g_instance->_buttonInjector) {
-      uint8_t btn = g_instance->mapKeycodeToButton(keycode, device->profile);
-      if (btn != 0xFF) {
-        // Add 150ms cooldown between button injections to prevent flooding
-        unsigned long now = millis();
-        if (now - device->lastInjectionTime >= 150) {
-          String buttonName = (btn == HalGPIO::BTN_DOWN) ? "PageForward" : "PageBack";
-          Serial.printf("BT Mapped key 0x%02X -> %s", keycode, buttonName.c_str());
-          Serial.printf("BT Injecting button: %d", btn);
-          g_instance->_buttonInjector(btn);
-          device->lastInjectionTime = now;
-        } else {
-          Serial.printf("BT Button injection throttled (cooldown: %u ms)", now - device->lastInjectionTime);
-        }
+
+  // 已经按住 → 不重复触发
+  if (wasPressedPrevious) {
+    return;
+  }
+
+  // ====================== 【唯一一次触发：按下瞬间】======================
+  device->lastButtonState = true;
+  device->lastHIDKeycode = keycode;
+
+  Serial.printf("BT >>> BUTTON PRESSED: keycode=0x%02X <<<\n", keycode);
+
+  if (g_instance->_buttonInjector) {
+    uint8_t btn = g_instance->mapKeycodeToButton(keycode, device->profile);
+    if (btn != 0xFF) {
+      unsigned long now = millis();
+      if (now - device->lastInjectionTime >= 150) {
+        String buttonName = (btn == HalGPIO::BTN_DOWN) ? "PageForward" : "PageBack";
+        Serial.printf("BT Mapped key -> %s\n", buttonName.c_str());
+        Serial.printf("BT Injecting button: %d\n", btn);
+        g_instance->_buttonInjector(btn);
+        device->lastInjectionTime = now;
       }
     }
-    
-    // Also call original callback if set
-    if (g_instance->_inputCallback) {
-      g_instance->_inputCallback(keycode);
-    }
   }
-  
-  // Track the button state and keycode for next time
-  device->lastButtonState = isPressed;
-  device->lastHIDKeycode = keycode;
+
+  if (g_instance->_inputCallback) {
+    g_instance->_inputCallback(keycode);
+  }
 }
+
 
 uint16_t BluetoothHIDManager::parseHIDReport(uint8_t* data, size_t length) {
   if (length < 3) {

@@ -20,9 +20,9 @@ void readAndValidate(FsFile& file, uint8_t& member, const uint8_t maxValue) {
 }
 
 namespace {
-constexpr uint8_t SETTINGS_FILE_VERSION = 5;
+constexpr uint8_t SETTINGS_FILE_VERSION = 6;
 // 注意：如果修改了字段数量，需要同步更新这个值
-constexpr uint8_t SETTINGS_COUNT = 45;  // 增加1：新增sleepScreenCoverFilter
+constexpr uint8_t SETTINGS_COUNT = 46;  // customSleepUsePxc 写到序列末尾
 constexpr char SETTINGS_FILE[] = "/.crosspoint/settings.bin";
 
 // Validate front button mapping to ensure each hardware button is unique.
@@ -133,6 +133,7 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writePod(outputFile, extraline);
   //把蓝牙写上
   serialization::writePod(outputFile, bluetoothEnabled );
+  serialization::writePod(outputFile, customSleepUsePxc);
   // New fields added at end for backward compatibility
   outputFile.close();
 
@@ -148,7 +149,7 @@ bool CrossPointSettings::loadFromFile() {
 
   uint8_t version;
   serialization::readPod(inputFile, version);
-  if (version != SETTINGS_FILE_VERSION) {
+  if (version != 5 && version != SETTINGS_FILE_VERSION) {
     Serial.printf("[%lu] [CPS] Deserialization failed: Unknown version %u\n", millis(), version);
     inputFile.close();
     return false;
@@ -285,12 +286,25 @@ bool CrossPointSettings::loadFromFile() {
     //新加阅读背景
     serialization::readPod(inputFile, ReadingScreenEnabled);
     if (++settingsRead >= fileSettingsCount) break;
-    //新加划线功能
-    serialization::readPod(inputFile, extraline);
-    if (++settingsRead >= fileSettingsCount) break;
-        //新加蓝牙功能
-    serialization::readPod(inputFile, bluetoothEnabled);
-    if (++settingsRead >= fileSettingsCount) break;
+
+    if (version >= 6) {
+      // v6+: 新顺序，customSleepUsePxc 在末尾
+      serialization::readPod(inputFile, extraline);
+      if (++settingsRead >= fileSettingsCount) break;
+      serialization::readPod(inputFile, bluetoothEnabled);
+      if (++settingsRead >= fileSettingsCount) break;
+      serialization::readPod(inputFile, customSleepUsePxc);
+      if (++settingsRead >= fileSettingsCount) break;
+    } else {
+      // v5: 兼容旧顺序（customSleepUsePxc 在中间）
+      serialization::readPod(inputFile, customSleepUsePxc);
+      if (++settingsRead >= fileSettingsCount) break;
+      serialization::readPod(inputFile, extraline);
+      if (++settingsRead >= fileSettingsCount) break;
+      serialization::readPod(inputFile, bluetoothEnabled);
+      if (++settingsRead >= fileSettingsCount) break;
+    }
+
     // New fields added at end for backward compatibility
   } while (false);
 
@@ -301,6 +315,7 @@ bool CrossPointSettings::loadFromFile() {
   }
 
   inputFile.close();
+  bluetoothEnabled = 0;//先默认蓝牙关闭
   Serial.printf("[%lu] [CPS] Settings loaded from file\n", millis());
   return true;
 }

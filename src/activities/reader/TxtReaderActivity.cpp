@@ -82,6 +82,8 @@ void TxtReaderActivity::onEnter() {
 
 void TxtReaderActivity::onExit() {
   ActivityWithSubactivity::onExit();
+    // Save progress
+  saveProgress();
 
   // Reset orientation back to portrait for the rest of the UI
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
@@ -276,20 +278,14 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
     Serial.printf("[%lu] [TRS] load txtchapter: %d \n", millis(), chapter_num);
     //当前章节的范围
     //加一个多次尝试，避免empty file出现过多
-    // 带5次重试的章节起始偏移量获取
-    size_t chapterOffsetbegin = 0;
-    for(int r=0; r<5 && (chapterOffsetbegin=txt->getChapterOffsetByIndex(chapter_num))==0; r++) {
-      txt->parseChapterIndexAndOffset(pagebegin);
-        vTaskDelay(50/portTICK_PERIOD_MS);
-        Serial.printf("[TRS] Retry get chapter %d offset (attempt %d)\n", chapter_num, r+1);
-    }
-
-    // 带5次重试的章节结束偏移量获取
-    size_t chapterOffsetend = 0;
-    for(int r=0; r<5 && (chapterOffsetend=txt->getChapterendOffsetByIndex(chapter_num))==0; r++) {
-      txt->parseChapterIndexAndOffset(pagebegin);
-        vTaskDelay(50/portTICK_PERIOD_MS);
-        Serial.printf("[TRS] Retry get chapter %d offset (attempt %d)\n", chapter_num, r+1);
+    // 带重试的章节起止偏移获取：重试时仅等待，不重复触发重解析
+    size_t chapterOffsetbegin = txt->getChapterOffsetByIndex(chapter_num);
+    size_t chapterOffsetend = txt->getChapterendOffsetByIndex(chapter_num);
+    for (int r = 0; r < 5 && (chapterOffsetbegin == 0 || chapterOffsetend == 0); r++) {
+      vTaskDelay(20 / portTICK_PERIOD_MS);
+      chapterOffsetbegin = txt->getChapterOffsetByIndex(chapter_num);
+      chapterOffsetend = txt->getChapterendOffsetByIndex(chapter_num);
+      Serial.printf("[TRS] Retry get chapter %d range (attempt %d)\n", chapter_num, r + 1);
     }
 
 
@@ -375,14 +371,14 @@ void TxtReaderActivity::buildPageIndex(size_t beginByte, size_t endByte) {
 bool TxtReaderActivity::loadPageAtOffset(size_t offset,size_t endOffset, std::vector<std::string>& outLines, size_t& nextOffset) {
   outLines.clear();
   const size_t fileSize = txt->getFileSize();
- // const size_t fileSize = endOffset; // 章节结束位置作为文件末尾，避免越界
+  const size_t virtualFileEnd = std::min(endOffset, fileSize);
 
-  if (offset >= fileSize) {
+  if (offset >= virtualFileEnd) {
     return false;
   }
 
   // Read a chunk from file
-  size_t chunkSize = std::min(CHUNK_SIZE, fileSize - offset);
+  size_t chunkSize = std::min(CHUNK_SIZE, virtualFileEnd - offset);
   auto* buffer = static_cast<uint8_t*>(malloc(chunkSize + 1));
   if (!buffer) {
     Serial.printf("[%lu] [TRS] Failed to allocate %zu bytes\n", millis(), chunkSize);
@@ -412,7 +408,7 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset,size_t endOffset, std::ve
     }
 
     // Check if we have a complete line
-    bool lineComplete = (lineEnd < chunkSize) || (offset + lineEnd >= fileSize);
+    bool lineComplete = (lineEnd < chunkSize) || (offset + lineEnd >= virtualFileEnd);
 
     if (!lineComplete && static_cast<int>(outLines.size()) > 0) {
       // Incomplete line and we already have some lines, stop here
@@ -547,8 +543,8 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset,size_t endOffset, std::ve
 
   // Make sure we don't go past the file
   // 章节结束位置作为文件末尾，避免越界
-  if (nextOffset > endOffset) {
-    nextOffset = endOffset;
+  if (nextOffset > virtualFileEnd) {
+    nextOffset = virtualFileEnd;
   }
 
   free(buffer);
@@ -669,14 +665,16 @@ void TxtReaderActivity::renderScreen() {
   size_t offset = pageOffsets[currentPage];
   size_t nextOffset;
   currentPageLines.clear();
-  size_t endoffset=txt->getChapterOffsetByIndex(chapternum );
+  size_t endoffset = txt->getChapterendOffsetByIndex(chapternum);
+  if (endoffset == 0 || endoffset <= offset) {
+    endoffset = txt->getFileSize();
+  }
   loadPageAtOffset(offset,endoffset, currentPageLines, nextOffset);
 
   renderer.clearScreen();
   renderPage();
 
-  // Save progress
-  saveProgress();
+
 }
 
 

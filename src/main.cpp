@@ -392,7 +392,7 @@ void setup() {
     case HalGPIO::WakeupReason::PowerButton:
       // For normal wakeups, verify power button press duration
       Serial.printf("[%lu] [   ] Verifying power button press duration\n", millis());
-      //verifyPowerButtonDuration();
+      verifyPowerButtonDuration();
       break;
     case HalGPIO::WakeupReason::AfterUSBPower:
       // If USB power caused a cold boot, go back to sleep

@@ -25,6 +25,8 @@ class Txt {
   std::string cachePath;
   bool loaded = false;
   size_t fileSize = 0;
+    mutable FsFile streamingReadFile;
+    mutable bool streamingReadFileOpen = false;
 
   //加目录
 
@@ -40,6 +42,7 @@ class Txt {
 
  public:
   explicit Txt(std::string path, std::string cacheBasePath);
+    ~Txt();
 
   bool load();
   [[nodiscard]] const std::string& getPath() const { return filepath; }

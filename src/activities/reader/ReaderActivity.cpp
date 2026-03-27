@@ -2,6 +2,7 @@
 
 #include "Epub.h"
 #include "EpubReaderActivity.h"
+#include "ImgReaderActivity.h"
 #include "Txt.h"
 #include "TxtReaderActivity.h"
 #include "Xtc.h"
@@ -24,6 +25,11 @@ bool ReaderActivity::isXtcFile(const std::string& path) {
 bool ReaderActivity::isTxtFile(const std::string& path) {
   return StringUtils::checkFileExtension(path, ".txt") ||
          StringUtils::checkFileExtension(path, ".md");  // Treat .md as txt files (until we have a markdown reader)
+}
+
+bool ReaderActivity::isImageFile(const std::string& path) {
+  return StringUtils::checkFileExtension(path, ".png") || StringUtils::checkFileExtension(path, ".jpg") ||
+         StringUtils::checkFileExtension(path, ".jpeg") || StringUtils::checkFileExtension(path, ".bmp");
 }
 
 std::unique_ptr<Epub> ReaderActivity::loadEpub(const std::string& path) {
@@ -101,6 +107,13 @@ void ReaderActivity::onGoToTxtReader(std::unique_ptr<Txt> txt) {
       renderer, mappedInput, std::move(txt), [this, txtPath] { goToLibrary(txtPath); }, [this] { onGoBack(); }));
 }
 
+void ReaderActivity::onGoToImgReader(ImgReaderActivity::ImageType imageType, const std::string& imagePath) {
+  currentBookPath = imagePath;
+  exitActivity();
+  enterNewActivity(new ImgReaderActivity(renderer, mappedInput, imagePath, imageType,
+                                         [this, imagePath] { goToLibrary(imagePath); }, [this] { onGoBack(); }));
+}
+
 void ReaderActivity::onEnter() {
   ActivityWithSubactivity::onEnter();
 
@@ -125,6 +138,15 @@ void ReaderActivity::onEnter() {
       return;
     }
     onGoToTxtReader(std::move(txt));
+  } else if (isImageFile(initialBookPath)) {
+    ImgReaderActivity::ImageType imageType = ImgReaderActivity::ImageType::BMP;
+    if (StringUtils::checkFileExtension(initialBookPath, ".png")) {
+      imageType = ImgReaderActivity::ImageType::PNG;
+    } else if (StringUtils::checkFileExtension(initialBookPath, ".jpg") ||
+               StringUtils::checkFileExtension(initialBookPath, ".jpeg")) {
+      imageType = ImgReaderActivity::ImageType::JPEG;
+    }
+    onGoToImgReader(imageType, initialBookPath);
   } else {
     auto epub = loadEpub(initialBookPath);
     if (!epub) {

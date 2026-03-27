@@ -126,7 +126,7 @@ void ClearCacheActivity::clearCache() {
     String itemName(name);
 
     // Only delete directories starting with epub_ or xtc_
-    if (file.isDirectory() && (itemName.startsWith("epub_") || itemName.startsWith("xtc_"))) {
+    if (file.isDirectory() && (itemName.startsWith("epub_") || itemName.startsWith("xtc_")|| itemName.startsWith("txt_"))) {
       String fullPath = "/.crosspoint/" + itemName;
       Serial.printf("[%lu] [CLEAR_CACHE] Removing cache: %s\n", millis(), fullPath.c_str());
 

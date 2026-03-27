@@ -24,7 +24,6 @@
 namespace {
 // pagesPerRefresh now comes from SETTINGS.getRefreshFrequency()
 constexpr unsigned long goHomeMs = 500;
-constexpr unsigned long DOWNLOAD_UI_UPDATE_INTERVAL_MS = 250;
 }
 
 static std::string urlEncode(const std::string& value) {
@@ -156,6 +155,8 @@ private:
     int _timeout;
     String _basePath;  // 新增：自定义基础路径
 };
+
+
 // ===================== 内嵌ESPWebDAV核心代码（结束）=====================
 
 namespace {
@@ -198,6 +199,8 @@ void JianGuoBrowserActivity::onEnter() {
   errorMessage.clear();
   statusMessage = "检查WiFi...";
   updateRequired = true;
+
+
 
   xTaskCreate(&JianGuoBrowserActivity::taskTrampoline, "JianGuoBookBrowserTask",
               4096,               // Stack size
@@ -636,16 +639,10 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
     const auto result = HttpDownloader::downloadToFile_jg(
         downloadUrl,
         localPath,
-      [this, lastUiUpdateMs = 0UL](size_t downloaded, size_t total) mutable {
+        [this](size_t downloaded, size_t total) {
             downloadProgress = downloaded;
             downloadTotal = total;
-
-        const unsigned long now = millis();
-        const bool isCompleted = (total > 0 && downloaded >= total);
-        if (isCompleted || now - lastUiUpdateMs >= DOWNLOAD_UI_UPDATE_INTERVAL_MS) {
-          updateRequired = true;
-          lastUiUpdateMs = now;
-        }
+            updateRequired = true;
         }
     );
 

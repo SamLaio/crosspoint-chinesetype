@@ -189,6 +189,8 @@ uint8_t extraline = 1;
 
  //阅读背景设置
   uint8_t ReadingScreenEnabled = 0; // Whether to show the reading screen background image
+  // Custom sleep screen source: 0=bmp, 1=pxc
+  uint8_t customSleepUsePxc = 0;
   // Hide battery percentage
   uint8_t hideBatteryPercentage = HIDE_NEVER;
   // Long-press chapter skip on side buttons

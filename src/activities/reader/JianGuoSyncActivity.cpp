@@ -14,7 +14,7 @@
 #include <HTTPClient.h>
 #include "network/HttpDownloader.h"
 #include "util/StringUtils.h"
-#include <SPIFFS.h>
+
 
 #include <cctype>
 #include <iomanip>
@@ -75,13 +75,7 @@ void JianGuoSyncActivity::onEnter() {
   lastExtractedChapterIndex = -1;
   lastExtractedBookName = "";
 
-  SPIFFS.end();
-  if (!SPIFFS.begin(true)) {
-    Serial.println("[JG] SPIFFS 初始化失败");
-    state = BrowserState::ERROR;
-    errorMessage = "存储初始化失败";
-    updateRequired = true;
-  }
+
 
   xTaskCreate(&JianGuoSyncActivity::taskTrampoline, "JianGuoSyncTask",
               4096, this, 1, &displayTaskHandle);

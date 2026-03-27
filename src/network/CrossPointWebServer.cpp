@@ -296,7 +296,7 @@ CrossPointWebServer::WsUploadStatus CrossPointWebServer::getWsUploadStatus() con
 }
 
 void CrossPointWebServer::handleRoot() const {
-  server->send(200, "text/html", HomePageHtml);
+  server->send_P(200, "text/html", HomePageHtml);
   Serial.printf("[%lu] [WEB] Served root page\n", millis());
 }
 
@@ -387,7 +387,7 @@ bool CrossPointWebServer::isEpubFile(const String& filename) const {
   return lower.endsWith(".epub");
 }
 
-void CrossPointWebServer::handleFileList() const { server->send(200, "text/html", FilesPageHtml); }
+void CrossPointWebServer::handleFileList() const { server->send_P(200, "text/html", FilesPageHtml); }
 
 void CrossPointWebServer::handleFileListData() const {
   // Get current path from query string (default to root)
@@ -404,6 +404,27 @@ void CrossPointWebServer::handleFileListData() const {
     }
   }
 
+  // Optional pagination to avoid huge responses on large directories.
+  int offset = 0;
+  int limit = 30;
+  if (server->hasArg("offset")) {
+    offset = server->arg("offset").toInt();
+    if (offset < 0) {
+      offset = 0;
+    }
+  }
+  if (server->hasArg("limit")) {
+    limit = server->arg("limit").toInt();
+  }
+  if (limit <= 0) {
+    limit = 30;
+  }
+  if (limit > 100) {
+    limit = 100;
+  }
+
+  const int maxIndexExclusive = offset + limit;
+
   server->setContentLength(CONTENT_LENGTH_UNKNOWN);
   server->send(200, "application/json", "");
   server->sendContent("[");
@@ -411,8 +432,23 @@ void CrossPointWebServer::handleFileListData() const {
   constexpr size_t outputSize = sizeof(output);
   bool seenFirst = false;
   JsonDocument doc;
+  int scannedCount = 0;
+  int sentCount = 0;
+  bool hasMore = false;
 
-  scanFiles(currentPath.c_str(), [this, &output, &doc, seenFirst](const FileInfo& info) mutable {
+  scanFiles(currentPath.c_str(),
+            [this, &output, &doc, &seenFirst, &scannedCount, &sentCount, maxIndexExclusive, offset,
+             &hasMore](const FileInfo& info) mutable {
+              if (scannedCount >= maxIndexExclusive) {
+                hasMore = true;
+                return;
+              }
+              const int currentIndex = scannedCount;
+              scannedCount++;
+              if (currentIndex < offset) {
+                return;
+              }
+
     doc.clear();
     doc["name"] = info.name;
     doc["size"] = info.size;
@@ -432,11 +468,13 @@ void CrossPointWebServer::handleFileListData() const {
       seenFirst = true;
     }
     server->sendContent(output);
+    sentCount++;
   });
   server->sendContent("]");
   // End of streamed response, empty chunk to signal client
   server->sendContent("");
-  Serial.printf("[%lu] [WEB] Served file listing page for path: %s\n", millis(), currentPath.c_str());
+  Serial.printf("[%lu] [WEB] Served file listing page for path: %s (offset=%d, limit=%d, sent=%d, hasMore=%d)\n", millis(),
+                currentPath.c_str(), offset, limit, sentCount, hasMore ? 1 : 0);
 }
 
 void CrossPointWebServer::handleDownload() const {

@@ -358,11 +358,13 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
 
             // 4. 如果加上标点后溢出不超过5%，就允许回退
             if (prevLineWidth + punctWidth <= effectivePageWidth + maxOverflow) {
-                nextBreakIndex = ans[currentWordIndex] + 1; // 包含标点
-                ans[currentWordIndex] = nextBreakIndex - 1; // 更新最优解
+              // 把下一行首标点并入当前行：当前行末尾向后扩一词
+              ans[currentWordIndex] = nextBreakIndex;
+              ++nextBreakIndex;
             } else {
                 // 溢出过多：不回退，让标点留在下一行（兜底方案）
-                wordWidths[nextBreakIndex] -= 2; // 标点左移2px
+              wordWidths[nextBreakIndex] =
+                wordWidths[nextBreakIndex] > 2 ? static_cast<uint16_t>(wordWidths[nextBreakIndex] - 2) : 0;
             }
         }
     }
@@ -486,10 +488,11 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
 
             // 检查是否能容纳标点
             if (lineWidth + wordWidths[currentIndex] <= effectivePageWidth + maxOverflow) {
-                --currentIndex; // 回退标点到上一行
+              ++currentIndex; // 回退标点到上一行（断行点后移一位）
             } else {
                 // 溢出过多：标点留在下一行，左移2px
-                wordWidths[currentIndex] -= 2;
+              wordWidths[currentIndex] =
+                wordWidths[currentIndex] > 2 ? static_cast<uint16_t>(wordWidths[currentIndex] - 2) : 0;
             }
         }
     }

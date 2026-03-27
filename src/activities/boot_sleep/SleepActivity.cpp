@@ -3,6 +3,7 @@
 #include <Epub.h>
 #include <GfxRenderer.h>
 #include <SDCardManager.h>
+#include <Serialization.h>
 #include <Txt.h>
 #include <Xtc.h>
 
@@ -16,21 +17,157 @@
 
 #include "../../lib/Epub/Epub/converters/PngToFramebufferConverter.h"
 
+namespace {
+constexpr uint32_t WALLPAPER_PXC_MAGIC = 0x31584350;   // "PXC1"
+constexpr uint16_t WALLPAPER_PXC_VERSION = 1;
+constexpr uint32_t TRANSPARENT_PXA_MAGIC = 0x31415850;  // "PXA1"
+constexpr uint16_t TRANSPARENT_PXA_VERSION = 1;
+constexpr char TRANSPARENT_WALLPAPER2_PXA[] = "/.crosspoint/transparent_wallpaper2.pxa";
+constexpr char CUSTOM_SLEEP_PXC[] = "/.crosspoint/custom_sleep.pxc";
+constexpr uint8_t FIXED_CACHE_ORIENTATION = CrossPointSettings::ORIENTATION::PORTRAIT;
+
+
+//通篇已经在必要部分把HALF_REFRESH改成FULL_REFRESH了，防止残影过重
+bool loadWallpaperPxcToFramebuffer(const std::string& pxcPath, GfxRenderer& renderer, const uint8_t orientation) {
+  FsFile input;
+  if (!SdMan.openFileForRead("SLP", pxcPath, input)) {
+    return false;
+  }
+
+  uint32_t magic = 0;
+  uint16_t version = 0;
+  uint8_t cachedOrientation = 0;
+  uint8_t reserved = 0;
+  uint32_t payloadSize = 0;
+
+  serialization::readPod(input, magic);
+  serialization::readPod(input, version);
+  serialization::readPod(input, cachedOrientation);
+  serialization::readPod(input, reserved);
+  serialization::readPod(input, payloadSize);
+
+  const uint32_t expectedPayload = static_cast<uint32_t>(renderer.getBufferSize());
+  if (magic != WALLPAPER_PXC_MAGIC || version != WALLPAPER_PXC_VERSION || cachedOrientation != orientation ||
+      payloadSize != expectedPayload) {
+    input.close();
+    return false;
+  }
+
+  uint8_t* frameBuffer = renderer.getFrameBuffer();
+  if (!frameBuffer) {
+    input.close();
+    return false;
+  }
+
+  size_t totalRead = 0;
+  while (totalRead < payloadSize) {
+    const size_t toRead = std::min(static_cast<size_t>(1024), static_cast<size_t>(payloadSize - totalRead));
+    const int bytesRead = input.read(frameBuffer + totalRead, toRead);
+    if (bytesRead <= 0) {
+      input.close();
+      return false;
+    }
+    totalRead += static_cast<size_t>(bytesRead);
+  }
+
+  input.close();
+  return true;
+}
+
+bool overlayTransparentPxaToFramebuffer(const std::string& pxaPath, GfxRenderer& renderer, const uint8_t orientation) {
+  FsFile input;
+  if (!SdMan.openFileForRead("SLP", pxaPath, input)) {
+    return false;
+  }
+
+  uint32_t magic = 0;
+  uint16_t version = 0;
+  uint8_t cachedOrientation = 0;
+  uint8_t reserved = 0;
+  uint32_t payloadSize = 0;
+  uint32_t maskSize = 0;
+
+  serialization::readPod(input, magic);
+  serialization::readPod(input, version);
+  serialization::readPod(input, cachedOrientation);
+  serialization::readPod(input, reserved);
+  serialization::readPod(input, payloadSize);
+  serialization::readPod(input, maskSize);
+
+  const uint32_t expectedPayload = static_cast<uint32_t>(renderer.getBufferSize());
+  if (magic != TRANSPARENT_PXA_MAGIC || version != TRANSPARENT_PXA_VERSION || cachedOrientation != orientation ||
+      payloadSize != expectedPayload || maskSize != expectedPayload) {
+    input.close();
+    return false;
+  }
+
+  uint8_t* frameBuffer = renderer.getFrameBuffer();
+  if (!frameBuffer) {
+    input.close();
+    return false;
+  }
+
+  static constexpr size_t kChunk = 1024;
+  uint8_t payloadChunk[kChunk];
+  uint8_t maskChunk[kChunk];
+  const uint32_t headerSize = sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) + sizeof(uint8_t) +
+                              sizeof(uint32_t) + sizeof(uint32_t);
+
+  for (uint32_t processed = 0; processed < payloadSize;) {
+    const size_t toRead = std::min(static_cast<size_t>(kChunk), static_cast<size_t>(payloadSize - processed));
+
+    if (!input.seek(headerSize + processed)) {
+      input.close();
+      return false;
+    }
+    const int payloadRead = input.read(payloadChunk, toRead);
+    if (payloadRead <= 0 || static_cast<size_t>(payloadRead) != toRead) {
+      input.close();
+      return false;
+    }
+
+    if (!input.seek(headerSize + payloadSize + processed)) {
+      input.close();
+      return false;
+    }
+    const int maskRead = input.read(maskChunk, toRead);
+    if (maskRead <= 0 || static_cast<size_t>(maskRead) != toRead) {
+      input.close();
+      return false;
+    }
+
+    const uint32_t base = processed;
+    for (size_t i = 0; i < toRead; ++i) {
+      const uint8_t mask = maskChunk[i];
+      frameBuffer[base + i] = static_cast<uint8_t>((frameBuffer[base + i] & static_cast<uint8_t>(~mask)) |
+                                                   (payloadChunk[i] & mask));
+    }
+    processed += static_cast<uint32_t>(toRead);
+  }
+
+  input.close();
+  return true;
+}
+
+}  // namespace
+
 void SleepActivity::onEnter() {
   Activity::onEnter();
   
-
+  //加深刷防止睡眠后残影过重
   switch (SETTINGS.sleepScreen) {
     case (CrossPointSettings::SLEEP_SCREEN_MODE::BLANK):
     GUI.drawPopup(renderer, "Entering Sleep...");
+    renderer.displayBuffer(HalDisplay::HALF_REFRESH);
       return renderBlankSleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::CUSTOM):
     GUI.drawPopup(renderer, "Entering Sleep...");
+    renderer.displayBuffer(HalDisplay::HALF_REFRESH);
       return renderCustomSleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::COVER):
-    GUI.drawPopup(renderer, "Entering Sleep...");
     case (CrossPointSettings::SLEEP_SCREEN_MODE::COVER_CUSTOM):
     GUI.drawPopup(renderer, "Entering Sleep...");
+    renderer.displayBuffer(HalDisplay::HALF_REFRESH);
       return renderCoverSleepScreen();
     case (CrossPointSettings::SLEEP_SCREEN_MODE::MARSK):
       return renderpngtxtSleepScreen();
@@ -38,6 +175,7 @@ void SleepActivity::onEnter() {
       return renderPngSleepScreen();
     default:
     GUI.drawPopup(renderer, "Entering Sleep...");
+    renderer.displayBuffer(HalDisplay::HALF_REFRESH);
       return renderDefaultSleepScreen();
   }
 }
@@ -100,7 +238,7 @@ void SleepActivity::renderpngtxtSleepScreen() const {
         
         // 绘制PNGTXT（灰阶分层绘制）
         renderer.drawPngFromTxtpng(filename.c_str());
-        renderer.displayBuffer(HalDisplay::FAST_REFRESH);
+        renderer.displayBuffer(HalDisplay::FULL_REFRESH);
 
         renderer.clearScreen(0x00);
         renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
@@ -135,7 +273,7 @@ void SleepActivity::renderpngtxtSleepScreen() const {
       
       // 绘制PNGTXT（灰阶分层绘制）
       renderer.drawPngFromTxtpng(pngtxtPath.c_str());
-      renderer.displayBuffer(HalDisplay::FAST_REFRESH);
+      renderer.displayBuffer(HalDisplay::FULL_REFRESH);
 
       renderer.clearScreen(0x00);
       renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
@@ -166,6 +304,15 @@ void SleepActivity::renderpngtxtSleepScreen() const {
 
 
 void SleepActivity::renderCustomSleepScreen() const {
+  if (SETTINGS.customSleepUsePxc) {
+    if (loadWallpaperPxcToFramebuffer(CUSTOM_SLEEP_PXC, renderer, FIXED_CACHE_ORIENTATION)) {
+      Serial.printf("[%lu] [SLP] Loading custom sleep pxc: %s\n", millis(), CUSTOM_SLEEP_PXC);
+      renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+      return;
+    }
+    Serial.printf("[%lu] [SLP] custom sleep pxc not found or invalid, fallback to bmp\n", millis());
+  }
+
   // Check if we have a /sleep directory
   auto dir = SdMan.open("/sleep");
   if (dir && dir.isDirectory()) {
@@ -241,6 +388,11 @@ void SleepActivity::renderCustomSleepScreen() const {
 
 
 void SleepActivity::renderPngSleepScreen() const {
+  if (overlayTransparentPxaToFramebuffer(TRANSPARENT_WALLPAPER2_PXA, renderer, SETTINGS.orientation)) {
+    Serial.printf("[%lu] [SLP] Loaded transparent wallpaper2 PXA cache\n", millis());
+    renderer.displayBuffer(HalDisplay::FULL_REFRESH);
+    return;
+  }
 
   auto dir = SdMan.open("/sleep_mask");
   if (dir && dir.isDirectory()) {
@@ -333,7 +485,7 @@ void SleepActivity::renderPngSleepScreen() const {
     // 解码并渲染根目录的sleep_mask.png
     PngToFramebufferConverter pngConverter;
     if (pngConverter.decodeToFramebuffer("/sleep_mask.png", renderer, renderConfig)) {
-      renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+      renderer.displayBuffer(HalDisplay::FULL_REFRESH);
       delay(200);
       Serial.printf("[%lu] [SLP] Png draw completed (mode: %d)\n", millis(), renderer.getRenderMode());
       return;
@@ -361,7 +513,7 @@ void SleepActivity::renderDefaultSleepScreen() const {
     renderer.invertScreen();
   }
 
-  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+  renderer.displayBuffer(HalDisplay::FULL_REFRESH);
 }
 
 void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
