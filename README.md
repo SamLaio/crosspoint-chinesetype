@@ -49,7 +49,12 @@ txt阅读体验改善
 
 ## 自选字体
 
-用户有两种方式制作字体：
+用户有多种方式制作字体：
+
+
+网络用户：推荐使用！！！
+
+[-] 自制字体网页：[字体网址](https://epdfontweb.streamlit.app/)
 
 python用户：
 
@@ -62,9 +67,6 @@ Windows用户：
 
 转换完后放入fonts/文件夹中，具体可见：[ruby-builds/crosspoint-reader (custom-fonts分支)](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
 
-网络用户：
-
-[-] 自制字体网页（简陋版）：[字体网址](https://epdfontweb.streamlit.app/)，转换速度比客户端要慢。
 
 格式：
 字体名称.epdfont（无法调整大小，生成多大就是多大）
