@@ -40,13 +40,6 @@ txt阅读体验改善
 添加坚果云云盘（方便大陆用户）
 
 
-# allocate 项目说明书
-版本：1.1.1-allocate
-日期：2026年4月4日
-
-本文档为 [crosspoint-chinesetype](https://github.com/icannotttt/crosspoint-chinesetype) 项目的说明文档，用于帮助用户快速熟悉项目使用方法，并提供常见问题与操作说明。
-
----
 
 ## 一、刷机说明
 
