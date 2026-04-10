@@ -1,3 +1,19 @@
+# 版本信息
+第一次写固件，欢迎大家指导批评~ 可以的话点点star⭐，谢谢
+
+
+本项目大概三到四个迭代后就迎来收尾了，感谢支持
+
+基于 **crosspoint 1.0.0** 版本修改而来，主要为了适配中文读者，另外希望能够完成自己想要的一些小功能，感谢以下开源项目及其贡献者：
+
+- 参考改版项目：[crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
+- 自选字体功能参考：[ruby-builds/crosspoint-reader (custom-fonts分支)](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
+- 字体制作工具：[ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYFDroid/crosspointcn-fontcreator)
+- 蓝牙功能参考：[thedrunkpenguin/crosspoint-reader-ble](https://github.com/thedrunkpenguin/crosspoint-reader-ble)
+- 键盘QR输入:[QR_input](https://github.com/crosspoint-reader/crosspoint-reader/pull/839)
+
+---
+
 # 重要！fork必读！
 为了激发crosspoint中文社区新生力量，我决定之后仍将开源，且不涉及商业部分
 
@@ -60,19 +76,7 @@ txt分章节读取 txt章节目录
 如有其他会继续补充。本人非常欢迎也鼓励大家尝试改版，希望能共同维护好crosspoint的中文固件，让这个固件在中国也能百花齐放！
 
 
-# 版本信息
-第一次写固件，欢迎大家指导批评~ 可以的话点点star⭐，谢谢
 
-
-本项目大概三到四个迭代后就迎来收尾了，感谢支持
-
-基于 **crosspoint 1.0.0** 版本修改而来，主要为了适配中文读者，另外希望能够完成自己想要的一些小功能，感谢以下开源项目及其贡献者：
-
-- 参考改版项目：[crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
-- 自选字体功能参考：[ruby-builds/crosspoint-reader (custom-fonts分支)](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
-- 字体制作工具：[ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYFDroid/crosspointcn-fontcreator)
-- 蓝牙功能参考：[thedrunkpenguin/crosspoint-reader-ble](https://github.com/thedrunkpenguin/crosspoint-reader-ble)
-- 键盘QR输入:[QR_input](https://github.com/crosspoint-reader/crosspoint-reader/pull/839)
 
 ---
 
