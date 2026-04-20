@@ -15,8 +15,25 @@
 - 键盘QR输入:[QR_input](https://github.com/crosspoint-reader/crosspoint-reader/pull/839)
 
 ---
+# 开放贡献式
+
+多多少少的贡献都可以哈，有编程能力的都可以玩一下，不用加我联系方式，咱们就是开放式玩起来。
+
+如果有实在搞不懂的，可以小红书@allocate 私聊发送代码给我，以及想如何提及你（github名 gitee名或者小红书名字或者什么昵称之类的），我将把你加入贡献者
+
+如何贡献？
+
+分叉仓库：Fork the repo
+
+创建分支 （feature/dithering-improvement)：Create a branch (feature/dithering-improvement)
+
+基于最新master做出修改：Submit a PR
+
+提交：Submit a PR
 
 # 闭源维护
+
+等我放代码
 
 固件发展至今，本人不会再继续进行功能研究，仅对目前的问题进行解决。
 
