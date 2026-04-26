@@ -8,11 +8,11 @@
 namespace {
 constexpr int SKIP_PAGE_MS = 700;
 int page=1;
-// 新增：100章对应的page偏移量
+// 新增：100章對應的page偏移量
 constexpr int PAGE_OFFSET_100_CHAPTER = 4;
-// 新增：顶部特殊选项的索引定义
-constexpr int ITEM_SKIP_100_BACK = -2;    // 向前100章选项索引
-constexpr int ITEM_SKIP_100_FORWARD = -1; // 向后100章选项索引
+// 新增：頂部特殊選項的索引定義
+constexpr int ITEM_SKIP_100_BACK = -2;    // 向前100章選項索引
+constexpr int ITEM_SKIP_100_FORWARD = -1; // 向後100章選項索引
 constexpr int lineHeight = 30;
 }  // namespace
 
@@ -40,10 +40,10 @@ void TxtReaderChapterSelectionActivity::onEnter() {
 
 
   renderingMutex = xSemaphoreCreateMutex();
-  //进入当前章节
+  //進入當前章節
   page=chapternum / getPageItems()+1;
-  selectorIndex = chapternum; // 计算当前章节在页内的索引
-  // 初始化选中项：默认选中第一个章节（跳过顶部特殊选项）
+  selectorIndex = chapternum; // 計算當前章節在頁內的索引
+  // 初始化選中項：預設選中第一個章節（跳過頂部特殊選項）
   if (selectorIndex < 0) selectorIndex = (page - 1) * getPageItems();
 
   updateRequired = true;
@@ -67,7 +67,7 @@ void TxtReaderChapterSelectionActivity::onExit() {
   renderingMutex = nullptr;
 }
 
-//章节选择逻辑
+//章節選擇邏輯
 void TxtReaderChapterSelectionActivity::loop() {
   const bool prevReleased = mappedInput.wasReleased(MappedInputManager::Button::Up) ||
                             mappedInput.wasReleased(MappedInputManager::Button::Left);
@@ -79,35 +79,35 @@ void TxtReaderChapterSelectionActivity::loop() {
   const int total = pageItems;
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-    // 点击「向前100章」选项
+    // 點選「向前100章」選項
     if (selectorIndex == ITEM_SKIP_100_BACK) {
       page -= PAGE_OFFSET_100_CHAPTER;
-      if (page < 1) page = 1; // 页码保底
-      selectorIndex = (page - 1) * total; // 选中当前页第一个章节
+      if (page < 1) page = 1; // 頁碼保底
+      selectorIndex = (page - 1) * total; // 選中當前頁第一個章節
       updateRequired = true;
-      Serial.printf("[ChapterSkip] ✅ 点击向前100章 | 当前page：%d\n", page);
+      Serial.printf("[ChapterSkip] ✅ 點選向前100章 | 當前page：%d\n", page);
     }
-    // 点击「向后100章」选项
+    // 點選「向後100章」選項
     else if (selectorIndex == ITEM_SKIP_100_FORWARD) {
       page += PAGE_OFFSET_100_CHAPTER;
-      selectorIndex = page * total - 1; // 选中当前页最后一个章节
+      selectorIndex = page * total - 1; // 選中當前頁最後一個章節
       updateRequired = true;
-      Serial.printf("[ChapterSkip] ✅ 点击向后100章 | 当前page：%d\n", page);
+      Serial.printf("[ChapterSkip] ✅ 點選向後100章 | 當前page：%d\n", page);
     }
-    // 原有章节确认逻辑
+    // 原有章節確認邏輯
     else {
       onSelectchapter(selectorIndex);
     }
   } 
-  // 原有返回键逻辑
+  // 原有返回鍵邏輯
   else if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     onGoBack();
   } 
-  // ========== 核心修改：上下/左右按键支持选中顶部特殊选项 ==========
+  // ========== 核心修改：上下/左右按鍵支援選中頂部特殊選項 ==========
   else if (prevReleased) {
     bool isUpKey = mappedInput.wasReleased(MappedInputManager::Button::Up);
     if (skipPage || isUpKey) {
-      // 翻页逻辑：如果当前选中的是顶部选项，翻页到上一页
+      // 翻頁邏輯：如果當前選中的是頂部選項，翻頁到上一頁
       if (selectorIndex == ITEM_SKIP_100_BACK || selectorIndex == ITEM_SKIP_100_FORWARD) {
         page -= 1;
         if(page < 1) page = 1;
@@ -118,18 +118,18 @@ void TxtReaderChapterSelectionActivity::loop() {
         selectorIndex = (page - 1) * total;
       }
     } else {
-      // 单步上选逻辑：支持选中顶部选项
+      // 單步上選邏輯：支援選中頂部選項
       if (selectorIndex == (page - 1) * total) {
-        // 当前选中第一个章节 → 上选到「向后100章」
+        // 當前選中第一個章節 → 上選到「向後100章」
         selectorIndex = ITEM_SKIP_100_FORWARD;
       } else if (selectorIndex == ITEM_SKIP_100_FORWARD) {
-        // 当前选中「向后100章」→ 上选到「向前100章」
+        // 當前選中「向後100章」→ 上選到「向前100章」
         selectorIndex = ITEM_SKIP_100_BACK;
       } else if (selectorIndex == ITEM_SKIP_100_BACK) {
-        // 当前选中「向前100章」→ 循环到最后一个章节
+        // 當前選中「向前100章」→ 迴圈到最後一個章節
         selectorIndex = page * total - 1;
       } else {
-        // 正常单步上选
+        // 正常單步上選
         selectorIndex = (selectorIndex + total - 1) % total + (page - 1) * total;
       }
     }
@@ -138,7 +138,7 @@ void TxtReaderChapterSelectionActivity::loop() {
   else if (nextReleased) {
     bool isDownKey = mappedInput.wasReleased(MappedInputManager::Button::Down);
     if (skipPage || isDownKey) {
-      // 翻页逻辑：如果当前选中的是顶部选项，翻页到下一页
+      // 翻頁邏輯：如果當前選中的是頂部選項，翻頁到下一頁
       if (selectorIndex == ITEM_SKIP_100_BACK || selectorIndex == ITEM_SKIP_100_FORWARD) {
         page += 1;
         selectorIndex = page * total - 1;
@@ -147,18 +147,18 @@ void TxtReaderChapterSelectionActivity::loop() {
         selectorIndex = page * total - 1;
       }
     } else {
-      // 单步下选逻辑：支持选中顶部选项
+      // 單步下選邏輯：支援選中頂部選項
       if (selectorIndex == ITEM_SKIP_100_BACK) {
-        // 当前选中「向前100章」→ 下选到「向后100章」
+        // 當前選中「向前100章」→ 下選到「向後100章」
         selectorIndex = ITEM_SKIP_100_FORWARD;
       } else if (selectorIndex == ITEM_SKIP_100_FORWARD) {
-        // 当前选中「向后100章」→ 下选到第一个章节
+        // 當前選中「向後100章」→ 下選到第一個章節
         selectorIndex = (page - 1) * total;
       } else if (selectorIndex == page * total - 1) {
-        // 当前选中最后一个章节 → 下选到「向前100章」
+        // 當前選中最後一個章節 → 下選到「向前100章」
         selectorIndex = ITEM_SKIP_100_BACK;
       } else {
-        // 正常单步下选
+        // 正常單步下選
         selectorIndex = (selectorIndex + 1) % total + (page - 1) * total;
       }
     }
@@ -166,7 +166,7 @@ void TxtReaderChapterSelectionActivity::loop() {
   }
 }
 
-//章节加载放在后台，按confirm随时加载
+//章節載入放在後臺，按confirm隨時載入
 void TxtReaderChapterSelectionActivity::displayTaskLoop() {
   while (true) {
     if (updateRequired) {
@@ -185,27 +185,27 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
   int page_chapter=getPageItems();
   static int parsedPage = -1;
 
-  // 每页加载一次
+  // 每頁載入一次
   if (parsedPage != page) {
     txt->parseChapterIndexAndOffset(pagebegin);
     parsedPage = page;
   }
 
   const auto pageWidth = renderer.getScreenWidth();
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "目  录", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, "目  錄", true, EpdFontFamily::BOLD);
 
   size_t chapterOffset = 0;
   if (this->txt != nullptr) {
       chapterOffset = this->txt->getChapterOffsetByIndex(pagebegin);
   }
 
-  // ========== 核心新增：顶部特殊选项的绘制参数 ==========
-  const int FIX_LINE_HEIGHT = lineHeight; // 固定行高，确保顶部选项和章节列表行距一致
-  // 基准Y值：先绘制顶部两个特殊选项，再绘制章节列表
-  const int BASE_Y_SPECIAL = 40;    // 顶部选项起始Y
-  const int BASE_Y_CHAPTER = 80;    // 章节列表起始Y（两个选项占2行）
+  // ========== 核心新增：頂部特殊選項的繪製引數 ==========
+  const int FIX_LINE_HEIGHT = lineHeight; // 固定行高，確保頂部選項和章節列表行距一致
+  // 基準Y值：先繪製頂部兩個特殊選項，再繪製章節列表
+  const int BASE_Y_SPECIAL = 40;    // 頂部選項起始Y
+  const int BASE_Y_CHAPTER = 80;    // 章節列表起始Y（兩個選項佔2行）
 
-  // ========== 步骤1：绘制顶部「向前100章」选项 ==========
+  // ========== 步驟1：繪製頂部「向前100章」選項 ==========
   std::string skipBackText = "【向前100章】";
   int skipBackY = BASE_Y_SPECIAL;
   if (ITEM_SKIP_100_BACK == selectorIndex) {
@@ -217,8 +217,8 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
   }
   //renderer.drawText(UI_10_FONT_ID, 20, skipBackY, skipBackText.c_str(), selectorIndex != ITEM_SKIP_100_BACK);
 
-  // ========== 步骤2：绘制顶部「向后100章」选项 ==========
-  std::string skipForwardText = "【向后100章】";
+  // ========== 步驟2：繪製頂部「向後100章」選項 ==========
+  std::string skipForwardText = "【向後100章】";
   int skipForwardY = BASE_Y_SPECIAL;
   if (ITEM_SKIP_100_FORWARD == selectorIndex) {
   renderer.fillRect(200, skipBackY, 150, FIX_LINE_HEIGHT);
@@ -230,7 +230,7 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
 
   //renderer.drawText(UI_10_FONT_ID, 200, skipForwardY, skipForwardText.c_str(), selectorIndex != ITEM_SKIP_100_FORWARD);
 
-  // ========== 步骤3：绘制章节列表（下移到BASE_Y_CHAPTER） ==========
+  // ========== 步驟3：繪製章節列表（下移到BASE_Y_CHAPTER） ==========
   for (int i = pagebegin; i <= pagebegin + getPageItems() - 1; i++) {
       if(this->txt == nullptr || !this->txt->isChapterExist(i)){
           continue;
@@ -241,9 +241,9 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
       static char title[64];
       strncpy(title, dirTitle.c_str(), sizeof(title)-1);
       title[sizeof(title)-1] = '\0';
-      //暴力修复空白
+      //暴力修復空白
       if(strlen(title) == 0){
-          Serial.printf("[%lu] [TRC] 章节标题为空，主动修复\n", millis());
+          Serial.printf("[%lu] [TRC] 章節標題為空，主動修復\n", millis());
           txt->parseChapterIndexAndOffset(pagebegin);
           size_t currOffset = this->txt->getChapterOffsetByIndex(i);
           std::string dirTitle = this->txt->getChapterTitleByIndex(i);
@@ -264,7 +264,7 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
         //renderer.drawRect(0, drawY, 480, FIX_LINE_HEIGHT);
         renderer.drawText(UI_10_FONT_ID, 20, drawY, title, 1);
       }
-      //Serial.printf("[%lu] [TRC] 查看为啥不匹配：i:%d,selectorIndex: %d \n", millis(),i,selectorIndex);
+      //Serial.printf("[%lu] [TRC] 檢視為啥不匹配：i:%d,selectorIndex: %d \n", millis(),i,selectorIndex);
   }
 
   renderer.displayBuffer();

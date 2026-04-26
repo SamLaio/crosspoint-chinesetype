@@ -79,7 +79,7 @@ public:
   bool loadLastConnectedDevice(std::string& address, std::string& name);
 
   std::string lastError;
-  //防止崩溃，让外部可读取信息
+  //防止崩潰，讓外部可讀取資訊
   void onScanResult(NimBLEAdvertisedDevice* advertisedDevice);
 
 private:

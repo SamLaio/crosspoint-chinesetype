@@ -272,7 +272,7 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
     return true;
   }
   
-  // 保留你要求的拦截逻辑：必须在扫描列表中
+  // 保留你要求的攔截邏輯：必須在掃描列表中
   bool seen = false;
   for (const auto& dev : _discoveredDevices) {
     if (dev.address == address) {
@@ -285,7 +285,7 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
       break;
     }
   }
-  // 保留拦截：不在扫描结果里 → 直接返回失败
+  // 保留攔截：不在掃描結果裡 → 直接返回失敗
   if (!seen) {
     Serial.printf("BT Device %s not in scan results (skipping requirement)", address.c_str());
     return false;
@@ -306,7 +306,7 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
     static ClientCallbacks clientCallbacks;
     pClient->setClientCallbacks(&clientCallbacks);
 
-    // ====================== 唯一修复：随机地址类型 ======================
+    // ====================== 唯一修復：隨機地址型別 ======================
     NimBLEAddress bleAddress(address, BLE_ADDR_RANDOM);
     // ====================================================================
     
@@ -597,7 +597,7 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
   if (length < 2) return;
 
   if (device->profile) {
-    // 原有设备逻辑不变
+    // 原有裝置邏輯不變
     if (length >= device->profile->reportByteIndex + 1) {
       keycode = pData[device->profile->reportByteIndex];
     }
@@ -618,19 +618,19 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
         isPressed = (keycode != 0x00);
       }
     }
-    // ====================== 6字节翻页器（正确边沿触发版）======================
+    // ====================== 6位元組翻頁器（正確邊沿觸發版）======================
     else if (length == 6) {
       uint8_t key = pData[0];
       
       if (key == 0x01) {
         keycode = 0x4B;
         isPressed = true;
-        Serial.printf("BT 6键翻页器 [上一页] 按下\n");
+        Serial.printf("BT 6鍵翻頁器 [上一頁] 按下\n");
       }
       else if (key == 0x02) {
         keycode = 0x4E;
         isPressed = true;
-        Serial.printf("BT 6键翻页器 [下一页] 按下\n");
+        Serial.printf("BT 6鍵翻頁器 [下一頁] 按下\n");
       }
       else {
         keycode = 0x00;
@@ -653,22 +653,22 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
     }
   }
 
-  // ====================== 【保留边沿触发】======================
+  // ====================== 【保留邊沿觸發】======================
   bool wasPressedPrevious = device->lastButtonState;
 
-  // 松开 → 更新状态，不动作
+  // 鬆開 → 更新狀態，不動作
   if (!isPressed) {
     device->lastButtonState = false;
     device->lastHIDKeycode = 0x00;
     return;
   }
 
-  // 已经按住 → 不重复触发
+  // 已經按住 → 不重複觸發
   if (wasPressedPrevious) {
     return;
   }
 
-  // ====================== 【唯一一次触发：按下瞬间】======================
+  // ====================== 【唯一一次觸發：按下瞬間】======================
   device->lastButtonState = true;
   device->lastHIDKeycode = keycode;
 
@@ -744,24 +744,24 @@ uint8_t BluetoothHIDManager::mapKeycodeToButton(uint8_t keycode, const DevicePro
   
   // No profile - fall back to generic HID consumer codes only
   switch (keycode) {
-    // 翻页器核心映射（按需修改）
-    case 0x01:   // 左Ctrl → 上一页
-    case 0x4B:   // PageUp → 上一页
-    case 0xE9:   // Consumer PageUp → 上一页
+    // 翻頁器核心對映（按需修改）
+    case 0x01:   // 左Ctrl → 上一頁
+    case 0x4B:   // PageUp → 上一頁
+    case 0xE9:   // Consumer PageUp → 上一頁
       Serial.printf("BT Mapped key 0x%02X -> PageBack", keycode);
       return HalGPIO::BTN_UP;
     
-    case 0x02:   // 左Shift → 下一页
-    case 0x4E:   // PageDown → 下一页
-    case 0xEA:   // Consumer PageDown → 下一页
+    case 0x02:   // 左Shift → 下一頁
+    case 0x4E:   // PageDown → 下一頁
+    case 0xEA:   // Consumer PageDown → 下一頁
       Serial.printf("BT Mapped key 0x%02X -> PageForward", keycode);
       return HalGPIO::BTN_DOWN;
 
-    case 0x00:   // 忽略释放事件
+    case 0x00:   // 忽略釋放事件
       return 0xFF;
 
     default:
-      Serial.printf("BT Unmapped keycode: 0x%02X (翻页器未匹配)", keycode);
+      Serial.printf("BT Unmapped keycode: 0x%02X (翻頁器未匹配)", keycode);
       return 0xFF;
   }
 }

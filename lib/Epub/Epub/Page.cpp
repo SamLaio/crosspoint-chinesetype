@@ -6,19 +6,19 @@
 //gd
 #include "../../src/CrossPointSettings.h"
 
-// gd:专门绘制水平虚线的函数（仅适配你的场景，参数：渲染器、起始X、Y、结束X、虚线段长/间隔）
+// gd:專門繪製水平虛線的函式（僅適配你的場景，引數：渲染器、起始X、Y、結束X、虛線段長/間隔）
 void PageLine::drawDashedLine(GfxRenderer& renderer, int x1, int y, int x2, bool isDark) const {
   int startX = std::min(x1, x2);
   int endX = std::max(x1, x2);
   int currentX = startX;
 
-  // 放大参数：段长=12（间隔×4），间隔=3（480px屏幕肉眼清晰）
+  // 放大引數：段長=12（間隔×4），間隔=3（480px螢幕肉眼清晰）
   const int actualDash = 20;  
   const int actualGap = 10;    
 
   while (currentX < endX) {
     int segmentEndX = std::min(currentX + actualDash, endX);
-    // 关键：先把!isDark改成true，强制画黑色实线段（排除颜色问题）
+    // 關鍵：先把!isDark改成true，強制畫黑色實線段（排除顏色問題）
     renderer.drawLine(currentX, y, segmentEndX, y, true);
     currentX = segmentEndX + actualGap;
   }
@@ -26,25 +26,25 @@ void PageLine::drawDashedLine(GfxRenderer& renderer, int x1, int y, int x2, bool
 
 void PageLine::render(GfxRenderer& renderer, const int fontId, const int xOffset, const int yOffset) {
   block->render(renderer, fontId, xPos + xOffset, yPos + yOffset);
-  //加线
+  //加線
     if (CrossPointSettings::getInstance().extraline){
-  // 用屏幕宽度 + 文字高度计算虚线 ----
-  int screenWidth = renderer.getScreenWidth(); // 获取屏幕总宽度
+  // 用螢幕寬度 + 文字高度計算虛線 ----
+  int screenWidth = renderer.getScreenWidth(); // 獲取螢幕總寬度
   int textHeight = renderer.getLineHeight(fontId); // 文字高度
-  //Serial.printf("[%lu] [ERS] 测试能否读取文字高度: %d", millis(),textHeight);
+  //Serial.printf("[%lu] [ERS] 測試能否讀取文字高度: %d", millis(),textHeight);
 
-  // 计算虚线坐标
+  // 計算虛線座標
   int orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft;
   renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
                                   &orientedMarginLeft);
   orientedMarginLeft += SETTINGS.screenMargin_Left;
   orientedMarginRight += SETTINGS.screenMargin_Right;
   int viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;
-  int lineXStart = orientedMarginLeft; // 从屏幕最左侧开始
-  int lineXEnd = screenWidth-orientedMarginRight; // 到屏幕最右侧结束
-  int lineY = (yPos + yOffset) + textHeight+2; // 在文字下方绘制，+2像素间距
+  int lineXStart = orientedMarginLeft; // 從螢幕最左側開始
+  int lineXEnd = screenWidth-orientedMarginRight; // 到螢幕最右側結束
+  int lineY = (yPos + yOffset) + textHeight+2; // 在文字下方繪製，+2畫素間距
 
-  // 绘制全屏宽度的水平虚线
+  // 繪製全屏寬度的水平虛線
   drawDashedLine(renderer, lineXStart, lineY, lineXEnd, lineY);
   }
 }
@@ -109,7 +109,7 @@ std::unique_ptr<PageImage> PageImage::deserialize(FsFile& file) {
 //         continue;
 //       }
 
-//       // 判断png后缀（对齐txtpng的文件格式判断）
+//       // 判斷png字尾（對齊txtpng的檔案格式判斷）
 //       std::string ext = filename.substr(filename.length() - 4);
 //       for (auto& c : ext) c = tolower(c);
 //       if (ext != ".png") {
@@ -118,7 +118,7 @@ std::unique_ptr<PageImage> PageImage::deserialize(FsFile& file) {
 //         continue;
 //       }
       
-//       // 验证PNG文件是否有效（对齐txtpng的文件打开校验）
+//       // 驗證PNG檔案是否有效（對齊txtpng的檔案開啟校驗）
 //       ImageDimensions pngDim;
 //       if (!PngToFramebufferConverter::getDimensionsStatic("/bizhi/" + filename, pngDim)) {
 //         Serial.printf("[%lu] [SLP] Skipping invalid PNG file: %s\n", millis(), name);
@@ -130,7 +130,7 @@ std::unique_ptr<PageImage> PageImage::deserialize(FsFile& file) {
 //     }
 //     const auto numFiles = files.size();
 //     if (numFiles > 0) {
-//       // 随机选文件（保留原有逻辑）
+//       // 隨機選檔案（保留原有邏輯）
 //       auto randomFileIndex = random(numFiles);
 //       while (numFiles > 1 ) {
 //         randomFileIndex = random(numFiles);
@@ -140,7 +140,7 @@ std::unique_ptr<PageImage> PageImage::deserialize(FsFile& file) {
 //       Serial.printf("[%lu] [SLP] Randomly loading: %s\n", millis(), filename.c_str());
 //       delay(100);
       
-//       // 配置PNG渲染参数
+//       // 配置PNG渲染引數
 //       RenderConfig renderConfig;
 //       renderConfig.x = 0;                
 //       renderConfig.y = 0;                
@@ -149,12 +149,12 @@ std::unique_ptr<PageImage> PageImage::deserialize(FsFile& file) {
 //       renderConfig.useDithering = true;
 //       renderConfig.cachePath = "";
       
-//       // 解码并渲染PNG
+//       // 解碼並渲染PNG
 //       PngToFramebufferConverter pngConverter;
 //       if (pngConverter.decodeToFramebuffer(filename, renderer, renderConfig)) {
-//         // ========== 对齐txtpng的绘制完成后无额外操作，仅刷新 ==========
+//         // ========== 對齊txtpng的繪製完成後無額外操作，僅重新整理 ==========
 //         //renderer.displayBuffer(HalDisplay::HALF_REFRESH);
-//         //delay(200); // 给屏幕刷新时间
+//         //delay(200); // 給螢幕重新整理時間
 //         dir.close();
 //         Serial.printf("[%lu] [SLP] Png draw completed (mode: %d)\n", millis(), renderer.getRenderMode());
 //         return;
@@ -166,14 +166,14 @@ std::unique_ptr<PageImage> PageImage::deserialize(FsFile& file) {
 //   if (dir) dir.close();
 
 
-//   // 无有效PNG文件，保持底层显示（对齐txtpng的失败处理）
+//   // 無有效PNG檔案，保持底層顯示（對齊txtpng的失敗處理）
 //   Serial.printf("[%lu] [SLP] No valid PNG file, keep default screen\n", millis());
 // }
 
 
 
 void Page::render(GfxRenderer& renderer, const int fontId, const int xOffset, const int yOffset) const {
-  // =============这里可加阅读背景================
+  // =============這裡可加閱讀背景================
   //renderPngSleepScreen(renderer);
 // ======================================
   for (auto& element : elements) {

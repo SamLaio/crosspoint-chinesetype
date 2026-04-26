@@ -11,16 +11,16 @@
 
 #include "components/UITheme.h"
 
-// 定义坚果云配置菜单选项（和Calibre结构一致）
+// 定義堅果雲配置選單選項（和Calibre結構一致）
 namespace {
 constexpr int MENU_ITEMS = 3;
-const char* menuNames[MENU_ITEMS] = {"坚果云账号", "应用密码", "电子书文件夹"};
+const char* menuNames[MENU_ITEMS] = {"堅果雲賬號", "應用密碼", "電子書資料夾"};
 
-// 扩展CrossPointSettings，新增坚果云配置字段（最小侵入，复用原有存储）
-// 若原有SETTINGS结构体未定义这些字段，需先在CrossPointSettings.h中添加：
-// char jgUsername[64] = "";    // 坚果云账号（邮箱）
-// char jgAppPassword[64] = ""; // 坚果云应用密码
-// char jgBookFolder[128] = "/KOReader/Books/"; // 电子书文件夹路径
+// 擴充套件CrossPointSettings，新增堅果雲配置欄位（最小侵入，複用原有儲存）
+// 若原有SETTINGS結構體未定義這些欄位，需先在CrossPointSettings.h中新增：
+// char jgUsername[64] = "";    // 堅果雲賬號（郵箱）
+// char jgAppPassword[64] = ""; // 堅果雲應用密碼
+// char jgBookFolder[128] = "/KOReader/Books/"; // 電子書資料夾路徑
 }  // namespace
 
 void JianGuoYunSettingsActivity::taskTrampoline(void* param) {
@@ -35,9 +35,9 @@ void JianGuoYunSettingsActivity::onEnter() {
     selectedIndex = 0;
     updateRequired = true;
 
-    // 创建显示任务（和Calibre一致的栈大小、优先级）
+    // 建立顯示任務（和Calibre一致的棧大小、優先順序）
     xTaskCreate(&JianGuoYunSettingsActivity::taskTrampoline, "JianGuoYunSettingsTask",
-                4096,               // Stack size 复用原有配置
+                4096,               // Stack size 複用原有配置
                 this,               // Parameters
                 1,                  // Priority
                 &displayTaskHandle  // Task handle
@@ -47,7 +47,7 @@ void JianGuoYunSettingsActivity::onEnter() {
 void JianGuoYunSettingsActivity::onExit() {
     ActivityWithSubactivity::onExit();
 
-    // 清理资源（和Calibre逻辑完全一致）
+    // 清理資源（和Calibre邏輯完全一致）
     xSemaphoreTake(renderingMutex, portMAX_DELAY);
     if (displayTaskHandle) {
         vTaskDelete(displayTaskHandle);
@@ -63,19 +63,19 @@ void JianGuoYunSettingsActivity::loop() {
         return;
     }
 
-    // 返回按钮逻辑
+    // 返回按鈕邏輯
     if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
         onBack();
         return;
     }
 
-    // 确认按钮逻辑
+    // 確認按鈕邏輯
     if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
         handleSelection();
         return;
     }
 
-    // 上下/左右键切换选项（和Calibre交互逻辑一致）
+    // 上下/左右鍵切換選項（和Calibre互動邏輯一致）
     if (mappedInput.wasPressed(MappedInputManager::Button::Up) ||
         mappedInput.wasPressed(MappedInputManager::Button::Left)) {
         selectedIndex = (selectedIndex + MENU_ITEMS - 1) % MENU_ITEMS;
@@ -91,34 +91,34 @@ void JianGuoYunSettingsActivity::handleSelection() {
     xSemaphoreTake(renderingMutex, portMAX_DELAY);
 
     if (selectedIndex == 0) {
-        // 配置坚果云账号（邮箱）
+        // 配置堅果雲賬號（郵箱）
         exitActivity();
         enterNewActivity(new KeyboardEntryActivity(
-            renderer, mappedInput, "输入坚果云账号", SETTINGS.jgUsername, 10,
-            63,     // 最大长度63，和Calibre一致
-            false,  // 非密码模式
+            renderer, mappedInput, "輸入堅果雲賬號", SETTINGS.jgUsername, 10,
+            63,     // 最大長度63，和Calibre一致
+            false,  // 非密碼模式
             [this](const std::string& username) {
-                // 保存账号到配置
+                // 儲存賬號到配置
                 strncpy(SETTINGS.jgUsername, username.c_str(), sizeof(SETTINGS.jgUsername) - 1);
                 SETTINGS.jgUsername[sizeof(SETTINGS.jgUsername) - 1] = '\0';
-                SETTINGS.saveToFile(); // 复用原有保存逻辑
+                SETTINGS.saveToFile(); // 複用原有儲存邏輯
                 exitActivity();
                 updateRequired = true;
             },
             [this]() {
-                // 取消输入
+                // 取消輸入
                 exitActivity();
                 updateRequired = true;
             }));
     } else if (selectedIndex == 1) {
-        // 配置坚果云应用密码
+        // 配置堅果雲應用密碼
         exitActivity();
         enterNewActivity(new KeyboardEntryActivity(
-            renderer, mappedInput, "输入应用密码", SETTINGS.jgAppPassword, 10,
-            63,     // 最大长度63
-            false,   // 密码模式（输入时隐藏）
+            renderer, mappedInput, "輸入應用密碼", SETTINGS.jgAppPassword, 10,
+            63,     // 最大長度63
+            false,   // 密碼模式（輸入時隱藏）
             [this](const std::string& password) {
-                // 保存应用密码到配置
+                // 儲存應用密碼到配置
                 strncpy(SETTINGS.jgAppPassword, password.c_str(), sizeof(SETTINGS.jgAppPassword) - 1);
                 SETTINGS.jgAppPassword[sizeof(SETTINGS.jgAppPassword) - 1] = '\0';
                 SETTINGS.saveToFile();
@@ -126,19 +126,19 @@ void JianGuoYunSettingsActivity::handleSelection() {
                 updateRequired = true;
             },
             [this]() {
-                // 取消输入
+                // 取消輸入
                 exitActivity();
                 updateRequired = true;
             }));
     } else if (selectedIndex == 2) {
-        // 配置电子书文件夹路径
+        // 配置電子書資料夾路徑
         exitActivity();
         enterNewActivity(new KeyboardEntryActivity(
-            renderer, mappedInput, "电子书文件夹", SETTINGS.jgBookFolder, 10,
-            127,    // 路径最大长度127，和Calibre的URL一致
-            false,  // 非密码模式
+            renderer, mappedInput, "電子書資料夾", SETTINGS.jgBookFolder, 10,
+            127,    // 路徑最大長度127，和Calibre的URL一致
+            false,  // 非密碼模式
             [this](const std::string& folder) {
-                // 保存文件夹路径到配置
+                // 儲存資料夾路徑到配置
                 strncpy(SETTINGS.jgBookFolder, folder.c_str(), sizeof(SETTINGS.jgBookFolder) - 1);
                 SETTINGS.jgBookFolder[sizeof(SETTINGS.jgBookFolder) - 1] = '\0';
                 SETTINGS.saveToFile();
@@ -146,7 +146,7 @@ void JianGuoYunSettingsActivity::handleSelection() {
                 updateRequired = true;
             },
             [this]() {
-                // 取消输入
+                // 取消輸入
                 exitActivity();
                 updateRequired = true;
             }));
@@ -156,7 +156,7 @@ void JianGuoYunSettingsActivity::handleSelection() {
 }
 
 void JianGuoYunSettingsActivity::displayTaskLoop() {
-    // 和Calibre一致的显示循环逻辑
+    // 和Calibre一致的顯示迴圈邏輯
     while (true) {
         if (updateRequired && !subActivity) {
             updateRequired = false;
@@ -172,24 +172,24 @@ void JianGuoYunSettingsActivity::render() {
     renderer.clearScreen();
     const auto pageWidth = renderer.getScreenWidth();
 
-    // 标题（和Calibre风格一致）
-    renderer.drawCenteredText(UI_12_FONT_ID, 15, "坚果云配置", true, EpdFontFamily::BOLD);
+    // 標題（和Calibre風格一致）
+    renderer.drawCenteredText(UI_12_FONT_ID, 15, "堅果雲配置", true, EpdFontFamily::BOLD);
 
-    // 提示文字（适配坚果云使用场景）
-    renderer.drawCenteredText(UI_10_FONT_ID, 40, "应用密码需在坚果云安全设置中创建");
+    // 提示文字（適配堅果雲使用場景）
+    renderer.drawCenteredText(UI_10_FONT_ID, 40, "應用密碼需在堅果雲安全設定中建立");
 
-    // 选中项高亮（和Calibre交互视觉一致）
+    // 選中項高亮（和Calibre互動視覺一致）
     renderer.fillRect(0, 70 + selectedIndex * 30 - 2, pageWidth - 1, 30);
 
-    // 绘制所有配置项
+    // 繪製所有配置項
     for (int i = 0; i < MENU_ITEMS; i++) {
         const int settingY = 70 + i * 30;
         const bool isSelected = (i == selectedIndex);
 
-        // 绘制选项名称
+        // 繪製選項名稱
         renderer.drawText(UI_10_FONT_ID, 20, settingY, menuNames[i], !isSelected);
 
-        // 绘制配置状态（已配置/未配置）
+        // 繪製配置狀態（已配置/未配置）
         const char* status = "[未配置]";
         if (i == 0) {
             status = (strlen(SETTINGS.jgUsername) > 0) ? "[已配置]" : "[未配置]";
@@ -202,8 +202,8 @@ void JianGuoYunSettingsActivity::render() {
         renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, settingY, status, !isSelected);
     }
 
-    // 按钮提示（中文适配，和Calibre一致）
-    const auto labels = mappedInput.mapLabels("« 返回", "选择", "", "");
+    // 按鈕提示（中文適配，和Calibre一致）
+    const auto labels = mappedInput.mapLabels("« 返回", "選擇", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
     renderer.displayBuffer();

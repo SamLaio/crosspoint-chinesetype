@@ -207,15 +207,15 @@ void enterDeepSleep() {
   const uint32_t MAX_WAIT_TIME = 5000; // 最多等5秒
   while (!APP_STATE.isRenderComplete) {
     Serial.printf("[%lu] [MAIN] Waiting for main render to complete...\n", millis());
-    vTaskDelay(100 / portTICK_PERIOD_MS); // 每100ms检查一次
+    vTaskDelay(100 / portTICK_PERIOD_MS); // 每100ms檢查一次
     
-    // 超时保护：避免卡死
+    // 超時保護：避免卡死
     if (millis() - waitStart > MAX_WAIT_TIME) {
       Serial.printf("[%lu] [MAIN] Wait timeout, proceed with PNG render\n", millis());
       break;
     }
   }
-  //原逻辑
+  //原邏輯
 
   APP_STATE.lastSleepFromReader = currentActivity && currentActivity->isReaderActivity();
   APP_STATE.saveToFile();

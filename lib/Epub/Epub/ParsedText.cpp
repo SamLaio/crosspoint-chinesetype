@@ -12,8 +12,8 @@
 #include "hyphenation/Hyphenator.h"
 
 
-#include <list>  // 新增：list容器头文件
-#include <string> // 新增：string头文件
+#include <list>  // 新增：list容器標頭檔案
+#include <string> // 新增：string標頭檔案
 
 constexpr int MAX_COST = std::numeric_limits<int>::max();
 
@@ -51,8 +51,8 @@ uint16_t measureWordWidth(const GfxRenderer& renderer, const int fontId, const s
   return renderer.getTextWidth(fontId, sanitized.c_str(), style);
 }
 
-// ========== 工具函数标点判断==========
-// 复刻LVGL的UTF-8解码（嵌入式环境通用，无依赖）
+// ========== 工具函式標點判斷==========
+// 復刻LVGL的UTF-8解碼（嵌入式環境通用，無依賴）
 uint32_t utf8_next(const std::string& str, size_t& pos) {
     if(pos >= str.size()) return 0;
 
@@ -60,19 +60,19 @@ uint32_t utf8_next(const std::string& str, size_t& pos) {
     uint32_t cp = 0;
     size_t len = 0;
 
-    // UTF-8解码规则（LVGL 同款）
-    if(c < 0x80) { // 单字节（ASCII）
+    // UTF-8解碼規則（LVGL 同款）
+    if(c < 0x80) { // 單位元組（ASCII）
         cp = c;
         len = 1;
-    } else if(c < 0xE0) { // 双字节
+    } else if(c < 0xE0) { // 雙位元組
         cp = ((c & 0x1F) << 6) | (static_cast<unsigned char>(str[pos+1]) & 0x3F);
         len = 2;
-    } else if(c < 0xF0) { // 三字节（中文/标点）
+    } else if(c < 0xF0) { // 三位元組（中文/標點）
         cp = ((c & 0x0F) << 12) | 
              ((static_cast<unsigned char>(str[pos+1]) & 0x3F) << 6) | 
              (static_cast<unsigned char>(str[pos+2]) & 0x3F);
         len = 3;
-    } else { // 四字节（极少用）
+    } else { // 四位元組（極少用）
         cp = ((c & 0x07) << 18) | 
              ((static_cast<unsigned char>(str[pos+1]) & 0x3F) << 12) | 
              ((static_cast<unsigned char>(str[pos+2]) & 0x3F) << 6) | 
@@ -83,13 +83,13 @@ uint32_t utf8_next(const std::string& str, size_t& pos) {
     pos += len;
     return cp;
 }
-// 匹配中文标点（UTF-8）：。，！？；：、“”‘’（）【】《》，）】》”’
-// 匹配禁止行首的中文标点（复刻LVGL逻辑）
+// 匹配中文標點（UTF-8）：。，！？；：、“”‘’（）【】《》，）】》”’
+// 匹配禁止行首的中文標點（復刻LVGL邏輯）
 bool isCJKLeadingPunctuation(const std::string& unit) {
     size_t pos = 0;
-    uint32_t cp = utf8_next(unit, pos); // 解码为Unicode码点
+    uint32_t cp = utf8_next(unit, pos); // 解碼為Unicode碼點
 
-    // 中文标点的Unicode码点（和LVGL一致）
+    // 中文標點的Unicode碼點（和LVGL一致）
     const uint32_t leading_puncts[] = {
         0x3002, // 。
         0xFF0C, // ，
@@ -105,7 +105,7 @@ bool isCJKLeadingPunctuation(const std::string& unit) {
         0x2019  // ’
     };
 
-    // 遍历匹配码点
+    // 遍歷匹配碼點
     for(size_t i = 0; i < sizeof(leading_puncts)/sizeof(leading_puncts[0]); i++) {
         if(cp == leading_puncts[i]) {
             return true;
@@ -114,14 +114,14 @@ bool isCJKLeadingPunctuation(const std::string& unit) {
     return false;
 }
 
-// 判断是否为中文字符（单字/标点）
+// 判斷是否為中文字元（單字/標點）
 bool isCJKUnit(const std::string& unit) {
     if (unit.empty() || unit.size() > 3) return false;
     unsigned char firstByte = static_cast<unsigned char>(unit[0]);
-    // UTF-8中文/标点首字节范围：0xE0~0xEF
+    // UTF-8中文/標點首位元組範圍：0xE0~0xEF
     return firstByte >= 0xE0 && firstByte <= 0xEF;
 }
-// 辅助函数：获取list中指定索引的元素（适配嵌入式环境）
+// 輔助函式：獲取list中指定索引的元素（適配嵌入式環境）
 template <typename T>
 const T& getListElement(const std::list<T>& lst, size_t index) {
     auto it = lst.begin();
@@ -136,7 +136,7 @@ T& getListElement(std::list<T>& lst, size_t index) {
     std::advance(it, index);
     return *it;
 }
-// ========== 工具函数结束 ==========
+// ========== 工具函式結束 ==========
 
 }  // namespace
 
@@ -163,24 +163,24 @@ void ParsedText::layoutAndExtractLines(const GfxRenderer& renderer, const int fo
 
   // Apply fixed transforms before any per-line layout work.
   applyParagraphIndent();
-  //Serial.printf("首行缩进结束\n");
+  //Serial.printf("首行縮排結束\n");
 
   const int pageWidth = viewportWidth;
   int spaceWidth = renderer.getSpaceWidth(fontId);
 
-  // 2. 仅左对齐时，使用SETTINGS里的字间距设置（核心修正：不重定义变量）
+  // 2. 僅左對齊時，使用SETTINGS裡的字間距設定（核心修正：不重定義變數）
   if (blockStyle.alignment == CssTextAlign::Left) {
-    // 修正：直接赋值给已定义的spaceWidth，而非重新定义int spaceWidth
+    // 修正：直接賦值給已定義的spaceWidth，而非重新定義int spaceWidth
     spaceWidth = 1+(wordSpacing ) * 5;
-    //Serial.printf("左对齐字间距生效：wordSpacing=%d，最终spaceWidth=%d\n", wordSpacing, spaceWidth);
+    //Serial.printf("左對齊字間距生效：wordSpacing=%d，最終spaceWidth=%d\n", wordSpacing, spaceWidth);
   }
 
-  // ========== 可选：如果需要中文强制spaceWidth=0，取消注释以下逻辑 ==========
-  // 定义中文判断辅助函数
+  // ========== 可選：如果需要中文強制spaceWidth=0，取消註釋以下邏輯 ==========
+  // 定義中文判斷輔助函式
   //auto isChineseText = [&]() -> bool {
   //  for (const auto& word : words) {
   //    for (char c : word) {
-  //      // UTF-8中文的第一个字节范围：0xE4~0xE9（覆盖常用中文U+4E00~U+9FFF）
+  //      // UTF-8中文的第一個位元組範圍：0xE4~0xE9（覆蓋常用中文U+4E00~U+9FFF）
   //      if (c >= 0xE4 && c <= 0xE9) {
   //        return true;
   //      }
@@ -189,10 +189,10 @@ void ParsedText::layoutAndExtractLines(const GfxRenderer& renderer, const int fo
   //  return false;
   //};
 
-  // 仅左对齐+中文时，强制spaceWidth=0（按需选择）
+  // 僅左對齊+中文時，強制spaceWidth=0（按需選擇）
   //if (style == TextBlock::LEFT_ALIGN && isChineseText()) {
   //  spaceWidth = 0;
-  //  Serial.printf("左对齐+中文文本，强制spaceWidth=0\n");
+  //  Serial.printf("左對齊+中文文字，強制spaceWidth=0\n");
   //}
 
 
@@ -334,11 +334,11 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
   while (currentWordIndex < totalWordCount) {
     size_t nextBreakIndex = ans[currentWordIndex] + 1;
 
-    // ========== 修复：标点避忌+宽度检查（适配list） ==========
+    // ========== 修復：標點避忌+寬度檢查（適配list） ==========
     if (nextBreakIndex < totalWordCount) {
         const std::string& nextFirstUnit = getListElement(words, nextBreakIndex);
         if (isCJKLeadingPunctuation(nextFirstUnit)) {
-            // 1. 计算上一行当前总宽度
+            // 1. 計算上一行當前總寬度
             size_t prevBreakIndex = ans[currentWordIndex];
             int prevLineWidth = 0;
             int gapCount = 0;
@@ -348,21 +348,21 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
                     gapCount++;
                 }
             }
-            prevLineWidth += gapCount * spaceWidth; // 加上间距
+            prevLineWidth += gapCount * spaceWidth; // 加上間距
 
-            // 2. 计算标点宽度（要回退的标点）
+            // 2. 計算標點寬度（要回退的標點）
             int punctWidth = wordWidths[nextBreakIndex];
             const int effectivePageWidth = currentWordIndex == 0 ? pageWidth - firstLineIndent : pageWidth;
-            // 3. 允许轻微溢出（最多5%页面宽度）
+            // 3. 允許輕微溢位（最多5%頁面寬度）
             const int maxOverflow = effectivePageWidth * 0.05;
 
-            // 4. 如果加上标点后溢出不超过5%，就允许回退
+            // 4. 如果加上標點後溢位不超過5%，就允許回退
             if (prevLineWidth + punctWidth <= effectivePageWidth + maxOverflow) {
-              // 把下一行首标点并入当前行：当前行末尾向后扩一词
+              // 把下一行首標點併入當前行：當前行末尾向後擴一詞
               ans[currentWordIndex] = nextBreakIndex;
               ++nextBreakIndex;
             } else {
-                // 溢出过多：不回退，让标点留在下一行（兜底方案）
+                // 溢位過多：不回退，讓標點留在下一行（兜底方案）
               wordWidths[nextBreakIndex] =
                 wordWidths[nextBreakIndex] > 2 ? static_cast<uint16_t>(wordWidths[nextBreakIndex] - 2) : 0;
             }
@@ -386,11 +386,11 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
 
 
 void ParsedText::applyParagraphIndent() {
-  //Serial.printf("已进入此函数\n");
+  //Serial.printf("已進入此函式\n");
   if (blockStyle.alignment == CssTextAlign::Left && firstlineintented) {
-    //Serial.printf("已进入\n");
-    //words.front().insert(0, "\xe3\x80\x80\xe3\x80\x80"); // 两个全角空格，替代原来的1个窄空格
-    //Serial.printf("首行缩进应用：%d\n", firstlineintented);
+    //Serial.printf("已進入\n");
+    //words.front().insert(0, "\xe3\x80\x80\xe3\x80\x80"); // 兩個全形空格，替代原來的1個窄空格
+    //Serial.printf("首行縮排應用：%d\n", firstlineintented);
   }
 
   if (extraParagraphSpacing || words.empty()) {
@@ -469,11 +469,11 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
       --currentIndex;
     }
 
-    // ========== 修复：标点避忌+宽度检查（适配list） ==========
+    // ========== 修復：標點避忌+寬度檢查（適配list） ==========
     if (currentIndex < wordWidths.size()) {
         const std::string& nextFirstUnit = getListElement(words, currentIndex);
         if (isCJKLeadingPunctuation(nextFirstUnit) && currentIndex > lineStart) {
-            // 计算上一行剩余空间
+            // 計算上一行剩餘空間
             int lineWidth = 0;
             int gapCount = 0;
             for (size_t k = lineStart; k < currentIndex; ++k) {
@@ -486,11 +486,11 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
             const int effectivePageWidth = isFirstLine ? pageWidth - firstLineIndent : pageWidth;
             const int maxOverflow = effectivePageWidth * 0.05;
 
-            // 检查是否能容纳标点
+            // 檢查是否能容納標點
             if (lineWidth + wordWidths[currentIndex] <= effectivePageWidth + maxOverflow) {
-              ++currentIndex; // 回退标点到上一行（断行点后移一位）
+              ++currentIndex; // 回退標點到上一行（斷行點後移一位）
             } else {
-                // 溢出过多：标点留在下一行，左移2px
+                // 溢位過多：標點留在下一行，左移2px
               wordWidths[currentIndex] =
                 wordWidths[currentIndex] > 2 ? static_cast<uint16_t>(wordWidths[currentIndex] - 2) : 0;
             }

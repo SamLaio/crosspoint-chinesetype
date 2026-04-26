@@ -61,9 +61,9 @@ class Xtc {
   bool hasChapters() const;
   const std::vector<xtc::ChapterInfo>& getChapters() const;
 
-      // ================ ✅ 新增：暴露动态加载的3个核心对外接口 ================
+      // ================ ✅ 新增：暴露動態載入的3個核心對外介面 ================
   /**
-   * 动态加载下一批页码（内部调用 XtcParser 的 loadNextPageBatch）
+   * 動態載入下一批頁碼（內部呼叫 XtcParser 的 loadNextPageBatch）
    */
   xtc::XtcError loadNextPageBatch() const {
       return parser ? parser->loadNextPageBatch() : xtc::XtcError::FILE_NOT_FOUND;
@@ -74,7 +74,7 @@ class Xtc {
   }
 
   /**
-   * 获取当前已加载的最大页码
+   * 獲取當前已載入的最大頁碼
    */
   uint16_t getLoadedMaxPage() const {
       return parser ? parser->getLoadedMaxPage() : 0;
@@ -85,7 +85,7 @@ class Xtc {
   }
 
   /**
-   * 获取每次加载的批次页数（默认10）
+   * 獲取每次載入的批次頁數（預設10）
    */
   uint16_t getPageBatchSize() const {
       return parser ? parser->getPageBatchSize() : 10;
@@ -106,13 +106,13 @@ void releasePageBatchByStart(uint16_t startPage){
     }
 }
     bool getPageInfo(uint32_t pageIndex, xtc::PageInfo& info) {
-        // 修正2：空指针校验 + 正确调用 parser 的 getPageInfo
+        // 修正2：空指標校驗 + 正確呼叫 parser 的 getPageInfo
         if (parser) {
-            // 修正3：返回 parser->getPageInfo 的结果（bool 类型）
+            // 修正3：返回 parser->getPageInfo 的結果（bool 型別）
             return parser->getPageInfo(pageIndex, info);
         }
-        // 修正4：无 parser 时返回 false（补全返回值）
-        Serial.printf("[%lu] [XTC] getPageInfo失败：parser 为空\n", millis());
+        // 修正4：無 parser 時返回 false（補全返回值）
+        Serial.printf("[%lu] [XTC] getPageInfo失敗：parser 為空\n", millis());
         return false;
     } 
 size_t getmaxchapter(){    

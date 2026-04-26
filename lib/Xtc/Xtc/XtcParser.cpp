@@ -13,7 +13,7 @@
 
 #include <cstring>
 #include <new>  // for std::bad_alloc
-#include "esp_heap_caps.h" //for test最大内存
+#include "esp_heap_caps.h" //for test最大記憶體
 
 namespace xtc {
 
@@ -24,9 +24,9 @@ XtcParser::XtcParser()
       m_bitDepth(1),
       m_hasChapters(false),
       m_lastError(XtcError::OK),
-      m_loadBatchSize(200),  // 减小
+      m_loadBatchSize(200),  // 減小
       m_loadedMaxPage(0),
-      m_loadedStartPage(0) {  // 记录当前页表的起始页 
+      m_loadedStartPage(0) {  // 記錄當前頁表的起始頁 
   memset(&m_header, 0, sizeof(m_header));
 }
 
@@ -82,13 +82,13 @@ XtcError XtcParser::open(const char* filepath) {
     return m_lastError;
   }
 
-  // ✅ 恢复原有章节读取逻辑（不调用readChapters_gd）
+  // ✅ 恢復原有章節讀取邏輯（不呼叫readChapters_gd）
   m_lastError = readChapters();
   if (m_lastError != XtcError::OK) {
     Serial.printf("[%lu] [XTC] Failed to read internal chapters: %s\n", millis(), errorToString(m_lastError));
-    // 读取失败时创建默认章节，不退出
+    // 讀取失敗時建立預設章節，不退出
     m_chapters.clear();
-    std::string chapterName = m_title.empty() ? "全书" : m_title;
+    std::string chapterName = m_title.empty() ? "全書" : m_title;
     ChapterInfo singleChapter{std::move(chapterName), 0, m_header.pageCount - 1};
     m_chapters.push_back(std::move(singleChapter));
     m_hasChapters = true;
@@ -117,7 +117,7 @@ void XtcParser::close() {
   memset(&m_sliceCacheHeader, 0, sizeof(m_sliceCacheHeader));
   memset(&m_header, 0, sizeof(m_header));
   
-  // ✅ 仅清空独立的GD章节数据，不影响内部状态
+  // ✅ 僅清空獨立的GD章節資料，不影響內部狀態
   chapterActualCount = 0;
   memset(ChapterList, 0, sizeof(ChapterList));
 }
@@ -201,7 +201,7 @@ XtcError XtcParser::readPageTable() {
     return XtcError::READ_ERROR;
   }
   
-  // 初始加载：从第0页开始，加载第一批2000页
+  // 初始載入：從第0頁開始，載入第一批2000頁
   uint16_t startPage = 0;
   uint16_t endPage = startPage + m_loadBatchSize - 1;
   if(endPage >= m_header.pageCount) endPage = m_header.pageCount - 1;
@@ -235,7 +235,7 @@ XtcError XtcParser::readPageTable() {
   return XtcError::OK;
 }
 
-// ✅ 原有章节读取函数（内部使用，不影响GD接口）
+// ✅ 原有章節讀取函式（內部使用，不影響GD介面）
 XtcError XtcParser::readChapters() {
   m_hasChapters = false;
   m_chapters.clear();
@@ -258,8 +258,8 @@ XtcError XtcParser::readChapters() {
 
   const uint64_t fileSize = m_file.size();
   if (chapterOffset < sizeof(XtcHeader) || chapterOffset >= fileSize || chapterOffset + 96 > fileSize) {
-    // 创建默认章节
-    std::string chapterName = m_title.empty() ? "全书" : m_title;
+    // 建立預設章節
+    std::string chapterName = m_title.empty() ? "全書" : m_title;
     ChapterInfo singleChapter{std::move(chapterName), 0, m_header.pageCount - 1};
     m_chapters.push_back(std::move(singleChapter));
     m_hasChapters = true;
@@ -276,7 +276,7 @@ XtcError XtcParser::readChapters() {
   }
 
   if (maxOffset <= chapterOffset) {
-    std::string chapterName = m_title.empty() ? "全书" : m_title;
+    std::string chapterName = m_title.empty() ? "全書" : m_title;
     ChapterInfo singleChapter{std::move(chapterName), 0, m_header.pageCount - 1};
     m_chapters.push_back(std::move(singleChapter));
     m_hasChapters = true;
@@ -298,114 +298,114 @@ XtcError XtcParser::readChapters() {
     }
   }
 
-  // 内部默认章节
-  std::string chapterName = m_title.empty() ? "全书" : m_title;
+  // 內部預設章節
+  std::string chapterName = m_title.empty() ? "全書" : m_title;
   ChapterInfo singleChapter{std::move(chapterName), 0, m_header.pageCount - 1};
   m_chapters.push_back(std::move(singleChapter));
   m_hasChapters = !m_chapters.empty();
 
-  Serial.printf("[%lu] [XTC] 内部章节: [%s] | 共%u页\n", millis(), singleChapter.name.c_str(), m_header.pageCount);
+  Serial.printf("[%lu] [XTC] 內部章節: [%s] | 共%u頁\n", millis(), singleChapter.name.c_str(), m_header.pageCount);
   return XtcError::OK;
 }
 
-// ========== ✨ 核心修复：独立的readChapters_gd（完全不修改内部状态） ==========
+// ========== ✨ 核心修復：獨立的readChapters_gd（完全不修改內部狀態） ==========
 XtcError XtcParser::readChapters_gd(uint16_t chapterStart) {
-    Serial.printf("[%lu] [XTC-GD] === 独立章节读取开始，起始索引=%u ===\n", millis(), chapterStart);
+    Serial.printf("[%lu] [XTC-GD] === 獨立章節讀取開始，起始索引=%u ===\n", millis(), chapterStart);
     
-    // ✅ 1. 前置检查：文件必须打开
+    // ✅ 1. 前置檢查：檔案必須開啟
     if (!m_isOpen) {
-        Serial.printf("[%lu] [XTC-GD] ❌ 文件未打开\n", millis());
+        Serial.printf("[%lu] [XTC-GD] ❌ 檔案未開啟\n", millis());
         chapterActualCount = 0;
         memset(ChapterList, 0, sizeof(ChapterList));
         return XtcError::FILE_NOT_FOUND;
     }
 
-    // ✅ 2. 保存当前文件指针（关键：避免影响其他操作）
+    // ✅ 2. 儲存當前檔案指標（關鍵：避免影響其他操作）
     uint64_t originalPos = m_file.position();
-    Serial.printf("[%lu] [XTC-GD] 保存原指针位置: %llu\n", millis(), originalPos);
+    Serial.printf("[%lu] [XTC-GD] 儲存原指標位置: %llu\n", millis(), originalPos);
 
-    // ✅ 3. 重置GD章节数据（独立清空，不影响m_chapters）
+    // ✅ 3. 重置GD章節資料（獨立清空，不影響m_chapters）
     chapterActualCount = 0;
     memset(ChapterList, 0, sizeof(ChapterList));
     
-    // ===== 读取章节开关标记 =====
+    // ===== 讀取章節開關標記 =====
     uint8_t hasChaptersFlag = 0;
     if (!m_file.seek(0x0B)) {
-        Serial.printf("[%lu] [XTC-GD] ❌ seek(0x0B) 失败\n", millis());
-        m_file.seek(originalPos); // 恢复指针
+        Serial.printf("[%lu] [XTC-GD] ❌ seek(0x0B) 失敗\n", millis());
+        m_file.seek(originalPos); // 恢復指標
         return XtcError::READ_ERROR;
     }
     
     size_t readSize = m_file.read(&hasChaptersFlag, sizeof(hasChaptersFlag));
-    Serial.printf("[%lu] [XTC-GD] 章节标记: 读取大小=%u, 值=0x%02X\n", millis(), readSize, hasChaptersFlag);
+    Serial.printf("[%lu] [XTC-GD] 章節標記: 讀取大小=%u, 值=0x%02X\n", millis(), readSize, hasChaptersFlag);
     
-    // ===== 读取章节区起始偏移 =====
+    // ===== 讀取章節區起始偏移 =====
     uint64_t chapterOffset = 0;
     if (!m_file.seek(0x30)) {
-        Serial.printf("[%lu] [XTC-GD] ❌ seek(0x30) 失败\n", millis());
-        m_file.seek(originalPos); // 恢复指针
+        Serial.printf("[%lu] [XTC-GD] ❌ seek(0x30) 失敗\n", millis());
+        m_file.seek(originalPos); // 恢復指標
         return XtcError::READ_ERROR;
     }
     
     readSize = m_file.read(reinterpret_cast<uint8_t*>(&chapterOffset), sizeof(chapterOffset));
-    Serial.printf("[%lu] [XTC-GD] 章节偏移: 读取大小=%u, 值=%llu\n", millis(), readSize, chapterOffset);
+    Serial.printf("[%lu] [XTC-GD] 章節偏移: 讀取大小=%u, 值=%llu\n", millis(), readSize, chapterOffset);
     
-    // ===== 边界检查（宽松版，避免提前退出） =====
+    // ===== 邊界檢查（寬鬆版，避擴音前退出） =====
     const uint64_t fileSize = m_file.size();
-    Serial.printf("[%lu] [XTC-GD] 文件大小: %llu, 页表偏移: %llu\n", millis(), fileSize, m_header.pageTableOffset);
+    Serial.printf("[%lu] [XTC-GD] 檔案大小: %llu, 頁表偏移: %llu\n", millis(), fileSize, m_header.pageTableOffset);
 
-    // 仅做基础检查：偏移不能超过文件大小
+    // 僅做基礎檢查：偏移不能超過檔案大小
     if (chapterOffset >= fileSize || chapterOffset + 96 > fileSize) {
-        Serial.printf("[%lu] [XTC-GD] 章节偏移无效，返回空章节\n", millis());
-        m_file.seek(originalPos); // 恢复指针
+        Serial.printf("[%lu] [XTC-GD] 章節偏移無效，返回空章節\n", millis());
+        m_file.seek(originalPos); // 恢復指標
         return XtcError::OK;
     }
     
-    // 计算最大可读取的章节数
+    // 計算最大可讀取的章節數
     constexpr size_t chapterSize = 96;
     uint64_t maxOffset = (m_header.pageTableOffset > 0 && m_header.pageTableOffset < fileSize) 
                         ? m_header.pageTableOffset : fileSize;
     uint64_t available = (maxOffset > chapterOffset) ? (maxOffset - chapterOffset) : 0;
     maxChapterCount = static_cast<size_t>(available / chapterSize);
     
-    Serial.printf("[%lu] [XTC-GD] 可读取章节数: %u (最大偏移: %llu, 可用空间: %llu)\n", 
+    Serial.printf("[%lu] [XTC-GD] 可讀取章節數: %u (最大偏移: %llu, 可用空間: %llu)\n", 
                  millis(), (unsigned int)maxChapterCount, maxOffset, available);
 
-    // 起始索引越界检查
+    // 起始索引越界檢查
     if (chapterStart >= maxChapterCount) {
-        Serial.printf("[%lu] [XTC-GD] 起始索引%u超过最大章节数%u\n", millis(), chapterStart, (unsigned int)maxChapterCount);
-        m_file.seek(originalPos); // 恢复指针
+        Serial.printf("[%lu] [XTC-GD] 起始索引%u超過最大章節數%u\n", millis(), chapterStart, (unsigned int)maxChapterCount);
+        m_file.seek(originalPos); // 恢復指標
         return XtcError::OK;
     }
     
-    // ===== 定位到起始章节 =====
+    // ===== 定位到起始章節 =====
     uint64_t startReadOffset = chapterOffset + (chapterStart * chapterSize);
-    Serial.printf("[%lu] [XTC-GD] 定位到章节起始位置: %llu\n", millis(), startReadOffset);
+    Serial.printf("[%lu] [XTC-GD] 定位到章節起始位置: %llu\n", millis(), startReadOffset);
     
     if (!m_file.seek(startReadOffset)) {
-        Serial.printf("[%lu] [XTC-GD] ❌ 无法定位到章节偏移\n", millis());
-        m_file.seek(originalPos); // 恢复指针
+        Serial.printf("[%lu] [XTC-GD] ❌ 無法定位到章節偏移\n", millis());
+        m_file.seek(originalPos); // 恢復指標
         return XtcError::READ_ERROR;
     }
     
-    // ===== 读取章节数据（核心修复） =====
+    // ===== 讀取章節資料（核心修復） =====
     std::vector<uint8_t> chapterBuf(chapterSize);
-    int validCount = 0; // 有效章节计数
+    int validCount = 0; // 有效章節計數
     
-    // 最多读取25章，或到最大可读取数
+    // 最多讀取25章，或到最大可讀取數
     size_t readLimit = std::min((size_t)25, maxChapterCount - chapterStart);
     for (size_t i = 0; i < readLimit; i++) {
-        // 读取单章数据
+        // 讀取單章資料
         if (m_file.read(chapterBuf.data(), chapterSize) != chapterSize) {
-            Serial.printf("[%lu] [XTC-GD] 读取第%lu章失败（已读%u章）\n", millis(), chapterStart + i, validCount);
+            Serial.printf("[%lu] [XTC-GD] 讀取第%lu章失敗（已讀%u章）\n", millis(), chapterStart + i, validCount);
             break;
         }
         
-        // ✅ 修复1：正确解析章节名（跳过空章节）
+        // ✅ 修復1：正確解析章節名（跳過空章節）
         char nameBuf[81] = {0};
-        memcpy(nameBuf, chapterBuf.data(), 80); // 章节名占前80字节
+        memcpy(nameBuf, chapterBuf.data(), 80); // 章節名佔前80位元組
         
-        // 判断是否为空章节（全0）
+        // 判斷是否為空章節（全0）
         bool isEmpty = true;
         for (int j = 0; j < 80; j++) {
             if (nameBuf[j] != 0 && nameBuf[j] != ' ' && nameBuf[j] != '\r' && nameBuf[j] != '\n') {
@@ -415,51 +415,51 @@ XtcError XtcParser::readChapters_gd(uint16_t chapterStart) {
         }
         
         if (isEmpty) {
-            Serial.printf("[%lu] [XTC-GD] 第%lu章为空，跳过\n", millis(), chapterStart + i);
+            Serial.printf("[%lu] [XTC-GD] 第%lu章為空，跳過\n", millis(), chapterStart + i);
             continue;
         }
         
-        // ✅ 修复2：正确解析起始页码（偏移0x50，2字节）
+        // ✅ 修復2：正確解析起始頁碼（偏移0x50，2位元組）
         uint16_t startPage = 0;
         memcpy(&startPage, chapterBuf.data() + 0x50, sizeof(uint16_t));
         
-        // 页码校正（避免0页）
+        // 頁碼校正（避免0頁）
         startPage = (startPage == 0) ? 0 : (startPage - 1);
         
-        // ✅ 修复3：填充独立的ChapterList（不碰m_chapters）
+        // ✅ 修復3：填充獨立的ChapterList（不碰m_chapters）
         strncpy(ChapterList[validCount].shortTitle, nameBuf, 63);
-        ChapterList[validCount].shortTitle[63] = '\0'; // 确保字符串结束
+        ChapterList[validCount].shortTitle[63] = '\0'; // 確保字串結束
         ChapterList[validCount].startPage = startPage;
         ChapterList[validCount].chapterIndex = (uint16_t)(chapterStart + i);
         
-        Serial.printf("[%lu] [XTC-GD] 有效章节%u: 索引=%u, 名称=[%s], 起始页=%u\n", 
+        Serial.printf("[%lu] [XTC-GD] 有效章節%u: 索引=%u, 名稱=[%s], 起始頁=%u\n", 
                      millis(), validCount, ChapterList[validCount].chapterIndex,
                      ChapterList[validCount].shortTitle, ChapterList[validCount].startPage);
         
         validCount++;
         
-        // 达到25章上限则停止
+        // 達到25章上限則停止
         if (validCount >= 25) {
             break;
         }
     }
     
-    // ✅ 4. 更新独立的章节计数（仅修改chapterActualCount）
+    // ✅ 4. 更新獨立的章節計數（僅修改chapterActualCount）
     chapterActualCount = (uint8_t)validCount;
     
-    // ✅ 5. 恢复文件指针（关键：不影响其他操作）
+    // ✅ 5. 恢復檔案指標（關鍵：不影響其他操作）
     m_file.seek(originalPos);
-    Serial.printf("[%lu] [XTC-GD] === 独立章节读取完成：恢复指针到%llu，有效章节数=%u ===\n", 
+    Serial.printf("[%lu] [XTC-GD] === 獨立章節讀取完成：恢復指標到%llu，有效章節數=%u ===\n", 
                  millis(), originalPos, chapterActualCount);
     
     return XtcError::OK;
 }
 
-// ========== 动态加载相关函数 ==========
+// ========== 動態載入相關函式 ==========
 XtcError XtcParser::loadNextPageBatch() {
   if(!m_isOpen) return XtcError::FILE_NOT_FOUND;
   if(m_loadedMaxPage >= m_header.pageCount - 1) {
-    Serial.printf("[XTC] 已加载全部%u页\n", m_header.pageCount);
+    Serial.printf("[XTC] 已載入全部%u頁\n", m_header.pageCount);
     return XtcError::PAGE_OUT_OF_RANGE;
   }
   return loadPageBatchByStart(m_loadedMaxPage + 1);
@@ -473,18 +473,18 @@ uint16_t XtcParser::getPageBatchSize() const {
   return m_loadBatchSize;
 }
 
-// ✅ 修复getPageInfo中的索引计算错误
+// ✅ 修復getPageInfo中的索引計算錯誤
 bool XtcParser::getPageInfo(uint32_t pageIndex, PageInfo& info) const {
   if (pageIndex >= m_header.pageCount) return false;
   
-  // 检查是否需要加载新批次
+  // 檢查是否需要載入新批次
   if (pageIndex < m_loadedStartPage || pageIndex > m_loadedMaxPage) {
     auto* self = const_cast<XtcParser*>(this);
-    // 修复：直接加载目标页所在的批次，而非按batchSize取整
+    // 修復：直接載入目標頁所在的批次，而非按batchSize取整
     self->loadPageBatchByStart((uint16_t)pageIndex); 
   }
   
-  // 计算当前页在页表中的相对索引
+  // 計算當前頁在頁表中的相對索引
   uint16_t idx = (uint16_t)(pageIndex - m_loadedStartPage);
   if(idx >= m_pageTable.size()) return false;
   
@@ -493,43 +493,43 @@ bool XtcParser::getPageInfo(uint32_t pageIndex, PageInfo& info) const {
 }
 
 
-// 内联错误码转字符串函数，提升日志可读性
+// 內聯錯誤碼轉字串函式，提升日誌可讀性
 
 
 size_t XtcParser::loadPage(uint32_t pageIndex, uint8_t* buffer, size_t bufferSize, 
                           bool isSliceMode, int n ) {
-    // ========== 核心控制参数 ==========
-    const int SLICE_COUNT = 8;       // 固定8等分（核心，保证显示正确）
+    // ========== 核心控制引數 ==========
+    const int SLICE_COUNT = 8;       // 固定8等分（核心，保證顯示正確）
 
-    // ========== 基础防护1：核心参数合法性 ==========
+    // ========== 基礎防護1：核心引數合法性 ==========
     if (!m_isOpen || pageIndex >= m_header.pageCount || buffer == nullptr) {
         Serial.printf("[%lu] [XTC] Invalid param: open=%d, page=%lu/%lu, buffer=%p\n",
                       millis(), m_isOpen, pageIndex, m_header.pageCount, buffer);
-        // 内存日志
+        // 記憶體日誌
         size_t freeMem = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
         size_t maxBlock = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
         Serial.printf("[MEM] Free: %lu KB, Max block: %lu KB\n", freeMem/1024, maxBlock/1024);
         return 0;
     }
 
-    // ========== 加载页面批次（原有逻辑） ==========
+    // ========== 載入頁面批次（原有邏輯） ==========
     if (pageIndex < m_loadedStartPage || pageIndex > m_loadedMaxPage) {
-        loadPageBatchByStart((uint16_t)pageIndex); // 保持不变
+        loadPageBatchByStart((uint16_t)pageIndex); // 保持不變
     }
 
-    // ========== 基础防护2：页面索引合法性 ==========
+    // ========== 基礎防護2：頁面索引合法性 ==========
     uint16_t idx = (uint16_t)(pageIndex - m_loadedStartPage);
     if (idx >= m_pageTable.size()) {
         Serial.printf("[%lu] [XTC] Page index out of range: idx=%u, table size=%u\n",
                       millis(), idx, m_pageTable.size());
-        // 内存日志
+        // 記憶體日誌
         size_t freeMem = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
         size_t maxBlock = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
         Serial.printf("[MEM] Free: %lu KB, Max block: %lu KB\n", freeMem/1024, maxBlock/1024);
         return 0;
     }
 
-    // ========== 定位页面信息 ==========
+    // ========== 定位頁面資訊 ==========
     const PageInfo& page = m_pageTable[idx];
 
     if (isSliceMode && (n < 0 || n >= SLICE_COUNT)) {
@@ -579,7 +579,7 @@ size_t XtcParser::loadPage(uint32_t pageIndex, uint8_t* buffer, size_t bufferSiz
       }
     }
 
-    // ========== 计算完整数据大小 ==========
+    // ========== 計算完整資料大小 ==========
     size_t bitmapSize;
     if (m_bitDepth == 2) {
         bitmapSize = ((static_cast<size_t>(pageHeader.width) * pageHeader.height + 7) / 8) * 2;
@@ -587,12 +587,12 @@ size_t XtcParser::loadPage(uint32_t pageIndex, uint8_t* buffer, size_t bufferSiz
       bitmapSize = ((static_cast<size_t>(pageHeader.width) + 7) / 8) * pageHeader.height;
     }
 
-    // ========== 模式1：完整页面加载（默认） ==========
+    // ========== 模式1：完整頁面載入（預設） ==========
     if (!isSliceMode) {
         if (bufferSize < bitmapSize) {
             Serial.printf("[%lu] [XTC] Full buffer too small: need=%lu, have=%lu (Load error)\n",
                           millis(), bitmapSize, bufferSize);
-            // 内存日志
+            // 記憶體日誌
             size_t freeMem = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
             size_t maxBlock = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
             Serial.printf("[MEM] Free: %lu KB, Max block: %lu KB (Need: %lu KB)\n", 
@@ -604,7 +604,7 @@ size_t XtcParser::loadPage(uint32_t pageIndex, uint8_t* buffer, size_t bufferSiz
         if (bytesRead != bitmapSize) {
             Serial.printf("[%lu] [XTC] Read full page failed: page=%lu, read=%lu/%lu (Load error)\n",
                           millis(), pageIndex, bytesRead, bitmapSize);
-            // 内存日志
+            // 記憶體日誌
             size_t freeMem = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
             size_t maxBlock = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
             Serial.printf("[MEM] Free: %lu KB, Max block: %lu KB\n", freeMem/1024, maxBlock/1024);
@@ -617,29 +617,29 @@ size_t XtcParser::loadPage(uint32_t pageIndex, uint8_t* buffer, size_t bufferSiz
 
 
 
-// XTCH 2bit 竖切版
+// XTCH 2bit 豎切版
 
 size_t sliceBufferSize;
 
 
-// ------------ 核心：按XTCH垂直列优先计算切片大小 ------------
-const uint16_t sliceWidth = pageHeader.width / SLICE_COUNT; // 按宽度竖切（比如480/8=60列/片）
-const uint16_t sliceHeight = pageHeader.height / SLICE_COUNT; // 按高度竖切（比如800/8=100行/片）
+// ------------ 核心：按XTCH垂直列優先計算切片大小 ------------
+const uint16_t sliceWidth = pageHeader.width / SLICE_COUNT; // 按寬度豎切（比如480/8=60列/片）
+const uint16_t sliceHeight = pageHeader.height / SLICE_COUNT; // 按高度豎切（比如800/8=100行/片）
 size_t slicePlaneSize;
 if (m_bitDepth == 2) {
-    // XTCH 2bit：单个平面 = 切片宽度 × ((高度 +7)/8)（竖切列数 × 每列字节数）
+    // XTCH 2bit：單個平面 = 切片寬度 × ((高度 +7)/8)（豎切列數 × 每列位元組數）
     slicePlaneSize = sliceWidth * ((pageHeader.height + 7) / 8);
-    sliceBufferSize = slicePlaneSize * 2; // 双平面
+    sliceBufferSize = slicePlaneSize * 2; // 雙平面
 } else {
-    // 1bit 仍按行切（不影响）
+    // 1bit 仍按行切（不影響）
   slicePlaneSize = ((static_cast<size_t>(pageHeader.width) + 7) / 8) * sliceHeight;
     sliceBufferSize = slicePlaneSize;
 }
 
-// 缓冲区校验
+// 緩衝區校驗
 if (bufferSize < sliceBufferSize) {
   //debug
-  Serial.printf("[%lu] [XTC] 查看片高:%d,片宽:%d\n", millis(), sliceHeight, pageHeader.width);
+  Serial.printf("[%lu] [XTC] 檢視片高:%d,片寬:%d\n", millis(), sliceHeight, pageHeader.width);
     Serial.printf("[%lu] [XTC] Buffer too small: need %lu, have %lu\n", millis(), sliceBufferSize, bufferSize);
     m_lastError = XtcError::MEMORY_ERROR;
     return 0;
@@ -647,12 +647,12 @@ if (bufferSize < sliceBufferSize) {
 memset(buffer, 0, sliceBufferSize);
 
 if (m_bitDepth == 2) {
-    // XTCH 2bit 竖切核心逻辑
-    const size_t fullColBytes = (pageHeader.height + 7) / 8;    // 每列字节数（垂直8像素打包）
-    const size_t fullPlaneSize = pageHeader.width * fullColBytes; // 单个平面总大小
+    // XTCH 2bit 豎切核心邏輯
+    const size_t fullColBytes = (pageHeader.height + 7) / 8;    // 每列位元組數（垂直8畫素打包）
+    const size_t fullPlaneSize = pageHeader.width * fullColBytes; // 單個平面總大小
   const uint32_t dataStartOffset = page.offset + sizeof(XtgPageHeader);
 
-  // ===== 步骤1：读取平面1的第n个竖切片 =====
+  // ===== 步驟1：讀取平面1的第n個豎切片 =====
   const size_t skipPlane1 = static_cast<size_t>(n) * sliceWidth * fullColBytes;
   const uint32_t plane1Offset = dataStartOffset + static_cast<uint32_t>(skipPlane1);
   if (!m_file.seek(plane1Offset)) {
@@ -660,7 +660,7 @@ if (m_bitDepth == 2) {
     m_lastError = XtcError::READ_ERROR;
     return 0;
   }
-    // 读取平面1竖切片（直接到buffer前半段）
+    // 讀取平面1豎切片（直接到buffer前半段）
     size_t plane1Read = m_file.read(buffer, slicePlaneSize);
     if (plane1Read != slicePlaneSize) {
         Serial.printf("[%lu] [XTC] Plane1 slice read error: expected %lu, got %lu\n", millis(), slicePlaneSize, plane1Read);
@@ -668,14 +668,14 @@ if (m_bitDepth == 2) {
         return 0;
     }
 
-    // ===== 步骤2：读取平面2的第n个竖切片 =====
+    // ===== 步驟2：讀取平面2的第n個豎切片 =====
   const uint32_t plane2Offset = dataStartOffset + static_cast<uint32_t>(fullPlaneSize + skipPlane1);
   if (!m_file.seek(plane2Offset)) {
     Serial.printf("[%lu] [XTC] Plane2 seek failed: offset=%lu\n", millis(), plane2Offset);
     m_lastError = XtcError::READ_ERROR;
     return 0;
   }
-    // 读取平面2竖切片（直接到buffer后半段）
+    // 讀取平面2豎切片（直接到buffer後半段）
     size_t plane2Read = m_file.read(buffer + slicePlaneSize, slicePlaneSize);
     if (plane2Read != slicePlaneSize) {
         Serial.printf("[%lu] [XTC] Plane2 slice read error: expected %lu, got %lu\n", millis(), slicePlaneSize, plane2Read);
@@ -683,7 +683,7 @@ if (m_bitDepth == 2) {
         return 0;
     }
 } else {
-    // 1bit 水平切(横着存的)
+    // 1bit 水平切(橫著存的)
     const size_t rowBytes = (pageHeader.width + 7) / 8;
   const size_t skipRows = static_cast<size_t>(n) * sliceHeight;
   const uint32_t dataStartOffset = page.offset + sizeof(XtgPageHeader);
@@ -716,7 +716,7 @@ XtcError XtcParser::loadPageStreaming(uint32_t pageIndex,
     return XtcError::PAGE_OUT_OF_RANGE;
   }
 
-  // 确保页表已加载
+  // 確保頁表已載入
   if (pageIndex < m_loadedStartPage || pageIndex > m_loadedMaxPage) {
     loadPageBatchByStart((uint16_t)pageIndex);
   }
@@ -783,30 +783,30 @@ bool XtcParser::isValidXtcFile(const char* filepath) {
 // XtcParser.cpp
 XtcError XtcParser::loadPageBatchByStart(uint16_t startPage) {
     if(!m_isOpen) {
-        Serial.printf("[%lu] [XTC] 加载批次失败：文件未打开\n", millis());
+        Serial.printf("[%lu] [XTC] 載入批次失敗：檔案未開啟\n", millis());
         return XtcError::FILE_NOT_FOUND;
     }
     if(startPage >= m_header.pageCount) {
-        Serial.printf("[%lu] [XTC] 加载批次失败：起始页%u超出总页数%u\n", millis(), startPage, m_header.pageCount);
+        Serial.printf("[%lu] [XTC] 載入批次失敗：起始頁%u超出總頁數%u\n", millis(), startPage, m_header.pageCount);
         return XtcError::PAGE_OUT_OF_RANGE;
     }
 
-    // 保存当前状态（加载失败时回滚）
+    // 儲存當前狀態（載入失敗時回滾）
     uint16_t oldStart = m_loadedStartPage;
     uint16_t oldMax = m_loadedMaxPage;
     std::vector<PageInfo> oldPageTable = m_pageTable;
 
-    // 计算批次范围（严格边界校验）
+    // 計算批次範圍（嚴格邊界校驗）
     m_loadedStartPage = startPage;
     uint16_t endPage = startPage + m_loadBatchSize - 1;
     endPage = (endPage >= m_header.pageCount) ? (m_header.pageCount - 1) : endPage;
     uint16_t loadCount = endPage - startPage + 1;
 
-    // 定位页表位置（添加64位偏移校验）
+    // 定位頁表位置（新增64位偏移校驗）
     uint64_t seekOffset = m_header.pageTableOffset + (static_cast<uint64_t>(startPage) * sizeof(PageTableEntry));
     if (seekOffset >= m_file.size()) {
-        Serial.printf("[%lu] [XTC] 加载批次失败：偏移%llu超出文件大小%llu\n", millis(), seekOffset, m_file.size());
-        // 回滚状态
+        Serial.printf("[%lu] [XTC] 載入批次失敗：偏移%llu超出檔案大小%llu\n", millis(), seekOffset, m_file.size());
+        // 回滾狀態
         m_loadedStartPage = oldStart;
         m_loadedMaxPage = oldMax;
         m_pageTable = oldPageTable;
@@ -814,21 +814,21 @@ XtcError XtcParser::loadPageBatchByStart(uint16_t startPage) {
     }
 
     if(!m_file.seek(seekOffset)) {
-        Serial.printf("[%lu] [XTC] 加载批次失败：无法定位到偏移%llu\n", millis(), seekOffset);
-        // 回滚状态
+        Serial.printf("[%lu] [XTC] 載入批次失敗：無法定位到偏移%llu\n", millis(), seekOffset);
+        // 回滾狀態
         m_loadedStartPage = oldStart;
         m_loadedMaxPage = oldMax;
         m_pageTable = oldPageTable;
         return XtcError::READ_ERROR;
     }
 
-    // 加载页表（逐行校验，失败则回滚）
+    // 載入頁表（逐行校驗，失敗則回滾）
     m_pageTable.resize(loadCount);
     bool loadSuccess = true;
     for(uint16_t i = startPage; i <= endPage; i++) {
         PageTableEntry entry;
         if(m_file.read(reinterpret_cast<uint8_t*>(&entry), sizeof(PageTableEntry)) != sizeof(PageTableEntry)) {
-            Serial.printf("[%lu] [XTC] 加载批次失败：读取第%u页表项失败\n", millis(), i);
+            Serial.printf("[%lu] [XTC] 載入批次失敗：讀取第%u頁表項失敗\n", millis(), i);
             loadSuccess = false;
             break;
         }
@@ -839,16 +839,16 @@ XtcError XtcParser::loadPageBatchByStart(uint16_t startPage) {
         m_pageTable[relIdx].height = entry.height;
         m_pageTable[relIdx].bitDepth = m_bitDepth;
 
-        // 校验页表项有效性（避免无效偏移）
+        // 校驗頁表項有效性（避免無效偏移）
         if (m_pageTable[relIdx].offset >= m_file.size()) {
-            Serial.printf("[%lu] [XTC] 加载批次失败：第%u页偏移%lu超出文件大小\n", millis(), i, m_pageTable[relIdx].offset);
+            Serial.printf("[%lu] [XTC] 載入批次失敗：第%u頁偏移%lu超出檔案大小\n", millis(), i, m_pageTable[relIdx].offset);
             loadSuccess = false;
             break;
         }
     }
 
     if (!loadSuccess) {
-        // 回滚到旧状态
+        // 回滾到舊狀態
         m_loadedStartPage = oldStart;
         m_loadedMaxPage = oldMax;
         m_pageTable = oldPageTable;
@@ -856,85 +856,85 @@ XtcError XtcParser::loadPageBatchByStart(uint16_t startPage) {
     }
 
     m_loadedMaxPage = endPage;
-    Serial.printf("[%lu] [XTC] 加载批次 ✔️ : [%u~%u] (共%u页) | 页表项数=%u\n", 
+    Serial.printf("[%lu] [XTC] 載入批次 ✔️ : [%u~%u] (共%u頁) | 頁表項數=%u\n", 
                  millis(), startPage, endPage, loadCount, (uint16_t)m_pageTable.size());
     return XtcError::OK;
 }
 
-// ========== 新增：释放批次内存（解决内存泄漏核心） ==========
+// ========== 新增：釋放批次記憶體（解決記憶體洩漏核心） ==========
 // XtcParser.cpp
 void XtcParser::releasePageBatchByStart(uint16_t startPage) {
     if (!m_isOpen) {
-        Serial.printf("[%lu] [XTC] 释放批次失败：文件未打开\n", millis());
+        Serial.printf("[%lu] [XTC] 釋放批次失敗：檔案未開啟\n", millis());
         return;
     }
 
-    // 仅当起始页匹配当前加载批次时才释放（避免误释放）
+    // 僅當起始頁匹配當前載入批次時才釋放（避免誤釋放）
     if (startPage == m_loadedStartPage && m_loadedMaxPage >= m_loadedStartPage) {
-        // 清空页表但保留vector容器（避免后续resize时重新分配内存导致碎片）
+        // 清空頁表但保留vector容器（避免後續resize時重新分配記憶體導致碎片）
         m_pageTable.clear(); 
-        // 重置状态为"无有效批次"（关键：后续加载会检测此状态）
+        // 重置狀態為"無有效批次"（關鍵：後續載入會檢測此狀態）
         m_loadedStartPage = 0;
         m_loadedMaxPage = 0;
         
-        Serial.printf("[%lu] [XTC] 释放批次 ✔️ : [%u~%u] | 页表已清空\n", 
+        Serial.printf("[%lu] [XTC] 釋放批次 ✔️ : [%u~%u] | 頁表已清空\n", 
                      millis(), startPage, m_loadedMaxPage);
     } else {
-        Serial.printf("[%lu] [XTC] 跳过释放：批次[%u]非当前加载批次[%u~%u]\n", 
+        Serial.printf("[%lu] [XTC] 跳過釋放：批次[%u]非當前載入批次[%u~%u]\n", 
                      millis(), startPage, m_loadedStartPage, m_loadedMaxPage);
     }
 }
 
-// 之前写的时候没想那么多，没给自己留空，算了，用二分法查章节吧
+// 之前寫的時候沒想那麼多，沒給自己留空，算了，用二分法查章節吧
 uint16_t XtcParser::getChapterIndexByPage(uint16_t pageNum) {
     if (!m_isOpen || maxChapterCount == 0) {
-        Serial.printf("[%lu] [XTC] 无法找章节：文件未打开或无章节数据\n", millis());
+        Serial.printf("[%lu] [XTC] 無法找章節：檔案未開啟或無章節資料\n", millis());
         return 0;
     }
 
-    // 二分法初始化：左边界=0，右边界=最大章节数-1
+    // 二分法初始化：左邊界=0，右邊界=最大章節數-1
     uint16_t left = 0;
     uint16_t right = static_cast<uint16_t>(maxChapterCount - 1);
-    uint16_t targetChapter = 0; // 最终找到的章节索引
+    uint16_t targetChapter = 0; // 最終找到的章節索引
 
     while (left <= right) {
-        // 1. 计算中间位置（避免溢出）
+        // 1. 計算中間位置（避免溢位）
         uint16_t mid = left + ((right - left) / 2);
         
-        // 2. 分段读取中间位置所在的章节块（每次读25章，和readChapters_gd逻辑一致）
-        uint16_t batchStart = (mid / 25) * 25; // 计算mid所在的25章块起始索引
-        readChapters_gd(batchStart); // 读取该块的章节数据到ChapterList
+        // 2. 分段讀取中間位置所在的章節塊（每次讀25章，和readChapters_gd邏輯一致）
+        uint16_t batchStart = (mid / 25) * 25; // 計算mid所在的25章塊起始索引
+        readChapters_gd(batchStart); // 讀取該塊的章節資料到ChapterList
         
-        // 3. 找到mid在当前ChapterList中的相对索引
+        // 3. 找到mid在當前ChapterList中的相對索引
         uint8_t relMid = mid - batchStart;
         if (relMid >= chapterActualCount) {
-            // mid超出当前读取的章节块 → 说明右边界过大，缩小右边界
+            // mid超出當前讀取的章節塊 → 說明右邊界過大，縮小右邊界
             right = mid - 1;
             continue;
         }
 
-        // 4. 二分核心判断
+        // 4. 二分核心判斷
         uint16_t midChapterStartPage = ChapterList[relMid].startPage;
         if (midChapterStartPage <= pageNum) {
-            // 中间章节起始页 ≤ 目标页码 → 记录为候选，继续找更大的索引
+            // 中間章節起始頁 ≤ 目標頁碼 → 記錄為候選，繼續找更大的索引
             targetChapter = mid;
             left = mid + 1;
         } else {
-            // 中间章节起始页 > 目标页码 → 缩小右边界
+            // 中間章節起始頁 > 目標頁碼 → 縮小右邊界
             right = mid - 1;
         }
 
-        Serial.printf("[%lu] [XTC] 二分查找：mid=%u, 起始页=%u, 目标页=%u → 左=%u, 右=%u\n", 
+        Serial.printf("[%lu] [XTC] 二分查詢：mid=%u, 起始頁=%u, 目標頁=%u → 左=%u, 右=%u\n", 
                      millis(), mid, midChapterStartPage, pageNum, left, right);
     }
 
-    // 5. 验证最终结果（读取目标章节所在块，确认起始页）
+    // 5. 驗證最終結果（讀取目標章節所在塊，確認起始頁）
     uint16_t finalBatchStart = (targetChapter / 25) * 25;
     readChapters_gd(finalBatchStart);
     uint8_t finalRelIdx = targetChapter - finalBatchStart;
     uint16_t finalStartPage = ChapterList[finalRelIdx].startPage;
     
-    Serial.printf("[%lu] [XTC] 最终结果：页码%u对应章节索引%u，章节起始页%u\n", 
+    Serial.printf("[%lu] [XTC] 最終結果：頁碼%u對應章節索引%u，章節起始頁%u\n", 
                  millis(), pageNum, targetChapter, finalStartPage);
     return targetChapter;
 }

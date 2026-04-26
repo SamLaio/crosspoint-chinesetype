@@ -173,21 +173,21 @@ class CrossPointSettings {
   char opdsUsername[64] = "";
   char opdsPassword[64] = "";
 
-      // 坚果云 settings
-  char jgUsername[64] = "";    // 坚果云账号（邮箱）
-  char jgAppPassword[64] = ""; // 坚果云应用密码
-  char jgBookFolder[128] = ""; // 电子书文件夹路径
+      // 堅果雲 settings
+  char jgUsername[64] = "";    // 堅果雲賬號（郵箱）
+  char jgAppPassword[64] = ""; // 堅果雲應用密碼
+  char jgBookFolder[128] = ""; // 電子書資料夾路徑
 
   // Z-Library 配置
 char zlibEmail[64] = "";
 char zlibPassword[64] = "";
-//新加划线
+//新加劃線
 uint8_t extraline = 1;
   // Bluetooth enabled state (persistent)
   uint8_t bluetoothEnabled = 0;
 
 
- //阅读背景设置
+ //閱讀背景設定
   uint8_t ReadingScreenEnabled = 0; // Whether to show the reading screen background image
   // Custom sleep screen source: 0=bmp, 1=pxc
   uint8_t customSleepUsePxc = 0;

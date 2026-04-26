@@ -38,7 +38,7 @@ struct PixelCache {
     buffer = (uint8_t*)malloc(bufferSize);
     if (buffer) {
       // Default all pixels to 2-bit value 3 (white) so transparent areas stay white in cache.
-            //更改防止后面进入的时候是黑色
+            //更改防止後面進入的時候是黑色
       memset(buffer, 0xFF, bufferSize);
       Serial.printf("[%lu] [IMG] Allocated cache buffer: %d bytes for %dx%d\n", millis(), bufferSize, w, h);
     }

@@ -35,7 +35,7 @@ struct PngContext {
   bool caching;
 
   uint8_t* grayLineBuffer;
-  uint8_t* alphaLineBuffer; // 仅新增：Alpha通道缓冲（用于判断透明）
+  uint8_t* alphaLineBuffer; // 僅新增：Alpha通道緩衝（用於判斷透明）
 
   PngContext()
       : renderer(nullptr),
@@ -50,7 +50,7 @@ struct PngContext {
         lastDstY(-1),
         caching(false),
         grayLineBuffer(nullptr),
-        alphaLineBuffer(nullptr) {} // 仅初始化新增的Alpha缓冲
+        alphaLineBuffer(nullptr) {} // 僅初始化新增的Alpha緩衝
 };
 
 // File I/O callbacks use pFile->fHandle to access the FsFile*,
@@ -118,20 +118,20 @@ int requiredPngInternalBufferBytes(int srcWidth, int pixelType) {
   return ((pitch + 1) * 2) + 32;
 }
 
-// 仅修改：拆分灰度和Alpha，保留原有灰度计算逻辑，单独提取Alpha值
+// 僅修改：拆分灰度和Alpha，保留原有灰度計算邏輯，單獨提取Alpha值
 void convertLineToGrayAndAlpha(uint8_t* pPixels, uint8_t* grayLine, uint8_t* alphaLine, int width, int pixelType, uint8_t* palette, int hasAlpha) {
   switch (pixelType) {
     case PNG_PIXEL_GRAYSCALE:
       memcpy(grayLine, pPixels, width);
-      memset(alphaLine, 255, width); // 无Alpha=完全不透明
+      memset(alphaLine, 255, width); // 無Alpha=完全不透明
       break;
 
     case PNG_PIXEL_TRUECOLOR:
       for (int x = 0; x < width; x++) {
         uint8_t* p = &pPixels[x * 3];
-        // 保留原有灰度计算逻辑
+        // 保留原有灰度計算邏輯
         grayLine[x] = (uint8_t)((p[0] * 77 + p[1] * 150 + p[2] * 29) >> 8);
-        alphaLine[x] = 255; // 无Alpha=完全不透明
+        alphaLine[x] = 255; // 無Alpha=完全不透明
       }
       break;
 
@@ -141,10 +141,10 @@ void convertLineToGrayAndAlpha(uint8_t* pPixels, uint8_t* grayLine, uint8_t* alp
           for (int x = 0; x < width; x++) {
             uint8_t idx = pPixels[x];
             uint8_t* p = &palette[idx * 3];
-            // 保留原有灰度计算逻辑
+            // 保留原有灰度計算邏輯
             uint8_t gray = (uint8_t)((p[0] * 77 + p[1] * 150 + p[2] * 29) >> 8);
             grayLine[x] = gray;
-            alphaLine[x] = palette[768 + idx]; // 单独提取Alpha值
+            alphaLine[x] = palette[768 + idx]; // 單獨提取Alpha值
           }
         } else {
           for (int x = 0; x < width; x++) {
@@ -163,9 +163,9 @@ void convertLineToGrayAndAlpha(uint8_t* pPixels, uint8_t* grayLine, uint8_t* alp
       for (int x = 0; x < width; x++) {
         uint8_t gray = pPixels[x * 2];
         uint8_t alpha = pPixels[x * 2 + 1];
-        // 保留原有灰度计算逻辑（和透明混合）
+        // 保留原有灰度計算邏輯（和透明混合）
         grayLine[x] = (uint8_t)((gray * alpha + 255 * (255 - alpha)) / 255);
-        alphaLine[x] = alpha; // 单独提取Alpha值
+        alphaLine[x] = alpha; // 單獨提取Alpha值
       }
       break;
 
@@ -174,9 +174,9 @@ void convertLineToGrayAndAlpha(uint8_t* pPixels, uint8_t* grayLine, uint8_t* alp
         uint8_t* p = &pPixels[x * 4];
         uint8_t gray = (uint8_t)((p[0] * 77 + p[1] * 150 + p[2] * 29) >> 8);
         uint8_t alpha = p[3];
-        // 保留原有灰度计算逻辑（和透明混合）
+        // 保留原有灰度計算邏輯（和透明混合）
         grayLine[x] = (uint8_t)((gray * alpha + 255 * (255 - alpha)) / 255);
-        alphaLine[x] = alpha; // 单独提取Alpha值
+        alphaLine[x] = alpha; // 單獨提取Alpha值
       }
       break;
 
@@ -207,7 +207,7 @@ int pngDrawCallback(PNGDRAW* pDraw) {
   int outY = ctx->config->y + dstY;
   if (outY >= ctx->screenHeight) return 1;
 
-  // 仅修改：调用拆分后的灰度+Alpha转换函数
+  // 僅修改：呼叫拆分後的灰度+Alpha轉換函式
   convertLineToGrayAndAlpha(pDraw->pPixels, ctx->grayLineBuffer, ctx->alphaLineBuffer, 
                            srcWidth, pDraw->iPixelType, pDraw->pPalette, pDraw->iHasAlpha);
 
@@ -224,17 +224,17 @@ int pngDrawCallback(PNGDRAW* pDraw) {
   for (int dstX = 0; dstX < dstWidth; dstX++) {
     int outX = outXBase + dstX;
     if (outX < screenWidth) {
-      // 防护：srcX不能越界
+      // 防護：srcX不能越界
       if (srcX >= srcWidth) break;
 
       uint8_t gray = ctx->grayLineBuffer[srcX];
-      uint8_t alpha = ctx->alphaLineBuffer[srcX]; // 读取单独的Alpha值
+      uint8_t alpha = ctx->alphaLineBuffer[srcX]; // 讀取單獨的Alpha值
 
-      // 核心新增：Alpha=0（完全透明）时不绘制，保留残留；Alpha>0时正常绘制
+      // 核心新增：Alpha=0（完全透明）時不繪製，保留殘留；Alpha>0時正常繪製
       if (alpha > 0) {
-          // 获取渲染模式（和Bitmap逻辑对齐）
+          // 獲取渲染模式（和Bitmap邏輯對齊）
           auto renderMode = ctx->renderer->getRenderMode();
-          //先清空区域
+          //先清空區域
           if (renderMode == GfxRenderer::BW) {
               ctx->renderer->drawPixel(outX, outY, false);
           }
@@ -372,7 +372,7 @@ bool PngToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath
     warnUnsupportedFeature("bit depth (" + std::to_string(png->getBpp()) + "bpp)", imagePath);
   }
 
-  // 仅修改：分配Alpha缓冲，和灰度缓冲同大小
+  // 僅修改：分配Alpha緩衝，和灰度緩衝同大小
   const size_t grayBufSize = PNG_MAX_BUFFERED_PIXELS / 2;
   ctx.grayLineBuffer = static_cast<uint8_t*>(malloc(grayBufSize));
   ctx.alphaLineBuffer = static_cast<uint8_t*>(malloc(grayBufSize));
@@ -398,7 +398,7 @@ bool PngToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath
   rc = png->decode(&ctx, 0);
   unsigned long decodeTime = millis() - decodeStart;
 
-  // 仅修改：释放Alpha缓冲
+  // 僅修改：釋放Alpha緩衝
   free(ctx.grayLineBuffer);
   free(ctx.alphaLineBuffer);
   ctx.grayLineBuffer = nullptr;

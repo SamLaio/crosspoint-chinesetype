@@ -325,7 +325,7 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
       headerBlockStyle.alignment = cssStyle.textAlign;
     }
     self->startNewTextBlock(headerBlockStyle);
-    //稍微排下版，标题前加小黑点
+    //稍微排下版，標題前加小黑點
     self->currentTextBlock->addWord("\xe2\x97\x8f ", EpdFontFamily::REGULAR);
     self->boldUntilDepth = std::min(self->boldUntilDepth, self->depth);
     self->updateEffectiveInlineStyle();
@@ -442,7 +442,7 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
   self->depth += 1;
 }
 
-// 以下为自加
+// 以下為自加
 bool ChapterHtmlSlimParser::isEnglishPunctuation(unsigned char c) {
     return c == '.' || c == ',' || c == '!' || c == '?' || c == ';' || c == ':' || 
            c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
@@ -452,12 +452,12 @@ bool ChapterHtmlSlimParser::isEnglishPunctuation(unsigned char c) {
            c == '>' || c == '_';
 }
 
-// 修复：改为静态函数，适配静态的characterData调用
+// 修復：改為靜態函式，適配靜態的characterData呼叫
 bool ChapterHtmlSlimParser::isOnlyWhitespace(const char* buf, int len) {
     if (len <= 0) return true;
     for (int k = 0; k < len; k++) {
         unsigned char c = static_cast<unsigned char>(buf[k]);
-        // 直接内嵌空白判断逻辑，避免再调用非静态的isWhitespace
+        // 直接內嵌空白判斷邏輯，避免再呼叫非靜態的isWhitespace
         if (!(c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v')) {
             return false;
         }
@@ -465,52 +465,52 @@ bool ChapterHtmlSlimParser::isOnlyWhitespace(const char* buf, int len) {
     return true;
 }
 
-// 2. 判断字符是否为空白（基于lvstring的空白定义）
+// 2. 判斷字元是否為空白（基於lvstring的空白定義）
 bool ChapterHtmlSlimParser::isWhitespaceChar(unsigned int c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v' ||
-           c == 0x00A0 || // 不换行空格
-           c == 0x3000;   // 中文全角空格
+           c == 0x00A0 || // 不換行空格
+           c == 0x3000;   // 中文全形空格
 }
 
-// 3. 判断是否为CJK字符（复刻lvstring.h的lStr_isCJK）
+// 3. 判斷是否為CJK字元（復刻lvstring.h的lStr_isCJK）
 bool ChapterHtmlSlimParser::isCJKChar(unsigned int c) {
     if (c >= 0x2E80) {
         if (c < 0xA000) {
-            return true; // 核心中文字符区（2E80-9FFF）
+            return true; // 核心中文字元區（2E80-9FFF）
         } else if (c >= 0xAC00 && c < 0xD800) {
-            return true; // 韩文
+            return true; // 韓文
         } else if (c >= 0xF900 && c <= 0xFAFF) {
-            return true; // CJK兼容字符
+            return true; // CJK相容字元
         } else if (c >= 0xFF00 && c <= 0xFFEF) {
-            return true; // 全角ASCII（中文排版中视为CJK）
+            return true; // 全形ASCII（中文排版中視為CJK）
         }
     }
     return false;
 }
 
-// 4. 判断是否为英文标点（基于lvstring的标点定义）
+// 4. 判斷是否為英文標點（基於lvstring的標點定義）
 bool ChapterHtmlSlimParser::isEnglishPunctChar(unsigned int c) {
     return (c >= 0x21 && c <= 0x2F) || (c >= 0x3A && c <= 0x40) ||
            (c >= 0x5B && c <= 0x60) || (c >= 0x7B && c <= 0x7E) ||
-           c == 0x2013 || c == 0x2014; // 英文破折号
+           c == 0x2013 || c == 0x2014; // 英文破折號
 }
 
-// 5. 判断是否为中文标点
+// 5. 判斷是否為中文標點
 bool ChapterHtmlSlimParser::isChinesePunctChar(unsigned int c) {
     return (c >= 0x3001 && c <= 0x3003) || // 、。！
-           (c >= 0xFF01 && c <= 0xFF0F) || // 全角!@#$%^&*()_+
-           (c >= 0xFF1A && c <= 0xFF1F) || // 全角:;"'<>=?
-           (c >= 0xFF3B && c <= 0xFF40) || // 全角[]^`
-           (c >= 0xFF5B && c <= 0xFF65);   // 全角{}|~、。
+           (c >= 0xFF01 && c <= 0xFF0F) || // 全形!@#$%^&*()_+
+           (c >= 0xFF1A && c <= 0xFF1F) || // 全形:;"'<>=?
+           (c >= 0xFF3B && c <= 0xFF40) || // 全形[]^`
+           (c >= 0xFF5B && c <= 0xFF65);   // 全形{}|~、。
 }
 
-// 6. 获取字符类型（核心分发函数）
+// 6. 獲取字元型別（核心分發函式）
 ChapterHtmlSlimParser::CharType ChapterHtmlSlimParser::getCharType(unsigned int c) {
     if (isWhitespaceChar(c)) {
         return CHAR_TYPE_SPACE;
     } else if (isCJKChar(c)) {
         return CHAR_TYPE_CJK;
-    } else if (c <= 0x7F) { // ASCII字符
+    } else if (c <= 0x7F) { // ASCII字元
         if (isEnglishPunctChar(c)) {
             return CHAR_TYPE_PUNCT;
         } else {
@@ -523,7 +523,7 @@ ChapterHtmlSlimParser::CharType ChapterHtmlSlimParser::getCharType(unsigned int 
     }
 }
 
-// 7. UTF-8转Unicode（处理多字节字符，关键！）
+// 7. UTF-8轉Unicode（處理多位元組字元，關鍵！）
 int ChapterHtmlSlimParser::utf8ToUnicode(const char* str, int len, int& pos, unsigned int& out_c) {
     if (pos >= len) return -1;
     
@@ -531,28 +531,28 @@ int ChapterHtmlSlimParser::utf8ToUnicode(const char* str, int len, int& pos, uns
     int bytes = 0;
     
     if ((b & 0x80) == 0) {
-        // 单字节（ASCII）
+        // 單位元組（ASCII）
         out_c = b;
         bytes = 1;
     } else if ((b & 0xE0) == 0xC0) {
-        // 双字节
+        // 雙位元組
         if (pos + 1 >= len) return -1;
         out_c = ((b & 0x1F) << 6) | (static_cast<unsigned char>(str[pos+1]) & 0x3F);
         bytes = 2;
     } else if ((b & 0xF0) == 0xE0) {
-        // 三字节（中文核心）
+        // 三位元組（中文核心）
         if (pos + 2 >= len) return -1;
         out_c = ((b & 0x0F) << 12) | ((static_cast<unsigned char>(str[pos+1]) & 0x3F) << 6) | 
                 (static_cast<unsigned char>(str[pos+2]) & 0x3F);
         bytes = 3;
     } else if ((b & 0xF8) == 0xF0) {
-        // 四字节
+        // 四位元組
         if (pos + 3 >= len) return -1;
         out_c = ((b & 0x07) << 18) | ((static_cast<unsigned char>(str[pos+1]) & 0x3F) << 12) |
                 ((static_cast<unsigned char>(str[pos+2]) & 0x3F) << 6) | (static_cast<unsigned char>(str[pos+3]) & 0x3F);
         bytes = 4;
     } else {
-        return -1; // 无效UTF-8
+        return -1; // 無效UTF-8
     }
     
     pos += bytes;
@@ -566,33 +566,33 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
     return;
   }
 
-  // 快速判断整段空白（保留原有逻辑）
+  // 快速判斷整段空白（保留原有邏輯）
   if (self->isOnlyWhitespace(reinterpret_cast<const char*>(s), len)) {
     return;
   }
 
   int pos = 0;
   unsigned int current_c;
-  CharType last_type = CHAR_TYPE_SPACE; // 上一个字符类型
-  int word_start = 0; // 当前单词/字符的起始位置
+  CharType last_type = CHAR_TYPE_SPACE; // 上一個字元型別
+  int word_start = 0; // 當前單詞/字元的起始位置
 
   while (pos < len) {
-    // 解析当前UTF-8字符为Unicode
+    // 解析當前UTF-8字元為Unicode
     int bytes = self->utf8ToUnicode(reinterpret_cast<const char*>(s), len, pos, current_c);
     if (bytes < 0) {
-      pos++; // 无效字符，跳过
+      pos++; // 無效字元，跳過
       continue;
     }
 
     CharType current_type = self->getCharType(current_c);
 
-    // ========== 核心分词逻辑 ==========
-    // 1. 空白字符：刷新当前缓冲区，仅保留单个空格
+    // ========== 核心分詞邏輯 ==========
+    // 1. 空白字元：重新整理當前緩衝區，僅保留單個空格
     if (current_type == CHAR_TYPE_SPACE) {
       if (self->partWordBufferIndex > 0) {
         self->flushPartWordBuffer();
       }
-      // 仅写入单个空格（避免连续空白）
+      // 僅寫入單個空格（避免連續空白）
       if (MAX_WORD_SIZE >= 2) {
         self->partWordBuffer[0] = ' ';
         self->partWordBuffer[1] = '\0';
@@ -603,31 +603,31 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
       continue;
     }
 
-    // 2. CJK字符（中文）：单字分词
+    // 2. CJK字元（中文）：單字分詞
     if (current_type == CHAR_TYPE_CJK) {
-      // 先刷新之前的非CJK内容
+      // 先重新整理之前的非CJK內容
       if (self->partWordBufferIndex > 0 && last_type != CHAR_TYPE_CJK) {
         self->flushPartWordBuffer();
       }
-      // 写入当前CJK字符（保留完整多字节）
+      // 寫入當前CJK字元（保留完整多位元組）
       if (self->partWordBufferIndex + bytes < MAX_WORD_SIZE) {
         for (int i = 0; i < bytes; i++) {
           self->partWordBuffer[self->partWordBufferIndex++] = s[pos - bytes + i];
         }
-        // CJK单字直接刷新（按字分词）
+        // CJK單字直接重新整理（按字分詞）
         self->flushPartWordBuffer();
       }
       last_type = CHAR_TYPE_CJK;
       continue;
     }
 
-    // 3. 标点符号：独立分词（或跟随前一个单词）
+    // 3. 標點符號：獨立分詞（或跟隨前一個單詞）
     if (current_type == CHAR_TYPE_PUNCT) {
-      // 先刷新之前的内容
+      // 先重新整理之前的內容
       if (self->partWordBufferIndex > 0) {
         self->flushPartWordBuffer();
       }
-      // 写入标点
+      // 寫入標點
       if (self->partWordBufferIndex + bytes < MAX_WORD_SIZE) {
         for (int i = 0; i < bytes; i++) {
           self->partWordBuffer[self->partWordBufferIndex++] = s[pos - bytes + i];
@@ -638,13 +638,13 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
       continue;
     }
 
-    // 4. ASCII字符（英文/数字）：按单词分词（直到空白/标点/CJK）
+    // 4. ASCII字元（英文/數字）：按單詞分詞（直到空白/標點/CJK）
     if (current_type == CHAR_TYPE_ASCII) {
-      // 如果上一个字符不是ASCII，先刷新缓冲区
+      // 如果上一個字元不是ASCII，先重新整理緩衝區
       if (self->partWordBufferIndex > 0 && last_type != CHAR_TYPE_ASCII) {
         self->flushPartWordBuffer();
       }
-      // 写入当前ASCII字符，避免缓冲区溢出
+      // 寫入當前ASCII字元，避免緩衝區溢位
       if (self->partWordBufferIndex >= MAX_WORD_SIZE - 1) {
         self->flushPartWordBuffer();
       }
@@ -653,7 +653,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
       continue;
     }
 
-    // 5. 其他字符：默认处理
+    // 5. 其他字元：預設處理
     if (self->partWordBufferIndex > 0 && last_type != CHAR_TYPE_OTHER) {
       self->flushPartWordBuffer();
     }
@@ -666,7 +666,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
     last_type = CHAR_TYPE_OTHER;
   }
 
-  // 循环结束后，刷新剩余的ASCII单词（避免英文单词截断）
+  // 迴圈結束後，重新整理剩餘的ASCII單詞（避免英文單詞截斷）
   if (self->partWordBufferIndex > 0) {
     if (!self->isOnlyWhitespace(self->partWordBuffer, self->partWordBufferIndex)) {
       self->flushPartWordBuffer();
@@ -676,7 +676,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
     }
   }
 
-  // 保留原有长文本拆分逻辑
+  // 保留原有長文字拆分邏輯
   if (self->currentTextBlock->size() > 750) {
     Serial.printf("[%lu] [EHP] Text block too long, splitting into multiple pages\n", millis());
     self->currentTextBlock->layoutAndExtractLines(

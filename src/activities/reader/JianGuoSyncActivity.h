@@ -19,21 +19,21 @@ private:
   const std::function<void()> onGoBack;
   const std::function<void(uint32_t newChapter)> onSelectChapter;
   
-  // 新增：同步状态
+  // 新增：同步狀態
   enum class BrowserState {
       CHECK_WIFI,
       WIFI_SELECTION,
       DOWNLOADING,
-      SHOWING_RESULT,  // 新增：显示选项
-      UPLOADING,       // 新增：上传中
+      SHOWING_RESULT,  // 新增：顯示選項
+      UPLOADING,       // 新增：上傳中
       COMPLETE,
       ERROR
   };
 
-  // 新增：成员变量
-  int selectedOption = 0;          // 0=下载，1=上传
-  std::string matchedFileName = ""; // 匹配的文件名
-  std::string matchedFileUrl = "";  // 匹配的文件完整 URL（已编码）
+  // 新增：成員變數
+  int selectedOption = 0;          // 0=下載，1=上傳
+  std::string matchedFileName = ""; // 匹配的檔名
+  std::string matchedFileUrl = "";  // 匹配的檔案完整 URL（已編碼）
 
   void displayTaskLoop();
   void render() const;
@@ -43,12 +43,12 @@ private:
   void onWifiSelectionComplete(const bool connected);
   
   void downloadProgressFile();
-  void uploadProgressFile();  // 新增：上传函数
+  void uploadProgressFile();  // 新增：上傳函式
   void parseAndCleanup();
 
   static void taskTrampoline(void* param);
 
-  // 静态成员
+  // 靜態成員
   static SemaphoreHandle_t renderingMutex;
   static TaskHandle_t displayTaskHandle;
   static bool updateRequired;
@@ -60,17 +60,17 @@ private:
   static int lastExtractedChapterIndex;
   static std::string lastExtractedBookName;
   static std::string lastExtractedChapterTitle; 
-  bool skipFirstButtonCheck = false;  // 新增：跳过初始残留按键
+  bool skipFirstButtonCheck = false;  // 新增：跳過初始殘留按鍵
 
-  // 极简版：Spine → TOC 校准
+  // 極簡版：Spine → TOC 校準
 int getTocIndexFromSpine(int spineIndex) {
-    return epub->getTocIndexForSpineIndex(spineIndex); // 直接复用KOReader同款方法
+    return epub->getTocIndexForSpineIndex(spineIndex); // 直接複用KOReader同款方法
 }
 
-// 极简版：TOC → Spine 校准
+// 極簡版：TOC → Spine 校準
 int getSpineIndexFromToc(int tocIndex) {
     if (tocIndex >= 0 && tocIndex < epub->getTocItemsCount()) {
-        return epub->getTocItem(tocIndex).spineIndex; // 和KOReader映射逻辑完全一致
+        return epub->getTocItem(tocIndex).spineIndex; // 和KOReader對映邏輯完全一致
     }
     return -1;
 }

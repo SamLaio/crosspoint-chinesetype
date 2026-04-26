@@ -108,7 +108,7 @@ void TxtReaderActivity::loop() {
     subActivity->loop();
     return;
   }
-  // 进入章节目录
+  // 進入章節目錄
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
     {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
@@ -120,11 +120,11 @@ void TxtReaderActivity::loop() {
               updateRequired = true;
             },
             [this](const int newChapterNum) {
-              chapternum = newChapterNum;       // 更新章节号
-              chapter_initialized = false;  // 重置初始化标记
-              pageOffsets.clear();          // 清空上一章节页码
-              totalPages = 0;               // 重置总页数
-              // 强制设置为0页（关键：覆盖后续loadProgress可能带来的干扰）
+              chapternum = newChapterNum;       // 更新章節號
+              chapter_initialized = false;  // 重置初始化標記
+              pageOffsets.clear();          // 清空上一章節頁碼
+              totalPages = 0;               // 重置總頁數
+              // 強制設定為0頁（關鍵：覆蓋後續loadProgress可能帶來的干擾）
               currentPage = 0;
               updateRequired = true;
               exitActivity();
@@ -168,11 +168,11 @@ void TxtReaderActivity::loop() {
       currentPage--;
       updateRequired = true;
     } else if (chapternum > 0) {
-      // 上一章：重置状态 + 切换章节
+      // 上一章：重置狀態 + 切換章節
       chapternum--;
-      chapter_initialized = false;  // 重置初始化标记，强制重新初始化
-      pageOffsets.clear();          // 清空上一章节页码
-      totalPages = 0;               // 重置总页数
+      chapter_initialized = false;  // 重置初始化標記，強制重新初始化
+      pageOffsets.clear();          // 清空上一章節頁碼
+      totalPages = 0;               // 重置總頁數
       if (!chapter_initialized) {
         chapter_initializeReader(chapternum);
       }
@@ -185,13 +185,13 @@ void TxtReaderActivity::loop() {
       currentPage++;
       updateRequired = true;
     } else {
-      // 下一章：先获取总章节数，避免越界
+      // 下一章：先獲取總章節數，避免越界
       //int totalChapters = txt->getTotalChapters(); // todo
       //if (chapternum < totalChapters - 1) {
         chapternum++;
-        chapter_initialized = false;  // 重置初始化标记
-        pageOffsets.clear();          // 清空上一章节页码
-        totalPages = 0;               // 重置总页数
+        chapter_initialized = false;  // 重置初始化標記
+        pageOffsets.clear();          // 清空上一章節頁碼
+        totalPages = 0;               // 重置總頁數
         currentPage = 0;
         updateRequired = true;
         Serial.printf("[%lu] [TRS] Switch to chapter %d (next), start from page 0\n", millis(), chapternum);
@@ -206,10 +206,10 @@ void TxtReaderActivity::displayTaskLoop() {
   while (true) {
     if (updateRequired) {
       updateRequired = false;
-      APP_STATE.isRenderComplete = false; // 标记渲染开始
+      APP_STATE.isRenderComplete = false; // 標記渲染開始
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       renderScreen();
-      APP_STATE.isRenderComplete = true;  // 标记渲染完成（包括 saveProgress）
+      APP_STATE.isRenderComplete = true;  // 標記渲染完成（包括 saveProgress）
       APP_STATE.saveToFile();
       xSemaphoreGive(renderingMutex);
     }
@@ -223,7 +223,7 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
     return;
   }
 
-  // 校验章节索引合法性
+  // 校驗章節索引合法性
   if (chapter_num < 0 ) {
     chapter_initialized = true;
     return;
@@ -256,7 +256,7 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
   
   viewportWidth = renderer.getScreenWidth() - orientedMarginLeft - orientedMarginRight;
   const int viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;
-  //行距加这里？
+  //行距加這裡？
   float lineHeight = renderer.getLineHeight(cachedFontId)* SETTINGS.getReaderLineCompression();
 
   linesPerPage = viewportHeight / lineHeight;
@@ -270,15 +270,15 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
     const int page=chapter_num/25+1;
     static int parsedPage = -1;
     const int pagebegin=(page-1)*25;
-    // 相隔24章加载一次
+    // 相隔24章載入一次
     if (parsedPage != page) {
       txt->parseChapterIndexAndOffset(pagebegin);
       parsedPage = page;
     }
     Serial.printf("[%lu] [TRS] load txtchapter: %d \n", millis(), chapter_num);
-    //当前章节的范围
-    //加一个多次尝试，避免empty file出现过多
-    // 带重试的章节起止偏移获取：重试时仅等待，不重复触发重解析
+    //當前章節的範圍
+    //加一個多次嘗試，避免empty file出現過多
+    // 帶重試的章節起止偏移獲取：重試時僅等待，不重複觸發重解析
     size_t chapterOffsetbegin = txt->getChapterOffsetByIndex(chapter_num);
     size_t chapterOffsetend = txt->getChapterendOffsetByIndex(chapter_num);
     for (int r = 0; r < 5 && (chapterOffsetbegin == 0 || chapterOffsetend == 0); r++) {
@@ -289,22 +289,22 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
     }
 
 
-    // 处理最后一章：结束位置为文件末尾
+    // 處理最後一章：結束位置為檔案末尾
     if (chapterOffsetend == 0 || chapterOffsetend <= chapterOffsetbegin) {
       chapterOffsetend = txt->getFileSize();
     }
-    //加个判断防止解析全书
+    //加個判斷防止解析全書
     if (chapterOffsetend - chapterOffsetbegin > 100000) {
-    Serial.printf("[%lu] [TRS] 章节读取失败，确认键进入目录重选\n", 
+    Serial.printf("[%lu] [TRS] 章節讀取失敗，確認鍵進入目錄重選\n", 
                   millis());
     return;
    }
     buildPageIndex(chapterOffsetbegin, chapterOffsetend - 1);
-    //保存为章节缓存
+    //儲存為章節快取
     chapter_savePageIndexCache(chapter_num);
   }
 
-  // 修改为章节进度
+  // 修改為章節進度
   //loadProgress();
 
   chapter_initialized = true;
@@ -313,7 +313,7 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
 void TxtReaderActivity::buildPageIndex(size_t beginByte, size_t endByte) {
   pageOffsets.clear();
   
-  // 1. 参数合法性校验，避免越界
+  // 1. 引數合法性校驗，避免越界
   const size_t fileSize = txt->getFileSize();
   beginByte = std::min(beginByte, fileSize);  
   endByte = std::min(endByte, fileSize);    
@@ -324,7 +324,7 @@ void TxtReaderActivity::buildPageIndex(size_t beginByte, size_t endByte) {
     return;
   }
 
-  // 2. 初始页从指定的beginByte开始
+  // 2. 初始頁從指定的beginByte開始
   pageOffsets.push_back(beginByte);  
 
   size_t offset = beginByte;
@@ -333,7 +333,7 @@ void TxtReaderActivity::buildPageIndex(size_t beginByte, size_t endByte) {
 
   GUI.drawPopup(renderer, "Indexing...");
 
-  // 3. 循环终止条件改为：offset < endByte
+  // 3. 迴圈終止條件改為：offset < endByte
   while (offset < endByte) {
     std::vector<std::string> tempLines;
     size_t nextOffset = offset;
@@ -344,18 +344,18 @@ void TxtReaderActivity::buildPageIndex(size_t beginByte, size_t endByte) {
     }
 
     if (nextOffset <= offset) {
-      // 无进度，避免死循环
+      // 無進度，避免死迴圈
       Serial.printf("[%lu] [TRS] No progress at offset %zu, stopping index build\n", millis(), offset);
       break;
     }
 
     offset = nextOffset;
-    // 仅当偏移量未到结束位置时，才添加到页码索引
+    // 僅當偏移量未到結束位置時，才新增到頁碼索引
     if (offset < endByte) {
       pageOffsets.push_back(offset);
     }
 
-    // 定期让出CPU，避免阻塞其他任务
+    // 定期讓出CPU，避免阻塞其他任務
     if (pageOffsets.size() % 20 == 0) {
       vTaskDelay(1);
     }
@@ -394,11 +394,11 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset,size_t endOffset, std::ve
   // Parse lines from buffer
   size_t pos = 0;
 
-  // 首行缩进控制变量
-  const std::string indentStr = "\xe2\x80\x83\xe2\x80\x83"; // 两个全角空格
-  //const std::string indentStr ="\u200B\u200B"; // 两个普通空格（测试用，实际使用全角空格）
-  const int indentWidth = renderer.getTextWidth(cachedFontId, "中")*2; // 缩进宽度
-  bool isFirstLineOfPage = true; // 每页第一行不缩进
+  // 首行縮排控制變數
+  const std::string indentStr = "\xe2\x80\x83\xe2\x80\x83"; // 兩個全形空格
+  //const std::string indentStr ="\u200B\u200B"; // 兩個普通空格（測試用，實際使用全形空格）
+  const int indentWidth = renderer.getTextWidth(cachedFontId, "中")*2; // 縮排寬度
+  bool isFirstLineOfPage = true; // 每頁第一行不縮排
 
   while (pos < chunkSize && static_cast<int>(outLines.size()) < linesPerPage) {
     // Find end of line
@@ -425,24 +425,24 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset,size_t endOffset, std::ve
     // Extract line content for display (without CR/LF)
     std::string line(reinterpret_cast<char*>(buffer + pos), displayLen);
 
-    // 空行标记段落结束，下一段需要缩进（仅对原生行生效）
+    // 空行標記段落結束，下一段需要縮排（僅對原生行生效）
     if (displayLen == 0) {
       pos = lineEnd + 1;
-      needIndent = true; // 空行后，下一段原生行需要缩进
+      needIndent = true; // 空行後，下一段原生行需要縮排
       continue;
     }
 
-    // 检测行首是否已有两个全角空格（仅对原生行检测）
+    // 檢測行首是否已有兩個全形空格（僅對原生行檢測）
     bool hasLeadingIndent = false;
     if (line.length() >= 6) {
       std::string leadingChars = line.substr(0, 6);
       if (leadingChars == indentStr) {
-        hasLeadingIndent = true; // 行首已有两个全角空格
-        needIndent = false;      // 重置缩进标记，避免重复缩进
+        hasLeadingIndent = true; // 行首已有兩個全形空格
+        needIndent = false;      // 重置縮排標記，避免重複縮排
       }
     }
 
-    // 当前源行的首个渲染片段才允许缩进
+    // 當前源行的首個渲染片段才允許縮排
     bool isFirstWrappedLineOfSource = true;
 
     // Track position within this source line (in bytes from pos)
@@ -450,42 +450,42 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset,size_t endOffset, std::ve
 
     // Word wrap if needed
     while (!line.empty() && static_cast<int>(outLines.size()) < linesPerPage) {
-      // 计算行宽：仅原生行需要考虑缩进宽度，拆行完全不考虑
+      // 計算行寬：僅原生行需要考慮縮排寬度，拆行完全不考慮
       int lineWidth = renderer.getTextWidth(cachedFontId, line.c_str());
-      // 缩进判断：仅原生行 + 需要缩进 + 不是页首 + 无已有空格
+      // 縮排判斷：僅原生行 + 需要縮排 + 不是頁首 + 無已有空格
       const bool doIndent = isFirstWrappedLineOfSource && needIndent && !isFirstLineOfPage && !hasLeadingIndent;
-      //测试
+      //測試
       //const bool doIndent = true;
       
       if (doIndent) {
-        lineWidth += indentWidth; // 仅原生行预留缩进宽度
+        lineWidth += indentWidth; // 僅原生行預留縮排寬度
       }
 
-      // 字距处理（原有逻辑）
+      // 字距處理（原有邏輯）
       switch (cachedParagraphAlignment) {
         case CrossPointSettings::LEFT_ALIGN:
         lineWidth = lineWidth+wordSpacing;
-        //Serial.printf("左对齐字间距生效：wordSpacing=%d\n", wordSpacing);
+        //Serial.printf("左對齊字間距生效：wordSpacing=%d\n", wordSpacing);
       }
 
       if (lineWidth <= viewportWidth) {
-        // 仅原生行添加缩进，拆行完全不添加
+        // 僅原生行新增縮排，拆行完全不新增
         if (doIndent) {
           outLines.push_back(indentStr + line);
-          needIndent = false; // 原生行缩进后，该段落后续行（包括拆行）都不缩进
+          needIndent = false; // 原生行縮排後，該段落後續行（包括拆行）都不縮排
         } else {
           outLines.push_back(line);
         }
         isFirstWrappedLineOfSource = false;
         lineBytePos = displayLen;  // Consumed entire display content
         line.clear();
-        isFirstLineOfPage = false; // 每页第一行已处理
+        isFirstLineOfPage = false; // 每頁第一行已處理
         break;
       }
 
-      // Find break point（拆行逻辑）
+      // Find break point（拆行邏輯）
       size_t breakPos = line.length();
-      // 拆行宽度：完全不考虑缩进（拆行不缩进）
+      // 拆行寬度：完全不考慮縮排（拆行不縮排）
       int allowedWidth = viewportWidth - (cachedParagraphAlignment == CrossPointSettings::LEFT_ALIGN ? wordSpacing : 0);
       while (breakPos > 0 && renderer.getTextWidth(cachedFontId, line.substr(0, breakPos).c_str()) > allowedWidth) {
         // Try to break at space
@@ -506,7 +506,7 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset,size_t endOffset, std::ve
         breakPos = 1;
       }
 
-      // 拆行后的行：完全不缩进，直接添加
+      // 拆行後的行：完全不縮排，直接新增
       outLines.push_back(line.substr(0, breakPos));
       isFirstWrappedLineOfSource = false;
 
@@ -517,14 +517,14 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset,size_t endOffset, std::ve
       }
       lineBytePos += skipChars;
       line = line.substr(skipChars);
-      isFirstLineOfPage = false; // 每页第一行已处理
+      isFirstLineOfPage = false; // 每頁第一行已處理
     }
 
     // Determine how much of the source buffer we consumed
     if (line.empty()) {
       // Fully consumed this source line, move past the newline
       pos = lineEnd + 1;
-      needIndent = true; // 换行了，下一段原生行需要缩进
+      needIndent = true; // 換行了，下一段原生行需要縮排
     } else {
       // Partially consumed - page is full mid-line
       // Move pos to where we stopped in the line (NOT past the line)
@@ -542,7 +542,7 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset,size_t endOffset, std::ve
   nextOffset = offset + pos;
 
   // Make sure we don't go past the file
-  // 章节结束位置作为文件末尾，避免越界
+  // 章節結束位置作為檔案末尾，避免越界
   if (nextOffset > virtualFileEnd) {
     nextOffset = virtualFileEnd;
   }
@@ -658,7 +658,7 @@ void TxtReaderActivity::renderScreen() {
 
 
   if (currentPage < 0) currentPage = 0;
-  // 仅当currentPage超过总页数时修正（避免无效页码）
+  // 僅當currentPage超過總頁數時修正（避免無效頁碼）
   if (currentPage >= totalPages) currentPage = totalPages - 1;
 
   // Load current page content
@@ -787,7 +787,7 @@ void TxtReaderActivity::saveProgress() const {
 }
 
 void TxtReaderActivity::loadProgress() {
-  chapter_initialized = false;  // 重置初始化标记
+  chapter_initialized = false;  // 重置初始化標記
 
   FsFile f;
   if (SdMan.openFileForRead("TRS", txt->getCachePath() + "/progress.bin", f)) {
@@ -872,7 +872,7 @@ bool TxtReaderActivity::chapter_loadPageIndexCache(int chapternum) {
     f.close();
     return false;
   }
-  //把字距行间距首行缩进记录进去
+  //把字距行間距首行縮排記錄進去
   uint8_t wordSpacing;
   serialization::readPod(f, wordSpacing);
   if (wordSpacing != this->wordSpacing) {
@@ -897,7 +897,7 @@ bool TxtReaderActivity::chapter_loadPageIndexCache(int chapternum) {
     f.close();
     return false;
   }
-//结束
+//結束
   int32_t margin;
   serialization::readPod(f, margin);
   if (margin != cachedScreenMargin) {
@@ -948,11 +948,11 @@ void TxtReaderActivity::chapter_savePageIndexCache(int chapternum) const {
   serialization::writePod(f, static_cast<int32_t>(viewportWidth));
   serialization::writePod(f, static_cast<int32_t>(linesPerPage));
   serialization::writePod(f, static_cast<int32_t>(cachedFontId));
-  //把字距行间距首行缩进记录进去
+  //把字距行間距首行縮排記錄進去
   serialization::writePod(f, wordSpacing);
   serialization::writePod(f, SETTINGS.lineSpacing);
   serialization::writePod(f, SETTINGS.firstlineintented);
-  //结束
+  //結束
   serialization::writePod(f, static_cast<int32_t>(cachedScreenMargin));
   serialization::writePod(f, cachedParagraphAlignment);
   serialization::writePod(f, static_cast<uint32_t>(pageOffsets.size()));

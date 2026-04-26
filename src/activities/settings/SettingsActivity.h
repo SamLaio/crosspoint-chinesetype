@@ -93,7 +93,7 @@ static SettingInfo Value(const char* name, uint8_t CrossPointSettings::* ptr,
     s.type = SettingType::VALUE; 
     s.valuePtr = ptr;            
     
-    // 2. 数值范围属性（适配0-40、步长5）
+    // 2. 數值範圍屬性（適配0-40、步長5）
     s.valueRange.min = minVal;
     s.valueRange.max = maxVal;
     s.valueRange.step = stepVal;

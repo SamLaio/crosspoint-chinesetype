@@ -24,9 +24,9 @@ class XtcReaderChapterSelectionActivity final : public Activity {
   [[noreturn]] void displayTaskLoop();
   void renderScreen();
 
-  #define TOTAL_SHOW_CHAPTERS 50  // 固定一页显示25章
-  uint16_t m_currentChapterStart = 0;  // 当前读取的章节起始索引 (0开始，翻页+=1/-=1)
-  uint8_t  realShowCount = 0;           // 实际解析到的章节数量 (0~25)
+  #define TOTAL_SHOW_CHAPTERS 50  // 固定一頁顯示25章
+  uint16_t m_currentChapterStart = 0;  // 當前讀取的章節起始索引 (0開始，翻頁+=1/-=1)
+  uint8_t  realShowCount = 0;           // 實際解析到的章節數量 (0~25)
 
  public:
   explicit XtcReaderChapterSelectionActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,

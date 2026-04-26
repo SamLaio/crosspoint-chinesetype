@@ -27,7 +27,7 @@ constexpr char CUSTOM_SLEEP_PXC[] = "/.crosspoint/custom_sleep.pxc";
 constexpr uint8_t FIXED_CACHE_ORIENTATION = CrossPointSettings::ORIENTATION::PORTRAIT;
 
 
-//通篇已经在必要部分把HALF_REFRESH改成FULL_REFRESH了，防止残影过重
+//通篇已經在必要部分把HALF_REFRESH改成FULL_REFRESH了，防止殘影過重
 bool loadWallpaperPxcToFramebuffer(const std::string& pxcPath, GfxRenderer& renderer, const uint8_t orientation) {
   FsFile input;
   if (!SdMan.openFileForRead("SLP", pxcPath, input)) {
@@ -154,7 +154,7 @@ bool overlayTransparentPxaToFramebuffer(const std::string& pxaPath, GfxRenderer&
 void SleepActivity::onEnter() {
   Activity::onEnter();
   
-  //加深刷防止睡眠后残影过重
+  //加深刷防止睡眠後殘影過重
   switch (SETTINGS.sleepScreen) {
     case (CrossPointSettings::SLEEP_SCREEN_MODE::BLANK):
     GUI.drawPopup(renderer, "Entering Sleep...");
@@ -182,15 +182,15 @@ void SleepActivity::onEnter() {
 
 
 void SleepActivity::renderpngtxtSleepScreen() const {
-  bool isPngtxtLoaded = false; // 标记是否成功加载PNGTXT文件
+  bool isPngtxtLoaded = false; // 標記是否成功載入PNGTXT檔案
 
-  // ========== 分支1：优先从 /sleep_mask 目录随机加载 .pngtxt ==========
+  // ========== 分支1：優先從 /sleep_mask 目錄隨機載入 .pngtxt ==========
   auto dir = SdMan.open("/sleep_mask");
   if (dir && dir.isDirectory()) {
     std::vector<std::string> files;
-    char name[256]; // 缩减文件名缓冲区长度（足够用）
+    char name[256]; // 縮減檔名緩衝區長度（足夠用）
     
-    // 收集所有 .pngtxt 文件
+    // 收集所有 .pngtxt 檔案
     for (auto file = dir.openNextFile(); file; file = dir.openNextFile()) {
       if (file.isDirectory()) {
         file.close();
@@ -199,13 +199,13 @@ void SleepActivity::renderpngtxtSleepScreen() const {
       file.getName(name, sizeof(name));
       std::string filename = name;
       
-      // 跳过隐藏文件（.开头）
+      // 跳過隱藏檔案（.開頭）
       if (!filename.empty() && filename[0] == '.') {
         file.close();
         continue;
       }
 
-      // 修正：判断后缀为 .pngtxt
+      // 修正：判斷字尾為 .pngtxt
       const std::string suffix = ".pngtxt";
       if (filename.length() < suffix.length() || 
           filename.substr(filename.length() - suffix.length()) != suffix) {
@@ -220,11 +220,11 @@ void SleepActivity::renderpngtxtSleepScreen() const {
 
     const size_t numFiles = files.size();
     if (numFiles > 0) {
-      // 初始化随机数种子（确保每次随机结果不同）
+      // 初始化隨機數種子（確保每次隨機結果不同）
       randomSeed(millis());
-      // 生成 0 ~ numFiles-1 的随机索引（修正注释）
+      // 生成 0 ~ numFiles-1 的隨機索引（修正註釋）
       size_t randomFileIndex = random(numFiles);
-      // 避免重复加载同一张图（仅当文件数>1时）
+      // 避免重複載入同一張圖（僅當檔案數>1時）
       while (numFiles > 1 && randomFileIndex == APP_STATE.lastSleepImage) {
         randomFileIndex = random(numFiles);
       }
@@ -236,7 +236,7 @@ void SleepActivity::renderpngtxtSleepScreen() const {
       if (SdMan.openFileForRead("SLP", filename, file)) {
         Serial.printf("[%lu] [SLP] Randomly loading: %s\n", millis(), filename.c_str());
         
-        // 绘制PNGTXT（灰阶分层绘制）
+        // 繪製PNGTXT（灰階分層繪製）
         renderer.drawPngFromTxtpng(filename.c_str());
         renderer.displayBuffer(HalDisplay::FULL_REFRESH);
 
@@ -253,25 +253,25 @@ void SleepActivity::renderpngtxtSleepScreen() const {
         renderer.displayGrayBuffer();
         renderer.setRenderMode(GfxRenderer::BW);
         
-        file.close(); // 关闭文件，避免泄漏
-        isPngtxtLoaded = true; // 标记加载成功
+        file.close(); // 關閉檔案，避免洩漏
+        isPngtxtLoaded = true; // 標記載入成功
       } else {
         Serial.printf("[%lu] [SLP] Failed to open random file: %s\n", millis(), filename.c_str());
       }
     }
-    dir.close(); // 无论是否加载成功，都关闭目录句柄
+    dir.close(); // 無論是否載入成功，都關閉目錄控制代碼
   } else if (dir) {
-    dir.close(); // 目录打开失败时，关闭无效句柄
+    dir.close(); // 目錄開啟失敗時，關閉無效控制代碼
   }
 
-  // ========== 分支2：若随机加载失败，加载单个 /sleep.pngtxt ==========
+  // ========== 分支2：若隨機載入失敗，載入單個 /sleep.pngtxt ==========
   if (!isPngtxtLoaded) {
     const std::string pngtxtPath = "/sleep.pngtxt";
     FsFile txtpng_file;
     if (SdMan.openFileForRead("GFD", pngtxtPath, txtpng_file)) {
       Serial.printf("[%lu] [SLP] Loading single file: %s\n", millis(), pngtxtPath.c_str());
       
-      // 绘制PNGTXT（灰阶分层绘制）
+      // 繪製PNGTXT（灰階分層繪製）
       renderer.drawPngFromTxtpng(pngtxtPath.c_str());
       renderer.displayBuffer(HalDisplay::FULL_REFRESH);
 
@@ -288,14 +288,14 @@ void SleepActivity::renderpngtxtSleepScreen() const {
       renderer.displayGrayBuffer();
       renderer.setRenderMode(GfxRenderer::BW);
       
-      txtpng_file.close(); // 关闭文件，避免泄漏
-      isPngtxtLoaded = true; // 标记加载成功
+      txtpng_file.close(); // 關閉檔案，避免洩漏
+      isPngtxtLoaded = true; // 標記載入成功
     } else {
       Serial.printf("[%lu] [SLP] Failed to open single file: %s\n", millis(), pngtxtPath.c_str());
     }
   }
 
-  // ========== 分支3：仅当所有PNGTXT加载失败时，才绘制默认睡眠屏 ==========
+  // ========== 分支3：僅當所有PNGTXT載入失敗時，才繪製預設睡眠屏 ==========
   if (!isPngtxtLoaded) {
     Serial.printf("[%lu] [SLP] No PNGTXT loaded, render default sleep screen\n", millis());
     renderDefaultSleepScreen();
@@ -411,7 +411,7 @@ void SleepActivity::renderPngSleepScreen() const {
         continue;
       }
 
-      // 判断png后缀（对齐txtpng的文件格式判断）
+      // 判斷png字尾（對齊txtpng的檔案格式判斷）
       std::string ext = filename.substr(filename.length() - 4);
       for (auto& c : ext) c = tolower(c);
       if (ext != ".png") {
@@ -420,7 +420,7 @@ void SleepActivity::renderPngSleepScreen() const {
         continue;
       }
       
-      // 验证PNG文件是否有效（对齐txtpng的文件打开校验）
+      // 驗證PNG檔案是否有效（對齊txtpng的檔案開啟校驗）
       ImageDimensions pngDim;
       if (!PngToFramebufferConverter::getDimensionsStatic("/sleep_mask/" + filename, pngDim)) {
         Serial.printf("[%lu] [SLP] Skipping invalid PNG file: %s\n", millis(), name);
@@ -432,7 +432,7 @@ void SleepActivity::renderPngSleepScreen() const {
     }
     const auto numFiles = files.size();
     if (numFiles > 0) {
-      // 随机选文件（保留原有逻辑）
+      // 隨機選檔案（保留原有邏輯）
       auto randomFileIndex = random(numFiles);
       // while (numFiles > 1 && randomFileIndex == APP_STATE.lastSleepImage) {
       //   randomFileIndex = random(numFiles);
@@ -443,7 +443,7 @@ void SleepActivity::renderPngSleepScreen() const {
       Serial.printf("[%lu] [SLP] Randomly loading: %s\n", millis(), filename.c_str());
       delay(100);
       
-      // 配置PNG渲染参数
+      // 配置PNG渲染引數
       RenderConfig renderConfig;
       renderConfig.x = 0;                
       renderConfig.y = 0;                
@@ -452,11 +452,11 @@ void SleepActivity::renderPngSleepScreen() const {
       renderConfig.useDithering = true;
       renderConfig.cachePath = "";
       
-      // 解码并渲染PNG
+      // 解碼並渲染PNG
       PngToFramebufferConverter pngConverter;
       if (pngConverter.decodeToFramebuffer(filename, renderer, renderConfig)) {
         renderer.displayBuffer(HalDisplay::HALF_REFRESH);
-        delay(200); // 给屏幕刷新时间
+        delay(200); // 給螢幕重新整理時間
         dir.close();
         Serial.printf("[%lu] [SLP] Png draw completed (mode: %d)\n", millis(), renderer.getRenderMode());
         return;
@@ -469,11 +469,11 @@ void SleepActivity::renderPngSleepScreen() const {
 
   FsFile file;
   if (SdMan.openFileForRead("SLP", "/sleep_mask.png", file)) {
-    file.close(); // 仅验证文件存在
+    file.close(); // 僅驗證檔案存在
     Serial.printf("[%lu] [SLP] Loading: /sleep_mask.png\n", millis());
     delay(100);
     
-    // 配置PNG渲染参数
+    // 配置PNG渲染引數
     RenderConfig renderConfig;
     renderConfig.x = 0;
     renderConfig.y = 0;
@@ -482,7 +482,7 @@ void SleepActivity::renderPngSleepScreen() const {
     renderConfig.useDithering = false;
     renderConfig.cachePath = "";
     
-    // 解码并渲染根目录的sleep_mask.png
+    // 解碼並渲染根目錄的sleep_mask.png
     PngToFramebufferConverter pngConverter;
     if (pngConverter.decodeToFramebuffer("/sleep_mask.png", renderer, renderConfig)) {
       renderer.displayBuffer(HalDisplay::FULL_REFRESH);
@@ -492,7 +492,7 @@ void SleepActivity::renderPngSleepScreen() const {
     }
   }
 
-  // 无有效PNG文件，保持底层显示（对齐txtpng的失败处理）
+  // 無有效PNG檔案，保持底層顯示（對齊txtpng的失敗處理）
   Serial.printf("[%lu] [SLP] No valid PNG file, keep default screen\n", millis());
 }
 

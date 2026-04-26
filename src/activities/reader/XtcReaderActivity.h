@@ -35,10 +35,10 @@ class XtcReaderActivity final : public ActivityWithSubactivity {
   void renderPage(bool isRenderUpperHalf);
   void saveProgress() const;
   void loadProgress();
-    //分批缓存
+    //分批快取
   uint32_t m_loadedMax = 499;
   void renderFullPage();
-  //防止调用失败
+  //防止呼叫失敗
   void drawSliceContent(int sliceN, bool isGrayscale, bool isLSB);
 
 

@@ -134,7 +134,7 @@ class GfxRenderer {
   // Low level functions
   uint8_t* getFrameBuffer() const;
   static size_t getBufferSize();
-    //透明壁纸
+    //透明桌布
   void drawPngFromTxtpng(const char* txtpng_file_path) const ;
 
 };

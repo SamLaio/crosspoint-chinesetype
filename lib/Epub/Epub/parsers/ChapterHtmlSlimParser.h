@@ -74,19 +74,19 @@ class ChapterHtmlSlimParser {
   static void XMLCALL startElement(void* userData, const XML_Char* name, const XML_Char** atts);
   static void XMLCALL characterData(void* userData, const XML_Char* s, int len);
   static void XMLCALL endElement(void* userData, const XML_Char* name);
-  // 先新增辅助函数：判断是否是英文字母（a-z/A-Z）
+  // 先新增輔助函式：判斷是否是英文字母（a-z/A-Z）
   static bool isEnglishPunctuation(unsigned char c);
   static bool isOnlyWhitespace(const char* buf, int len);
-  //抄点koreader
-    // 1. 字符类型判断（核心：区分CJK/西文/标点/空格）
+  //抄點koreader
+    // 1. 字元型別判斷（核心：區分CJK/西文/標點/空格）
   enum CharType {
-      CHAR_TYPE_SPACE,    // 空白字符
-      CHAR_TYPE_CJK,      // 中日韩字符（中文核心）
-      CHAR_TYPE_ASCII,    // 英文/数字等ASCII字符
-      CHAR_TYPE_PUNCT,    // 标点符号
-      CHAR_TYPE_OTHER     // 其他字符
+      CHAR_TYPE_SPACE,    // 空白字元
+      CHAR_TYPE_CJK,      // 中日韓字元（中文核心）
+      CHAR_TYPE_ASCII,    // 英文/數字等ASCII字元
+      CHAR_TYPE_PUNCT,    // 標點符號
+      CHAR_TYPE_OTHER     // 其他字元
   };
-      // 新增函数声明
+      // 新增函式宣告
   bool isWhitespaceChar(unsigned int c);
   bool isCJKChar(unsigned int c);
   bool isEnglishPunctChar(unsigned int c);

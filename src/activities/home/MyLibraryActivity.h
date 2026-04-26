@@ -34,14 +34,14 @@ class MyLibraryActivity final : public ActivityWithSubactivity {
   void loadFiles();
   size_t findEntry(const std::string& name) const;
 
-  //文件管理
-  std::string copySourcePath;  // 待复制的源路径
-  bool hasCopyData = false;    // 是否有待复制内容
+  //檔案管理
+  std::string copySourcePath;  // 待複製的源路徑
+  bool hasCopyData = false;    // 是否有待複製內容
   bool isCutMode = false;  
-  //搜索模式
+  //搜尋模式
   bool isSearchMode = false;
-  std::vector<std::string> searchResults; //搜索结果
-  std::string originalBasePath; // 进入搜索前的路径
+  std::vector<std::string> searchResults; //搜尋結果
+  std::string originalBasePath; // 進入搜尋前的路徑
 
   // pending search request from keyboard callback; handled in loop()
   bool pendingSearch = false;
@@ -49,23 +49,23 @@ class MyLibraryActivity final : public ActivityWithSubactivity {
 
   void executeSearch();
   void cancelSearch();
-  static void sortFileList(std::vector<std::string>& strs); // 新增静态成员函数声明
-  void doSearch(const char* keyword); // 执行搜索（接收char*)
+  static void sortFileList(std::vector<std::string>& strs); // 新增靜態成員函式宣告
+  void doSearch(const char* keyword); // 執行搜尋（接收char*)
 
-  // ✅ 6个顶部选项枚举
+  // ✅ 6個頂部選項列舉
   enum class TopOption { 
-      OPEN = 0,        // 打开
-      DELETE = 1,      // 删除
-      COPY = 2,        // 复制
-      CUT = 3,         // 剪切
+      OPEN = 0,        // 開啟
+      DELETE = 1,      // 刪除
+      COPY = 2,        // 複製
+      CUT = 3,         // 剪下
       PASTE = 4
-      // ,        // 粘贴
-      // SEARCH = 5,        // 搜索
-      // CANCEL_SEARCH = 6   // 取消搜索
+      // ,        // 貼上
+      // SEARCH = 5,        // 搜尋
+      // CANCEL_SEARCH = 6   // 取消搜尋
   };
   TopOption topSelectorIndex = TopOption::OPEN;
   const int topOptionCount = 7;
-  char SEARCH_KEYWORD[100] = "赛博"; // 搜索关键词（示例：包含“赛博”的文件）
+  char SEARCH_KEYWORD[100] = "賽博"; // 搜尋關鍵詞（示例：包含“賽博”的檔案）
 
 
  public:

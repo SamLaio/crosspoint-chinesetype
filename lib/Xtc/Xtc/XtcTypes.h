@@ -103,9 +103,9 @@ struct ChapterInfo {
 };
 
 struct ChapterData {
-    int chapterIndex;        // 章节序号
-    uint16_t startPage;     // 字节偏移量
-    char shortTitle[64]; // 截取后的标题，char数组格式
+    int chapterIndex;        // 章節序號
+    uint16_t startPage;     // 位元組偏移量
+    char shortTitle[64]; // 擷取後的標題，char陣列格式
 };
 
 // Error codes

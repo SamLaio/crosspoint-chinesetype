@@ -8,12 +8,12 @@
 #include <string>
 #include <WiFiClientSecure.h>
 
-// 提前声明WebDAVEntry结构体
+// 提前宣告WebDAVEntry結構體
 struct WebDAVEntry {
-    std::string title;    // 文件名/文件夹名
-    std::string path;     // 相对路径
-    enum Type { FOLDER, BOOK_FILE } type; // 简化类型定义
-    std::string sourceFolder;  // 新增：标记来源文件夹 ("jg" 或 "legado")
+    std::string title;    // 檔名/資料夾名
+    std::string path;     // 相對路徑
+    enum Type { FOLDER, BOOK_FILE } type; // 簡化型別定義
+    std::string sourceFolder;  // 新增：標記來原始檔夾 ("jg" 或 "legado")
 };
 
 class JianGuoBrowserActivity : public ActivityWithSubactivity {
@@ -27,7 +27,7 @@ public:
         ERROR
     };
 
-    // 修复：构造函数添加name参数（适配ActivityWithSubactivity）
+    // 修復：建構函式新增name引數（適配ActivityWithSubactivity）
     JianGuoBrowserActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
                                    const std::function<void()>& onGoHome)
       : ActivityWithSubactivity("JianGuoBrowser", renderer, mappedInput), onGoHome(onGoHome) {}
@@ -56,7 +56,7 @@ private:
 
     const std::function<void()> onGoHome;
 
-    // 成员变量声明
+    // 成員變數宣告
     static std::vector<WebDAVEntry> entries;
     static std::string currentPath;
     static std::vector<std::string> navigationHistory;

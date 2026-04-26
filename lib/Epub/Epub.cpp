@@ -57,8 +57,8 @@ bool Epub::parseContentOpf(BookMetadataCache::BookMetadata& bookMetadata, const 
   contentBasePath = contentOpfFilePath.substr(0, contentOpfFilePath.find_last_of('/') + 1);
 
   Serial.printf("[%lu] [EBP] Parsing content.opf: %s\n", millis(), contentOpfFilePath.c_str());
- Serial.printf(" [EBP] 内部剩余RAM: %dKB | PSRAM剩余: %dKB | 已使用堆: %dKB\n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL)/1024, heap_caps_get_free_size(MALLOC_CAP_SPIRAM)/1024, (heap_caps_get_total_size(MALLOC_CAP_INTERNAL) - heap_caps_get_free_size(MALLOC_CAP_INTERNAL))/1024);
-Serial.printf(" [EBP] 最大连续内部RAM块: %dKB | 剩余总RAM: %dKB", heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)/1024, heap_caps_get_free_size(MALLOC_CAP_INTERNAL)/1024);
+ Serial.printf(" [EBP] 內部剩餘RAM: %dKB | PSRAM剩餘: %dKB | 已使用堆: %dKB\n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL)/1024, heap_caps_get_free_size(MALLOC_CAP_SPIRAM)/1024, (heap_caps_get_total_size(MALLOC_CAP_INTERNAL) - heap_caps_get_free_size(MALLOC_CAP_INTERNAL))/1024);
+Serial.printf(" [EBP] 最大連續內部RAM塊: %dKB | 剩餘總RAM: %dKB", heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)/1024, heap_caps_get_free_size(MALLOC_CAP_INTERNAL)/1024);
   size_t contentOpfSize;
   if (!getItemSize(contentOpfFilePath, &contentOpfSize)) {
     Serial.printf("[%lu] [EBP] Could not get size of content.opf\n", millis());

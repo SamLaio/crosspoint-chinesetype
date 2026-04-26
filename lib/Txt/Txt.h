@@ -5,18 +5,18 @@
 #include <memory>
 #include <string>
 
-// 宏定义常量 
+// 宏定義常量 
 #define MAX_SAVE_CHAPTER  30    // 最多存30章
-#define TITLE_KEEP_LENGTH 20    // 标题截取前20个UTF8字符
-#define TITLE_BUF_SIZE    64    // 标题缓冲区64字节，完美匹配你的static char title[64]
+#define TITLE_KEEP_LENGTH 20    // 標題擷取前20個UTF8字元
+#define TITLE_BUF_SIZE    64    // 標題緩衝區64位元組，完美匹配你的static char title[64]
 #define MAX_SAVE_PAGE 100
 
-// 目录结构体
+// 目錄結構體
 struct ChapterData {
-    int chapterIndex;        // 章节序号
-    uint32_t byteOffset;     // 字节偏移量
-    char shortTitle[TITLE_BUF_SIZE]; // 截取后的标题，char数组格式
-    uint32_t endOffset;      // 章节结束的字节偏移（可选，预留字段）
+    int chapterIndex;        // 章節序號
+    uint32_t byteOffset;     // 位元組偏移量
+    char shortTitle[TITLE_BUF_SIZE]; // 擷取後的標題，char陣列格式
+    uint32_t endOffset;      // 章節結束的位元組偏移（可選，預留欄位）
 };
 
 class Txt {
@@ -28,7 +28,7 @@ class Txt {
     mutable FsFile streamingReadFile;
     mutable bool streamingReadFileOpen = false;
 
-  //加目录
+  //加目錄
 
   ChapterData chapterDataList[MAX_SAVE_CHAPTER];
   int chapterActualCount = 0;
@@ -59,7 +59,7 @@ class Txt {
 
   // Read content from file
   [[nodiscard]] bool readContent(uint8_t* buffer, size_t offset, size_t length) const;
-  //加目录
+  //加目錄
 
   uint32_t getChapterOffsetByIndex(int chapterIndex) {
       for(int i = 0; i < chapterActualCount; i++) {
@@ -67,7 +67,7 @@ class Txt {
               return chapterDataList[i].byteOffset;
           }
       }
-      return 0; // 无此章节返回0
+      return 0; // 無此章節返回0
   }
 uint32_t getChapterendOffsetByIndex(int chapterIndex) {
       for(int i = 0; i < chapterActualCount; i++) {
@@ -75,7 +75,7 @@ uint32_t getChapterendOffsetByIndex(int chapterIndex) {
               return chapterDataList[i].endOffset;
           }
       }
-      return 0; // 无此章节返回0
+      return 0; // 無此章節返回0
   }
   std::string getChapterTitleByIndex(int chapterIndex) {
       for(int i = 0; i < chapterActualCount; i++) {
@@ -83,10 +83,10 @@ uint32_t getChapterendOffsetByIndex(int chapterIndex) {
               return std::string(chapterDataList[i].shortTitle);
           }
       }
-      return ""; // 无此章节返回空字符串
+      return ""; // 無此章節返回空字串
   }
 
-  // ✅ 补充章节存在判断接口（和上面配套，之前漏掉了，已补全）
+  // ✅ 補充章節存在判斷介面（和上面配套，之前漏掉了，已補全）
   bool isChapterExist(int chapterIndex) {
       for(int i = 0; i < chapterActualCount; i++) {
           if(chapterDataList[i].chapterIndex == chapterIndex) {

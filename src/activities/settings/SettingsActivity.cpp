@@ -63,7 +63,7 @@ void SettingsActivity::onEnter() {
   //systemSettings.push_back(SettingInfo::Action("bluetooth"));
   systemSettings.push_back(SettingInfo::Action("KOReader Sync"));
   systemSettings.push_back(SettingInfo::Action("OPDS Browser"));
-  systemSettings.push_back(SettingInfo::Action("坚果云信息配置"));
+  systemSettings.push_back(SettingInfo::Action("堅果雲資訊配置"));
   systemSettings.push_back(SettingInfo::Action("Clear Cache"));
   systemSettings.push_back(SettingInfo::Action("Check for updates"));
   systemSettings.push_back(SettingInfo::Action("Set Custom Font Family"));
@@ -189,17 +189,17 @@ void SettingsActivity::toggleCurrentSetting() {
     const uint8_t currentValue = SETTINGS.*(setting.valuePtr);
     SETTINGS.*(setting.valuePtr) = (currentValue + 1) % static_cast<uint8_t>(setting.enumValues.size());
 } else if (setting.type == SettingType::VALUE && setting.valuePtr != nullptr) {
-    // ========== 匹配 ValueRange 结构体的 VALUE 逻辑 ==========
-    // 1. 读取当前值（类型匹配：uint8_t，避免有符号/无符号错误）
+    // ========== 匹配 ValueRange 結構體的 VALUE 邏輯 ==========
+    // 1. 讀取當前值（型別匹配：uint8_t，避免有符號/無符號錯誤）
     const uint8_t currentValue = SETTINGS.*(setting.valuePtr); 
-    // 2. 计算新值：当前值 + 步长（改用 valueRange.step）
+    // 2. 計算新值：當前值 + 步長（改用 valueRange.step）
     uint8_t newValue = currentValue + setting.valueRange.step;
-    // 3. 循环逻辑：超过最大值则回到最小值（改用 valueRange.min/max）
-    // 比如 40 + 5 = 45 > 40 → 重置为 0；35 + 5 = 40 ≤40 → 保留40
+    // 3. 迴圈邏輯：超過最大值則回到最小值（改用 valueRange.min/max）
+    // 比如 40 + 5 = 45 > 40 → 重置為 0；35 + 5 = 40 ≤40 → 保留40
     if (newValue > setting.valueRange.max) {
         newValue = setting.valueRange.min;
     }   
-    // 4. 写回新值（这一步是真正改变数值的核心）
+    // 4. 寫回新值（這一步是真正改變數值的核心）
     SETTINGS.*(setting.valuePtr) = newValue;
 } else if (setting.type == SettingType::ACTION) {
     if (strcmp(setting.name, "Remap Front Buttons") == 0) {
@@ -226,7 +226,7 @@ void SettingsActivity::toggleCurrentSetting() {
         updateRequired = true;
             }));
       xSemaphoreGive(renderingMutex);
-    } else if (strcmp(setting.name, "坚果云信息配置") == 0) {
+    } else if (strcmp(setting.name, "堅果雲資訊配置") == 0) {
     xSemaphoreTake(renderingMutex, portMAX_DELAY);
     exitActivity();
     enterNewActivity(new JianGuoYunSettingsActivity(renderer, mappedInput, [this] {
@@ -315,35 +315,35 @@ void SettingsActivity::render() const {
           pageHeight - (metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.buttonHintsHeight +
                         metrics.verticalSpacing * 2)},
       settingsCount, selectedSettingIndex - 1, 
-      // 第一个回调：设置项名称（英文转中文）
+      // 第一個回撥：設定項名稱（英文轉中文）
       [&settings](int index) { 
-          // 核心修改：调用getChineseName转换名称
+          // 核心修改：呼叫getChineseName轉換名稱
           const char* englishName = settings[index].name;
           const char* chineseName = getChineseName(englishName);
           return std::string(chineseName); 
       },
       nullptr, nullptr,
-      // 第二个回调：设置项值（英文转中文）
+      // 第二個回撥：設定項值（英文轉中文）
       [&settings](int i) {
         std::string valueText = "";
         if (settings[i].type == SettingType::TOGGLE && settings[i].valuePtr != nullptr) {
           const bool value = SETTINGS.*(settings[i].valuePtr);
-          // 核心修改：ON/OFF 转 开启/关闭
+          // 核心修改：ON/OFF 轉 開啟/關閉
           valueText = value ? getChineseName("ON") : getChineseName("OFF");
-          // 如果你没给ON/OFF加映射，也可以直接写：valueText = value ? "开启" : "关闭";
+          // 如果你沒給ON/OFF加對映，也可以直接寫：valueText = value ? "開啟" : "關閉";
         } else if (settings[i].type == SettingType::ENUM && settings[i].valuePtr != nullptr) {
           const uint8_t value = SETTINGS.*(settings[i].valuePtr);
-          // 核心修改：枚举值（如Tight/Normal）转中文
+          // 核心修改：列舉值（如Tight/Normal）轉中文
           const char* englishValue = settings[i].enumValues[value].c_str();
           const char* chineseValue = getChineseName(englishValue);
           valueText = chineseValue;
         } else if (settings[i].type == SettingType::VALUE && settings[i].valuePtr != nullptr) {
-          // 数值型（如5/10）无需转换，直接显示
+          // 數值型（如5/10）無需轉換，直接顯示
           valueText = std::to_string(SETTINGS.*(settings[i].valuePtr));
         } else if (settings[i].type == SettingType::ACTION &&
             strcmp(settings[i].name, "Set Custom Font Family") == 0) {
           if (SETTINGS.fontFamily == CrossPointSettings::FONT_CUSTOM) {
-            // 自定义字体名称保留原字符串（无需转换）
+            // 自定義字型名稱保留原字串（無需轉換）
             valueText = SETTINGS.customFontFamily;
           }
         }

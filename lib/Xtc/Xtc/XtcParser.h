@@ -29,8 +29,8 @@ class XtcParser {
   XtcParser();
   ~XtcParser();
   #define MAX_SAVE_CHAPTER  30    // 最多存30章
-  #define TITLE_KEEP_LENGTH 20    // 标题截取前20个UTF8字符
-  #define TITLE_BUF_SIZE    64    // 标题缓冲区64字节，完美匹配你的static char title[64]
+  #define TITLE_KEEP_LENGTH 20    // 標題擷取前20個UTF8字元
+  #define TITLE_BUF_SIZE    64    // 標題緩衝區64位元組，完美匹配你的static char title[64]
 
   // File open/close
   XtcError open(const char* filepath);
@@ -43,22 +43,22 @@ class XtcParser {
   uint16_t getWidth() const { return m_defaultWidth; }
   uint16_t getHeight() const { return m_defaultHeight; }
   uint8_t getBitDepth() const { return m_bitDepth; }  // 1 = XTC/XTG, 2 = XTCH/XTH
-  // ===== 在 XtcParser 类的 公有(public) 区域 添加以下代码 =====
+  // ===== 在 XtcParser 類的 公有(public) 區域 新增以下程式碼 =====
 /**
- * @brief 【核心对外接口】动态加载下一批页码 (默认每次加载10页)
- * @return XtcError 加载状态：OK=加载成功，PAGE_OUT_OF_RANGE=无更多页可加载，其他=加载失败
+ * @brief 【核心對外介面】動態載入下一批頁碼 (預設每次載入10頁)
+ * @return XtcError 載入狀態：OK=載入成功，PAGE_OUT_OF_RANGE=無更多頁可載入，其他=載入失敗
  */
 XtcError loadNextPageBatch();
 
 /**
- * @brief 【辅助接口】获取当前已经加载的最大页码 (比如加载了0~9页，返回9；加载了0~19页，返回19)
- * @return uint16_t 当前加载的最大有效页码
+ * @brief 【輔助介面】獲取當前已經載入的最大頁碼 (比如載入了0~9頁，返回9；載入了0~19頁，返回19)
+ * @return uint16_t 當前載入的最大有效頁碼
  */
 uint16_t getLoadedMaxPage() const;
 
 /**
- * @brief 【辅助接口】获取每次动态加载的页数（批次大小）
- * @return uint16_t 批次页数，默认10
+ * @brief 【輔助介面】獲取每次動態載入的頁數（批次大小）
+ * @return uint16_t 批次頁數，預設10
  */
 uint16_t getPageBatchSize() const;
 
@@ -68,19 +68,19 @@ uint32_t getChapterstartpage(int chapterIndex) {
             return ChapterList[i].startPage;
         }
     }
-    return 0; // 无此章节返回0
+    return 0; // 無此章節返回0
 }
 
-    // ✅ 适配结构体数组 - 和上面接口风格完全一致，无任何变化
+    // ✅ 適配結構體陣列 - 和上面介面風格完全一致，無任何變化
 std::string getChapterTitleByIndex(int chapterIndex) {
-    Serial.printf("[%lu] [XTC] 已进入getChapterTitleByIndex，chapterActualCount=%d\n", millis(),chapterActualCount);
+    Serial.printf("[%lu] [XTC] 已進入getChapterTitleByIndex，chapterActualCount=%d\n", millis(),chapterActualCount);
     for(int i = 0; i < 25; i++) {
         if(ChapterList[i].chapterIndex == chapterIndex) {
             return std::string(ChapterList[i].shortTitle);
-            Serial.printf("[%lu] [XTC] getChapterTitleByIndex里第%d章，名字为:%s %u\n", millis(), i, ChapterList[i].shortTitle);
+            Serial.printf("[%lu] [XTC] getChapterTitleByIndex裡第%d章，名字為:%s %u\n", millis(), i, ChapterList[i].shortTitle);
         }
     }
-    return ""; // 无此章节返回空字符串
+    return ""; // 無此章節返回空字串
 }
 
   // Page information
@@ -156,14 +156,14 @@ std::string getChapterTitleByIndex(int chapterIndex) {
   XtcError readAuthor();
   XtcError readChapters();
 
-  uint16_t m_loadBatchSize = 10;    // 每次加载的页数（核心配置，可改）
-  uint16_t m_loadedMaxPage = 0;     // 记录当前加载到的最大页码
+  uint16_t m_loadBatchSize = 10;    // 每次載入的頁數（核心配置，可改）
+  uint16_t m_loadedMaxPage = 0;     // 記錄當前載入到的最大頁碼
   uint16_t m_loadedStartPage = 0;
 
-  // ===== 新增缓存缓冲区 =====
-  // 用于半页模式时存放整个页面数据，避免在每次调用时分配临时vector
-uint8_t* m_tempBuffer = nullptr; // 手动管理的缓冲区
-  size_t m_tempBufferSize = 0;     // 缓冲区大小
+  // ===== 新增快取緩衝區 =====
+  // 用於半頁模式時存放整個頁面資料，避免在每次呼叫時分配臨時vector
+uint8_t* m_tempBuffer = nullptr; // 手動管理的緩衝區
+  size_t m_tempBufferSize = 0;     // 緩衝區大小
 
     // Slice mode lightweight cache (no large bitmap cache)
     bool m_sliceCacheValid = false;

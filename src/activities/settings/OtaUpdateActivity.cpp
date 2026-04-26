@@ -197,12 +197,12 @@ void OtaUpdateActivity::loop() {
       updateRequired = true;
       vTaskDelay(10 / portTICK_PERIOD_MS);
       const auto res = updater.installUpdate();
-      Serial.printf("[%lu] [OTA] 进入到这里，%d.\n", millis(), res);
-          // 判断更新是否成功，成功则强制重启
+      Serial.printf("[%lu] [OTA] 進入到這裡，%d.\n", millis(), res);
+          // 判斷更新是否成功，成功則強制重啟
       if (res == OtaUpdater::OK) {
-        Serial.printf("[%lu] [OTA] 更新成功，即将重启...\n", millis());
-        vTaskDelay(3000 / portTICK_PERIOD_MS); // 可选延迟3秒，可删
-        ESP.restart(); // 核心：强制重启ESP32加载新固件
+        Serial.printf("[%lu] [OTA] 更新成功，即將重啟...\n", millis());
+        vTaskDelay(3000 / portTICK_PERIOD_MS); // 可選延遲3秒，可刪
+        ESP.restart(); // 核心：強制重啟ESP32載入新韌體
       }
 
       if (res != OtaUpdater::OK) {

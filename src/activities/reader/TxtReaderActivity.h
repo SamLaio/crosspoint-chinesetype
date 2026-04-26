@@ -24,7 +24,7 @@ class TxtReaderActivity final : public ActivityWithSubactivity {
   // Streaming text reader - stores file offsets for each page
   std::vector<size_t> pageOffsets;  // File offset for start of each page
   std::vector<std::string> currentPageLines;
-  std::vector<int> currentPageIndentOffsets;//首行缩进需要
+  std::vector<int> currentPageIndentOffsets;//首行縮排需要
   int linesPerPage = 0;
   int viewportWidth = 0;
   bool initialized = false;
@@ -45,7 +45,7 @@ class TxtReaderActivity final : public ActivityWithSubactivity {
  
   void saveProgress() const;
   void loadProgress();
-  //加章节必需
+  //加章節必需
   int chapternum=0;
   bool chapter_loadPageIndexCache(int chapternum);
   void chapter_savePageIndexCache(int chapternum) const;

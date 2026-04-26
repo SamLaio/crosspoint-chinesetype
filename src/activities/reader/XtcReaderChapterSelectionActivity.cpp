@@ -6,7 +6,7 @@
 #include "fontIds.h"
 #include "Xtc.h"
 
-//目录跟随旋转
+//目錄跟隨旋轉
 #include "CrossPointSettings.h"
 
 namespace {
@@ -36,7 +36,7 @@ void XtcReaderChapterSelectionActivity::onEnter() {
   renderer.clearScreen();
   Activity::onEnter();
 
-  // 屏幕方向配置
+  // 螢幕方向配置
   switch (SETTINGS.orientation) {
     case CrossPointSettings::ORIENTATION::PORTRAIT:
       renderer.setOrientation(GfxRenderer::Orientation::Portrait);
@@ -56,7 +56,7 @@ void XtcReaderChapterSelectionActivity::onEnter() {
 
 
   updateRequired = true;
-  //循环找所在章节
+  //迴圈找所在章節
 
  selectorIndex = xtc->getchapter(currentPage); 
  page = selectorIndex/getPageItems()+1;
@@ -92,10 +92,10 @@ void XtcReaderChapterSelectionActivity::loop() {
     const int pagebegin=(page-1)*getPageItems();
     xtc->readChapters_gd(pagebegin);
     uint32_t chapterpage = this->xtc->getChapterstartpage(selectorIndex);
-    Serial.printf("[%lu] [XTC] 跳转章节：%d,跳转页数：%d\n", millis(), selectorIndex, chapterpage);
+    Serial.printf("[%lu] [XTC] 跳轉章節：%d,跳轉頁數：%d\n", millis(), selectorIndex, chapterpage);
     
     onSelectPage(chapterpage);
-    // 确认按键逻辑，按需补充
+    // 確認按鍵邏輯，按需補充
   } else if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     onGoBack();
   } else if (prevReleased) {
@@ -135,7 +135,7 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
   renderer.clearScreen();
   const int pagebegin=(page-1)*getPageItems();
   int page_chapter=getPageItems();
-  static int parsedPage = -1; // ✅ 保留页码缓存，只解析1次
+  static int parsedPage = -1; // ✅ 保留頁碼快取，只解析1次
 
   if (parsedPage != page) {
     xtc->readChapters_gd(pagebegin);
@@ -143,7 +143,7 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
   }
 
   const auto pageWidth = renderer.getScreenWidth();
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "目录", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, "目錄", true, EpdFontFamily::BOLD);
 
   const int FIX_LINE_HEIGHT = 29;
   const int BASE_Y = 60;
@@ -155,7 +155,7 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
       uint32_t currOffset = this->xtc->getChapterstartpage(i); 
       std::string dirTitle = this->xtc->getChapterTitleByIndex(i); 
       
-      Serial.printf("[%lu] [XTC_CHAPTER] 第%d章，名字为:%s,页码为%d\n", millis(), i, dirTitle.c_str(),currOffset);
+      Serial.printf("[%lu] [XTC_CHAPTER] 第%d章，名字為:%s,頁碼為%d\n", millis(), i, dirTitle.c_str(),currOffset);
       static char title[64];
       strncpy(title, dirTitle.c_str(), sizeof(title)-1);
       title[sizeof(title)-1] = '\0';
@@ -169,8 +169,8 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
         renderer.drawText(UI_10_FONT_ID, 20, drawY, title, 1);
       }
 
-      //Serial.printf("选中的选项是：%d\n",selectorIndex); // ✅ 补全换行符，日志整洁
-      //renderer.drawText(UI_10_FONT_ID, 20, drawY, title, i!= selectorIndex); // ✅ 核心修复：选中态正常，必加！
+      //Serial.printf("選中的選項是：%d\n",selectorIndex); // ✅ 補全換行符，日誌整潔
+      //renderer.drawText(UI_10_FONT_ID, 20, drawY, title, i!= selectorIndex); // ✅ 核心修復：選中態正常，必加！
   }
 
   renderer.displayBuffer();

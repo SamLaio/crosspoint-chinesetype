@@ -3,7 +3,7 @@
 #include <GfxRenderer.h>
 #include <HardwareSerial.h>
 #include <WiFi.h>
-#include <base64.h>  // 显式包含Base64头文件
+#include <base64.h>  // 顯式包含Base64標頭檔案
 
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
@@ -41,7 +41,7 @@ static std::string urlEncode(const std::string& value) {
     return escaped.str();
 }
 
-// ===================== 内嵌ESPWebDAV核心代码（修正版）=====================
+// ===================== 內嵌ESPWebDAV核心程式碼（修正版）=====================
 class ESPWebDAV {
 public:
     void begin(const char* url, const char* user, const char* pass) {
@@ -56,7 +56,7 @@ public:
         _timeout = timeout;
     }
 
-    // 新增：设置自定义基础路径
+    // 新增：設定自定義基礎路徑
     void setBasePath(const char* basePath) {
         _basePath = basePath;
     }
@@ -73,7 +73,7 @@ public:
             return 0;
         }
 
-        // === 修改：优先使用 _basePath，如果没有则用 SETTINGS.jgBookFolder ===
+        // === 修改：優先使用 _basePath，如果沒有則用 SETTINGS.jgBookFolder ===
         String requestPath = String("/dav/");
         if (_basePath.length() > 0) {
             requestPath += _basePath;
@@ -87,10 +87,10 @@ public:
         }
         if (!requestPath.endsWith("/")) requestPath += "/";
 
-        // 【调试】打印路径
-        Serial.printf("[DAV] PROPFIND 请求路径: %s\n", requestPath.c_str());
+        // 【除錯】列印路徑
+        Serial.printf("[DAV] PROPFIND 請求路徑: %s\n", requestPath.c_str());
 
-        // Base64 认证
+        // Base64 認證
         String authStr = _user + ":" + _pass;
         String base64Auth = base64::encode(authStr);
         base64Auth.trim();
@@ -105,7 +105,7 @@ public:
         client.println("Connection: close");
         client.println();
 
-        // 读取响应
+        // 讀取響應
         unsigned long timeout = millis() + 8000;
         String responseLine = "";
         while (millis() < timeout && client.connected()) {
@@ -153,18 +153,18 @@ private:
     String _user;
     String _pass;
     int _timeout;
-    String _basePath;  // 新增：自定义基础路径
+    String _basePath;  // 新增：自定義基礎路徑
 };
 
 
-// ===================== 内嵌ESPWebDAV核心代码（结束）=====================
+// ===================== 內嵌ESPWebDAV核心程式碼（結束）=====================
 
 namespace {
 constexpr int PAGE_ITEMS = 23;
 constexpr int SKIP_PAGE_MS = 700;
 }  // namespace
 
-// 静态成员变量初始化
+// 靜態成員變數初始化
 std::vector<WebDAVEntry> JianGuoBrowserActivity::entries;
 std::string JianGuoBrowserActivity::currentPath = "";
 std::vector<std::string> JianGuoBrowserActivity::navigationHistory;
@@ -176,7 +176,7 @@ SemaphoreHandle_t JianGuoBrowserActivity::renderingMutex = nullptr;
 TaskHandle_t JianGuoBrowserActivity::displayTaskHandle = nullptr;
 bool JianGuoBrowserActivity::updateRequired = false;
 
-// 修复：把endsWith的定义放在这里（头文件只留声明）
+// 修復：把endsWith的定義放在這裡（標頭檔案只留宣告）
 bool JianGuoBrowserActivity::endsWith(const std::string& str, const std::string& suffix) {
     if (str.length() < suffix.length()) return false;
     return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
@@ -197,7 +197,7 @@ void JianGuoBrowserActivity::onEnter() {
   currentPath = "";
   selectorIndex = 0;
   errorMessage.clear();
-  statusMessage = "检查WiFi...";
+  statusMessage = "檢查WiFi...";
   updateRequired = true;
 
 
@@ -209,14 +209,14 @@ void JianGuoBrowserActivity::onEnter() {
               &displayTaskHandle  // Task handle
   );
 
-  // 检查WiFi后加载目录
+  // 檢查WiFi後載入目錄
   checkAndConnectWifi();
 }
 
 void JianGuoBrowserActivity::onExit() {
   ActivityWithSubactivity::onExit();
 
-  // 关闭WiFi
+  // 關閉WiFi
   WiFi.mode(WIFI_OFF);
 
   xSemaphoreTake(renderingMutex, portMAX_DELAY);
@@ -231,18 +231,18 @@ void JianGuoBrowserActivity::onExit() {
 }
 
 void JianGuoBrowserActivity::loop() {
-  // 处理WiFi选择子页面
+  // 處理WiFi選擇子頁面
   if (state == BrowserState::WIFI_SELECTION) {
     ActivityWithSubactivity::loop();
     return;
   }
 
-  // 错误状态：重试/返回
+  // 錯誤狀態：重試/返回
   if (state == BrowserState::ERROR) {
     if (mappedInput.isPressed(MappedInputManager::Button::Confirm) && mappedInput.getHeldTime() >= goHomeMs) {
       if (WiFi.status() == WL_CONNECTED) {
         state = BrowserState::LOADING;
-        statusMessage = "加载中...";
+        statusMessage = "載入中...";
         updateRequired = true;
         fetchFeed(currentPath);
       } else {
@@ -254,7 +254,7 @@ void JianGuoBrowserActivity::loop() {
     return;
   }
 
-  // 检查WiFi/加载中：仅返回键可用
+  // 檢查WiFi/載入中：僅返回鍵可用
   if (state == BrowserState::CHECK_WIFI || state == BrowserState::LOADING) {
     if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
       exitActivity(); 
@@ -262,7 +262,7 @@ void JianGuoBrowserActivity::loop() {
     return;
   }
 
-  // 浏览目录状态（核心）
+  // 瀏覽目錄狀態（核心）
   if (state == BrowserState::BROWSING) {
     const bool prevReleased = mappedInput.wasReleased(MappedInputManager::Button::Up) ||
                               mappedInput.wasReleased(MappedInputManager::Button::Left);
@@ -270,22 +270,22 @@ void JianGuoBrowserActivity::loop() {
                               mappedInput.wasReleased(MappedInputManager::Button::Right);
     const bool skipPage = mappedInput.getHeldTime() > SKIP_PAGE_MS;
 
-    // 确认键：打开文件夹（跳过下载逻辑）
+    // 確認鍵：開啟資料夾（跳過下載邏輯）
     if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
         if (!entries.empty()) {
             const auto& entry = entries[selectorIndex];
             if (entry.type == WebDAVEntry::FOLDER) {
-                navigateToEntry(entry); // 进入文件夹
+                navigateToEntry(entry); // 進入資料夾
             } else if (entry.type == WebDAVEntry::BOOK_FILE) {
-                downloadBook(entry); // ← 新增：下载文件
+                downloadBook(entry); // ← 新增：下載檔案
             }
         }
     }
-    // 返回键：返回上一级
+    // 返回鍵：返回上一級
     else if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
       onGoHome();
     } 
-    // 上下键：切换选中项
+    // 上下鍵：切換選中項
     else if (prevReleased && !entries.empty()) {
       if (skipPage) {
         selectorIndex = ((selectorIndex / PAGE_ITEMS - 1) * PAGE_ITEMS + entries.size()) % entries.size();
@@ -322,10 +322,10 @@ void JianGuoBrowserActivity::render() const {
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
 
-  // 标题：坚果云文件目录
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "坚果云文件目录", true, EpdFontFamily::BOLD);
+  // 標題：堅果雲檔案目錄
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, "堅果雲檔案目錄", true, EpdFontFamily::BOLD);
 
-  // 检查WiFi状态
+  // 檢查WiFi狀態
   if (state == BrowserState::CHECK_WIFI) {
     renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, statusMessage.c_str());
     const auto labels = mappedInput.mapLabels("返回", "", "", "");
@@ -334,7 +334,7 @@ void JianGuoBrowserActivity::render() const {
     return;
   }
 
-  // 加载中状态
+  // 載入中狀態
   if (state == BrowserState::LOADING) {
     renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, statusMessage.c_str());
     const auto labels = mappedInput.mapLabels("返回", "", "", "");
@@ -342,9 +342,9 @@ void JianGuoBrowserActivity::render() const {
     renderer.displayBuffer();
     return;
   }
- //下载成功
+ //下載成功
   if (state == BrowserState::DOWNLOADING) {
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 40, "下载中...");
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 40, "下載中...");
     renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 10, statusMessage.c_str());
     if (downloadTotal > 0) {
         const int barWidth = renderer.getScreenWidth() - 100;
@@ -357,36 +357,36 @@ void JianGuoBrowserActivity::render() const {
     return;
 }
 
-  // 错误状态
+  // 錯誤狀態
   if (state == BrowserState::ERROR) {
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 20, "失败:");
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 20, "失敗:");
     renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 10, errorMessage.c_str());
-    const auto labels = mappedInput.mapLabels("返回", "重试", "", "");
+    const auto labels = mappedInput.mapLabels("返回", "重試", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
   }
 
-  // 浏览目录状态（核心）
-  const auto labels = mappedInput.mapLabels("返回", "打开", "", "");
+  // 瀏覽目錄狀態（核心）
+  const auto labels = mappedInput.mapLabels("返回", "開啟", "", "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   if (entries.empty()) {
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, "当前目录无文件/文件夹");
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, "當前目錄無檔案/資料夾");
     renderer.displayBuffer();
     return;
   }
 
-  // 绘制目录列表
+  // 繪製目錄列表
   const auto pageStartIndex = selectorIndex / PAGE_ITEMS * PAGE_ITEMS;
-  // 选中项高亮
+  // 選中項高亮
   renderer.fillRect(0, 60 + (selectorIndex % PAGE_ITEMS) * 30 - 2, pageWidth - 1, 30);
 
-  // 遍历显示当前页条目
+  // 遍歷顯示當前頁條目
   for (size_t i = pageStartIndex; i < entries.size() && i < static_cast<size_t>(pageStartIndex + PAGE_ITEMS); i++) {
     const auto& entry = entries[i];
 
-    // 显示文本：文件夹加>标识，文件直接显示名称
+    // 顯示文字：資料夾加>標識，檔案直接顯示名稱
     std::string displayText;
     if (entry.type == WebDAVEntry::FOLDER) {
       displayText = "> " + entry.title;
@@ -394,7 +394,7 @@ void JianGuoBrowserActivity::render() const {
       displayText = entry.title;
     }
 
-    // 截断过长文本
+    // 截斷過長文字
     auto item = renderer.truncatedText(UI_10_FONT_ID, displayText.c_str(), renderer.getScreenWidth() - 40);
     renderer.drawText(UI_10_FONT_ID, 20, 60 + (i % PAGE_ITEMS) * 30, item.c_str(),
                       i != static_cast<size_t>(selectorIndex));
@@ -403,67 +403,67 @@ void JianGuoBrowserActivity::render() const {
   renderer.displayBuffer();
 }
 
-// 核心：列目录逻辑（仅保留PROPFIND+XML解析）
-// 核心：列目录逻辑（支持双文件夹）
+// 核心：列目錄邏輯（僅保留PROPFIND+XML解析）
+// 核心：列目錄邏輯（支援雙資料夾）
 void JianGuoBrowserActivity::fetchFeed(const std::string& subPath) {
     std::string username = SETTINGS.jgUsername;
     std::string appPwd = SETTINGS.jgAppPassword;
 
     if (username.empty() || appPwd.empty()) {
         state = BrowserState::ERROR;
-        errorMessage = "请先配置坚果云账号/应用密码";
+        errorMessage = "請先配置堅果雲賬號/應用密碼";
         updateRequired = true;
         return;
     }
 
     entries.clear();
 
-    // === 文件夹1：原文件夹 (SETTINGS.jgBookFolder) ===
+    // === 資料夾1：原資料夾 (SETTINGS.jgBookFolder) ===
     {
         ESPWebDAV dav1;
         dav1.begin("https://dav.jianguoyun.com/dav/", username.c_str(), appPwd.c_str());
         dav1.setTimeout(8000);
 
-        Serial.printf("\n[========== 文件夹1: %s ==========]\n", SETTINGS.jgBookFolder);
+        Serial.printf("\n[========== 資料夾1: %s ==========]\n", SETTINGS.jgBookFolder);
         String xmlResult1;
         int responseCode1 = dav1.propfind(subPath.c_str(), xmlResult1);
         if (responseCode1 == 207) {
             parseXmlEntries(xmlResult1, subPath, "jg", entries);
-            Serial.printf("[JG] 文件夹1 成功，当前共 %d 个条目\n", entries.size());
+            Serial.printf("[JG] 資料夾1 成功，當前共 %d 個條目\n", entries.size());
         } else {
-            Serial.printf("[JG] 文件夹1 失败（码：%d）\n", responseCode1);
+            Serial.printf("[JG] 資料夾1 失敗（碼：%d）\n", responseCode1);
         }
         dav1.end();
     }
 
-    // === 文件夹2：ebooks/ (或其他路径) ===
+    // === 資料夾2：ebooks/ (或其他路徑) ===
     {
         ESPWebDAV dav2;
         dav2.begin("https://dav.jianguoyun.com/dav/", username.c_str(), appPwd.c_str());
         dav2.setTimeout(8000);
-        dav2.setBasePath("legado/books");  // 新增：设置第二个文件夹路径
+        dav2.setBasePath("legado/books");  // 新增：設定第二個資料夾路徑
 
-        Serial.printf("\n[========== 文件夹2: legado/books ==========]\n");
+        Serial.printf("\n[========== 資料夾2: legado/books ==========]\n");
         String xmlResult2;
         int responseCode2 = dav2.propfind(subPath.c_str(), xmlResult2);
         if (responseCode2 == 207) {
             parseXmlEntries(xmlResult2, subPath, "legado", entries);
-            Serial.printf("[JG] 文件夹2 成功，当前共 %d 个条目\n", entries.size());
+            Serial.printf("[JG] 資料夾2 成功，當前共 %d 個條目\n", entries.size());
         } else {
-            Serial.printf("[JG] 文件夹2 失败（码：%d）\n", responseCode2);
+            Serial.printf("[JG] 資料夾2 失敗（碼：%d）\n", responseCode2);
         }
         dav2.end();
     }
 
     Serial.printf("[================================]\n");
-    Serial.printf("[%lu] [JG] 共找到 %d 个条目\n", millis(), entries.size());
+    Serial.printf("[%lu] [JG] 共找到 %d 個條目\n", millis(), entries.size());
 
     selectorIndex = 0;
     state = BrowserState::BROWSING;
     updateRequired = true;
 }
 
-// 新增：XML 解析辅助函数（避免代码重复）
+// 新增：XML 解析輔助函式（避免程式碼重複）
 void JianGuoBrowserActivity::parseXmlEntries(const String& xmlResult, 
                                               const std::string& basePath,
                                               const std::string& sourceFolder,
@@ -489,9 +489,9 @@ void JianGuoBrowserActivity::parseXmlEntries(const String& xmlResult,
         entry.title = fileName;
         entry.path = basePath.empty() ? fileName : basePath + "/" + fileName;
         entry.type = (isFolder != -1) ? WebDAVEntry::FOLDER : WebDAVEntry::BOOK_FILE;
-        entry.sourceFolder = sourceFolder;  // 标记来源
+        entry.sourceFolder = sourceFolder;  // 標記來源
 
-        // 文件类型过滤
+        // 檔案型別過濾
         if (entry.type == WebDAVEntry::BOOK_FILE) {
             if (!endsWith(entry.title, ".epub") && !endsWith(entry.title, ".txt")
                 && !endsWith(entry.title, ".xtc") && !endsWith(entry.title, ".xtch")
@@ -503,17 +503,17 @@ void JianGuoBrowserActivity::parseXmlEntries(const String& xmlResult,
     }
 }
 
-// 文件夹跳转逻辑
+// 資料夾跳轉邏輯
 void JianGuoBrowserActivity::navigateToEntry(const WebDAVEntry& entry) {
   if (entry.type != WebDAVEntry::FOLDER) return;
 
-  // 记录历史路径
+  // 記錄歷史路徑
   navigationHistory.push_back(currentPath);
   currentPath = entry.path;
 
-  // 加载子目录
+  // 載入子目錄
   state = BrowserState::LOADING;
-  statusMessage = "加载中...";
+  statusMessage = "載入中...";
   entries.clear();
   selectorIndex = 0;
   updateRequired = true;
@@ -521,17 +521,17 @@ void JianGuoBrowserActivity::navigateToEntry(const WebDAVEntry& entry) {
   fetchFeed(currentPath);
 }
 
-// 返回上一级目录
+// 返回上一級目錄
 void JianGuoBrowserActivity::navigateBack() {
   if (navigationHistory.empty()) {
-    exitActivity(); // 根目录返回直接退出
+    exitActivity(); // 根目錄返回直接退出
   } else {
-    // 回到上一级
+    // 回到上一級
     currentPath = navigationHistory.back();
     navigationHistory.pop_back();
 
     state = BrowserState::LOADING;
-    statusMessage = "加载中...";
+    statusMessage = "載入中...";
     entries.clear();
     selectorIndex = 0;
     updateRequired = true;
@@ -540,21 +540,21 @@ void JianGuoBrowserActivity::navigateBack() {
   }
 }
 
-// WiFi检查逻辑
+// WiFi檢查邏輯
 void JianGuoBrowserActivity::checkAndConnectWifi() {
   if (WiFi.status() == WL_CONNECTED && WiFi.localIP() != IPAddress(0, 0, 0, 0)) {
     state = BrowserState::LOADING;
-    statusMessage = "加载中...";
+    statusMessage = "載入中...";
     updateRequired = true;
     fetchFeed(currentPath);
     return;
   }
 
-  // 未连接则启动WiFi选择
+  // 未連線則啟動WiFi選擇
   launchWifiSelection();
 }
 
-// 启动WiFi选择页面
+// 啟動WiFi選擇頁面
 void JianGuoBrowserActivity::launchWifiSelection() {
   state = BrowserState::WIFI_SELECTION;
   updateRequired = true;
@@ -563,22 +563,22 @@ void JianGuoBrowserActivity::launchWifiSelection() {
                                              [this](const bool connected) { onWifiSelectionComplete(connected); }));
 }
 
-// WiFi选择完成回调
+// WiFi選擇完成回撥
 void JianGuoBrowserActivity::onWifiSelectionComplete(const bool connected) {
   exitActivity();
 
   if (connected) {
-    Serial.printf("[%lu] [JG] WiFi已连接，加载目录\n", millis());
+    Serial.printf("[%lu] [JG] WiFi已連線，載入目錄\n", millis());
     state = BrowserState::LOADING;
-    statusMessage = "加载中...";
+    statusMessage = "載入中...";
     updateRequired = true;
     fetchFeed(currentPath);
   } else {
-    Serial.printf("[%lu] [JG] WiFi连接失败\n", millis());
+    Serial.printf("[%lu] [JG] WiFi連線失敗\n", millis());
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
     state = BrowserState::ERROR;
-    errorMessage = "WiFi连接失败";
+    errorMessage = "WiFi連線失敗";
     updateRequired = true;
   }
 }
@@ -591,7 +591,7 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
     downloadTotal = 0;
     updateRequired = true;
 
-    // === 根据来源文件夹构建 URL ===
+    // === 根據來原始檔夾構建 URL ===
     std::string downloadUrl;
     if (book.sourceFolder == "legado") {
         downloadUrl = "https://dav.jianguoyun.com/dav/legado/books/";
@@ -599,7 +599,7 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
         downloadUrl = std::string("https://dav.jianguoyun.com/dav/") + SETTINGS.jgBookFolder+"/";
     }
     
-    // 添加子路径
+    // 新增子路徑
     std::string folderPath = book.path;
     size_t lastSlash = folderPath.rfind('/');
     if (lastSlash != std::string::npos && lastSlash > 0) {
@@ -608,17 +608,17 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
     }
     
     downloadUrl += urlEncode(book.title);
-    Serial.printf("[%lu] [JG] 准备下载: %s (来源:%s)\n", millis(), 
+    Serial.printf("[%lu] [JG] 準備下載: %s (來源:%s)\n", millis(), 
                   downloadUrl.c_str(), book.sourceFolder.c_str());
 
-    // === 根据扩展名选择本地保存目录 ===
+    // === 根據副檔名選擇本地儲存目錄 ===
     std::string targetDir;
     if (endsWith(book.title, ".pngtxt")) {
         targetDir = "/sleep_mask/";
     } else if (endsWith(book.title, ".epdfont")) {
         targetDir = "/fonts";
     } else {
-        targetDir = "/坚果云";
+        targetDir = "/堅果雲";
     }
 
     if (!targetDir.empty()) {
@@ -647,7 +647,7 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
     );
 
     if (result == HttpDownloader::OK) {
-        Serial.printf("[%lu] [JG] 下载完成: %s\n", millis(), localPath.c_str());
+        Serial.printf("[%lu] [JG] 下載完成: %s\n", millis(), localPath.c_str());
 
         if (endsWith(book.title, ".epub")) {
             Epub epub(localPath, "/.crosspoint");
@@ -658,7 +658,7 @@ void JianGuoBrowserActivity::downloadBook(const WebDAVEntry& book) {
         updateRequired = true;
     } else {
         state = BrowserState::ERROR;
-        errorMessage = "下载失败";
+        errorMessage = "下載失敗";
         updateRequired = true;
     }
 }

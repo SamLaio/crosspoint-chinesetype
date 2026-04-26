@@ -248,7 +248,7 @@ void EpubReaderActivity::loop() {
     if (mappedInput.isPressed(MappedInputManager::Button::Confirm) && mappedInput.getHeldTime() >= 1000) {
       Serial.printf("[%lu] [ERS] Long press detected, entering settings\n", millis());
       state = EPUBState::SETTING;
-      skipNextButtonCheck = true; // 避免按钮事件冲突
+      skipNextButtonCheck = true; // 避免按鈕事件衝突
       updateRequired = true;
       return;
     }
@@ -399,7 +399,7 @@ void EpubReaderActivity::loop() {
       }
       updateRequired = true;
     }
-    //暂不启用，易起冲突，后面修改
+    //暫不啟用，易起衝突，後面修改
   }else if (state == EPUBState::SETTING) {
     if (mappedInput.wasPressed(MappedInputManager::Button::Back) ) {
       Serial.printf("[%lu] [ERS] Long press detected, entering reading\n", millis());
@@ -421,7 +421,7 @@ void EpubReaderActivity::loop() {
       return;
     }
     if (mappedInput.wasPressed(MappedInputManager::Button::Left)) {
-      Serial.printf("[%lu] [ERS] 进入左边距设置\n", millis());
+      Serial.printf("[%lu] [ERS] 進入左邊距設定\n", millis());
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       SETTINGS.screenMargin_Left+=5;
       xSemaphoreGive(renderingMutex);
@@ -429,7 +429,7 @@ void EpubReaderActivity::loop() {
       updateRequired = true;
     }
     if (mappedInput.wasPressed(MappedInputManager::Button::Right)) {
-      Serial.printf("[%lu] [ERS] 进入右边距设置\n", millis());
+      Serial.printf("[%lu] [ERS] 進入右邊距設定\n", millis());
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       SETTINGS.screenMargin_Right+=5;
       xSemaphoreGive(renderingMutex);
@@ -438,7 +438,7 @@ void EpubReaderActivity::loop() {
       updateRequired = true;
     }
     if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
-      Serial.printf("[%lu] [ERS] 进入上边距设置\n", millis());
+      Serial.printf("[%lu] [ERS] 進入上邊距設定\n", millis());
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       SETTINGS.screenMargin_Top+=5;
       xSemaphoreGive(renderingMutex);
@@ -446,16 +446,16 @@ void EpubReaderActivity::loop() {
       updateRequired = true;
     }
     if (mappedInput.wasPressed(MappedInputManager::Button::Down)) {
-      Serial.printf("[%lu] [ERS] 进入下边距设置\n", millis());
+      Serial.printf("[%lu] [ERS] 進入下邊距設定\n", millis());
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       SETTINGS.screenMargin_Bottom+=5;
-      Serial.printf("[%lu] [ERS] Bottom为%d\n", millis(), SETTINGS.screenMargin_Bottom);
+      Serial.printf("[%lu] [ERS] Bottom為%d\n", millis(), SETTINGS.screenMargin_Bottom);
       xSemaphoreGive(renderingMutex);
       pendingMarginRelayout = true;
       updateRequired = true;
     }
     if (mappedInput.isPressed(MappedInputManager::Button::Left) && mappedInput.getHeldTime() >= 2000) {
-      Serial.printf("[%lu] [ERS] 进入左边距设置\n", millis());
+      Serial.printf("[%lu] [ERS] 進入左邊距設定\n", millis());
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       SETTINGS.screenMargin_Left-=5;
       xSemaphoreGive(renderingMutex);
@@ -463,7 +463,7 @@ void EpubReaderActivity::loop() {
       updateRequired = true;
     }
     if (mappedInput.isPressed(MappedInputManager::Button::Right) && mappedInput.getHeldTime() >= 2000) {
-      Serial.printf("[%lu] [ERS] 进入右边距设置\n", millis());
+      Serial.printf("[%lu] [ERS] 進入右邊距設定\n", millis());
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       SETTINGS.screenMargin_Right-=5;
       xSemaphoreGive(renderingMutex);
@@ -472,7 +472,7 @@ void EpubReaderActivity::loop() {
       updateRequired = true;
     }
     if (mappedInput.isPressed(MappedInputManager::Button::Up) && mappedInput.getHeldTime() >= 2000) {
-      Serial.printf("[%lu] [ERS] 进入上边距设置\n", millis());
+      Serial.printf("[%lu] [ERS] 進入上邊距設定\n", millis());
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       SETTINGS.screenMargin_Top-=5;
       xSemaphoreGive(renderingMutex);
@@ -480,10 +480,10 @@ void EpubReaderActivity::loop() {
       updateRequired = true;
     }
     if (mappedInput.isPressed(MappedInputManager::Button::Down) && mappedInput.getHeldTime() >= 2000) {
-      Serial.printf("[%lu] [ERS] 进入下边距设置\n", millis());
+      Serial.printf("[%lu] [ERS] 進入下邊距設定\n", millis());
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       SETTINGS.screenMargin_Bottom-=5;
-      Serial.printf("[%lu] [ERS] Bottom为%d\n", millis(), SETTINGS.screenMargin_Bottom);
+      Serial.printf("[%lu] [ERS] Bottom為%d\n", millis(), SETTINGS.screenMargin_Bottom);
       xSemaphoreGive(renderingMutex);
       pendingMarginRelayout = true;
       updateRequired = true;
@@ -744,15 +744,15 @@ void EpubReaderActivity::displayTaskLoop() {
   while (true) {
     if (updateRequired) {
       updateRequired = false;
-      // 加锁保证渲染过程独占
+      // 加鎖保證渲染過程獨佔
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
-      APP_STATE.isRenderComplete = false; // 标记渲染开始
-      renderScreen(); // 执行核心渲染逻辑
-      APP_STATE.isRenderComplete = true;  // 标记渲染完成（包括 saveProgress）
+      APP_STATE.isRenderComplete = false; // 標記渲染開始
+      renderScreen(); // 執行核心渲染邏輯
+      APP_STATE.isRenderComplete = true;  // 標記渲染完成（包括 saveProgress）
       APP_STATE.saveToFile();
-      xSemaphoreGive(renderingMutex);     // 释放锁
+      xSemaphoreGive(renderingMutex);     // 釋放鎖
     }
-    vTaskDelay(10 / portTICK_PERIOD_MS); // 降低轮询频率，节省资源
+    vTaskDelay(10 / portTICK_PERIOD_MS); // 降低輪詢頻率，節省資源
   }
 }
 
@@ -780,24 +780,24 @@ void EpubReaderActivity::renderScreen() {
   }
 
   // Apply screen viewable areas and additional padding
-  // 1. 先获取屏幕原始可视边距（无任何叠加）
+  // 1. 先獲取螢幕原始可視邊距（無任何疊加）
   int orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft;
   renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
                                    &orientedMarginLeft);
 
   auto metrics = UITheme::getInstance().getMetrics();
 
-  // 2. 先处理状态栏（核心：这里用 SETTINGS.screenMargin_Bottom 调整状态栏位置）
+  // 2. 先處理狀態列（核心：這裡用 SETTINGS.screenMargin_Bottom 調整狀態列位置）
   if (SETTINGS.statusBar != CrossPointSettings::STATUS_BAR_MODE::NONE) {
     const bool showProgressBar = SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::BOOK_PROGRESS_BAR ||
                                  SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::ONLY_BOOK_PROGRESS_BAR ||
                                  SETTINGS.statusBar == CrossPointSettings::STATUS_BAR_MODE::CHAPTER_PROGRESS_BAR;
-    //这个地方是留位置，位置可以多留一点
+    //這個地方是留位置，位置可以多留一點
     orientedMarginBottom += statusBarMargin  +
                             (showProgressBar ? (metrics.bookProgressBarHeight + progressBarMarginTop) : 0);
   }
 
-  // 3. 再叠加用户设置的所有边距（此时Bottom边距不会被抵消）
+  // 3. 再疊加使用者設定的所有邊距（此時Bottom邊距不會被抵消）
   orientedMarginTop += SETTINGS.screenMargin_Top;
   orientedMarginLeft += SETTINGS.screenMargin_Left;
   orientedMarginRight += SETTINGS.screenMargin_Right;
@@ -864,7 +864,7 @@ void EpubReaderActivity::renderScreen() {
   renderer.clearScreen();
     //加背景
     if(SETTINGS.ReadingScreenEnabled){
-      Serial.printf("[%lu] [ERS] 壁纸屏幕开启，渲染壁纸屏幕\n");
+      Serial.printf("[%lu] [ERS] 桌布螢幕開啟，渲染桌布螢幕\n");
       renderPngSleepScreen(renderer);
     }
 
@@ -939,10 +939,10 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
       renderer.drawRect(contentX, contentY, contentWidth, contentHeight, 3, true);
     }
 
-    const char* line1 = "进入边距设置";
-    const char* line2 = "请注意边框";
-    const char* line3 = "短按加边距";
-    const char* line4 = "长按减边距";
+    const char* line1 = "進入邊距設定";
+    const char* line2 = "請注意邊框";
+    const char* line3 = "短按加邊距";
+    const char* line4 = "長按減邊距";
     const int textW1 = renderer.getTextWidth(UI_12_FONT_ID, line1);
     const int textW2 = renderer.getTextWidth(UI_12_FONT_ID, line2);
     const int boxWidth = std::max(textW1, textW2) + 24;
@@ -1028,7 +1028,7 @@ void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const in
   //int statusBarMargin = renderer.getFontAscenderSize(SMALL_FONT_ID)/2;
   const auto textY = screenHeight - orientedMarginBottom - 8;
   int progressTextWidth = 0;
-  //Serial.printf("[%lu] [ERS] 测试一下位置变了吗: %d", millis(),textY);
+  //Serial.printf("[%lu] [ERS] 測試一下位置變了嗎: %d", millis(),textY);
 
   // Calculate progress in book
   const float sectionChapterProg = static_cast<float>(section->currentPage) / section->pageCount;

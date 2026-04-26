@@ -21,8 +21,8 @@ void readAndValidate(FsFile& file, uint8_t& member, const uint8_t maxValue) {
 
 namespace {
 constexpr uint8_t SETTINGS_FILE_VERSION = 6;
-// 注意：如果修改了字段数量，需要同步更新这个值
-constexpr uint8_t SETTINGS_COUNT = 46;  // customSleepUsePxc 写到序列末尾
+// 注意：如果修改了欄位數量，需要同步更新這個值
+constexpr uint8_t SETTINGS_COUNT = 46;  // customSleepUsePxc 寫到序列末尾
 constexpr char SETTINGS_FILE[] = "/.crosspoint/settings.bin";
 
 // Validate front button mapping to ensure each hardware button is unique.
@@ -120,7 +120,7 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writeString(outputFile, std::string(jgBookFolder));
   serialization::writeString(outputFile, std::string(jgUsername));
   serialization::writeString(outputFile, std::string(jgAppPassword));
-  // 修复点1：新增sleepScreenCoverFilter的写入（和读取顺序对应）
+  // 修復點1：新增sleepScreenCoverFilter的寫入（和讀取順序對應）
   serialization::writePod(outputFile, sleepScreenCoverFilter);
   serialization::writePod(outputFile, uiTheme);
   serialization::writePod(outputFile, frontButtonBack);
@@ -131,7 +131,7 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writePod(outputFile, embeddedStyle);
   serialization::writePod(outputFile, ReadingScreenEnabled);
   serialization::writePod(outputFile, extraline);
-  //把蓝牙写上
+  //把藍芽寫上
   serialization::writePod(outputFile, bluetoothEnabled );
   serialization::writePod(outputFile, customSleepUsePxc);
   // New fields added at end for backward compatibility
@@ -263,11 +263,11 @@ bool CrossPointSettings::loadFromFile() {
     }
     if (++settingsRead >= fileSettingsCount) break;
     
-    // 修复点2：读取sleepScreenCoverFilter（和写入顺序对应）
+    // 修復點2：讀取sleepScreenCoverFilter（和寫入順序對應）
     serialization::readPod(inputFile, sleepScreenCoverFilter);
     if (++settingsRead >= fileSettingsCount) break;
     
-    // 修复点3：uiTheme读取位置修正（原代码位置错误导致后续字段错位）
+    // 修復點3：uiTheme讀取位置修正（原始碼位置錯誤導致後續欄位錯位）
     serialization::readPod(inputFile, uiTheme);
     if (++settingsRead >= fileSettingsCount) break;
     readAndValidate(inputFile, frontButtonBack, FRONT_BUTTON_HARDWARE_COUNT);
@@ -283,12 +283,12 @@ bool CrossPointSettings::loadFromFile() {
     if (++settingsRead >= fileSettingsCount) break;
     serialization::readPod(inputFile, embeddedStyle);
     if (++settingsRead >= fileSettingsCount) break;
-    //新加阅读背景
+    //新加閱讀背景
     serialization::readPod(inputFile, ReadingScreenEnabled);
     if (++settingsRead >= fileSettingsCount) break;
 
     if (version >= 6) {
-      // v6+: 新顺序，customSleepUsePxc 在末尾
+      // v6+: 新順序，customSleepUsePxc 在末尾
       serialization::readPod(inputFile, extraline);
       if (++settingsRead >= fileSettingsCount) break;
       serialization::readPod(inputFile, bluetoothEnabled);
@@ -296,7 +296,7 @@ bool CrossPointSettings::loadFromFile() {
       serialization::readPod(inputFile, customSleepUsePxc);
       if (++settingsRead >= fileSettingsCount) break;
     } else {
-      // v5: 兼容旧顺序（customSleepUsePxc 在中间）
+      // v5: 相容舊順序（customSleepUsePxc 在中間）
       serialization::readPod(inputFile, customSleepUsePxc);
       if (++settingsRead >= fileSettingsCount) break;
       serialization::readPod(inputFile, extraline);
@@ -315,7 +315,7 @@ bool CrossPointSettings::loadFromFile() {
   }
 
   inputFile.close();
-  bluetoothEnabled = 0;//先默认蓝牙关闭
+  bluetoothEnabled = 0;//先預設藍芽關閉
   Serial.printf("[%lu] [CPS] Settings loaded from file\n", millis());
   return true;
 }
