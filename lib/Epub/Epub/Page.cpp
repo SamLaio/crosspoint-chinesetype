@@ -37,6 +37,10 @@ void PageLine::render(GfxRenderer& renderer, const int fontId, const int xOffset
   int orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft;
   renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
                                   &orientedMarginLeft);
+  const int horizontalViewableMargin =
+      (orientedMarginLeft > orientedMarginRight) ? orientedMarginLeft : orientedMarginRight;
+  orientedMarginLeft = horizontalViewableMargin;
+  orientedMarginRight = horizontalViewableMargin;
   orientedMarginLeft += SETTINGS.screenMargin_Left;
   orientedMarginRight += SETTINGS.screenMargin_Right;
   int viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;

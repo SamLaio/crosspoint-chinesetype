@@ -78,6 +78,8 @@ bool OpdsParser::error() const { return errorOccured; }
 
 void OpdsParser::clear() {
   entries.clear();
+  nextHref.clear();
+  previousHref.clear();
   currentEntry = OpdsEntry{};
   currentText.clear();
   inEntry = false;
@@ -116,7 +118,20 @@ void XMLCALL OpdsParser::startElement(void* userData, const XML_Char* name, cons
     return;
   }
 
-  if (!self->inEntry) return;
+  if (!self->inEntry) {
+    if (strcmp(name, "link") == 0 || strstr(name, ":link") != nullptr) {
+      const char* rel = findAttribute(atts, "rel");
+      const char* href = findAttribute(atts, "href");
+      if (rel && href) {
+        if (strstr(rel, "next") != nullptr) {
+          self->nextHref = href;
+        } else if (strstr(rel, "previous") != nullptr || strstr(rel, "prev") != nullptr) {
+          self->previousHref = href;
+        }
+      }
+    }
+    return;
+  }
 
   // Check for title element
   if (strcmp(name, "title") == 0 || strstr(name, ":title") != nullptr) {

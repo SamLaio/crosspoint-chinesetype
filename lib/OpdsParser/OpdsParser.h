@@ -67,6 +67,8 @@ class OpdsParser final : public Print {
    */
   const std::vector<OpdsEntry>& getEntries() const& { return entries; }
   std::vector<OpdsEntry> getEntries() && { return std::move(entries); }
+  const std::string& getNextHref() const { return nextHref; }
+  const std::string& getPreviousHref() const { return previousHref; }
 
   /**
    * Get only book entries (legacy compatibility).
@@ -90,6 +92,8 @@ class OpdsParser final : public Print {
 
   XML_Parser parser = nullptr;
   std::vector<OpdsEntry> entries;
+  std::string nextHref;
+  std::string previousHref;
   OpdsEntry currentEntry;
   std::string currentText;
 

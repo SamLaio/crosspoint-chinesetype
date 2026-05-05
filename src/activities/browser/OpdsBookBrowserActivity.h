@@ -43,6 +43,8 @@ class OpdsBookBrowserActivity final : public ActivityWithSubactivity {
   std::vector<OpdsEntry> entries;
   std::vector<std::string> navigationHistory;  // Stack of previous feed paths for back navigation
   std::string currentPath;                     // Current feed path being displayed
+  std::string nextPagePath;
+  std::string previousPagePath;
   int selectorIndex = 0;
   std::string errorMessage;
   std::string statusMessage;
@@ -59,6 +61,7 @@ class OpdsBookBrowserActivity final : public ActivityWithSubactivity {
   void launchWifiSelection();
   void onWifiSelectionComplete(bool connected);
   void fetchFeed(const std::string& path);
+  void navigateToFeed(const std::string& path, bool pushHistory);
   void navigateToEntry(const OpdsEntry& entry);
   void navigateBack();
   void downloadBook(const OpdsEntry& book);

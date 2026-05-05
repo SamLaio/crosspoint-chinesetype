@@ -784,6 +784,11 @@ void EpubReaderActivity::renderScreen() {
   int orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft;
   renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
                                    &orientedMarginLeft);
+  // Keep reader content horizontally centered even if panel viewable margins are asymmetric.
+  const int horizontalViewableMargin =
+      (orientedMarginLeft > orientedMarginRight) ? orientedMarginLeft : orientedMarginRight;
+  orientedMarginLeft = horizontalViewableMargin;
+  orientedMarginRight = horizontalViewableMargin;
 
   auto metrics = UITheme::getInstance().getMetrics();
 

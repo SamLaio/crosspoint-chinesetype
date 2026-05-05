@@ -58,6 +58,40 @@ static const char* getChineseName(const char* englishName) {
     if (strcmp(englishName, "OPDS Browser") == 0) return "OPDS 瀏覽器";
     if (strcmp(englishName, "Clear Cache") == 0) return "清理快取";
     if (strcmp(englishName, "Check for updates") == 0) return "檢查更新";
+    if (strcmp(englishName, "Select") == 0) return "選擇";
+    if (strcmp(englishName, "Open") == 0) return "開啟";
+    if (strcmp(englishName, "Download") == 0) return "下載";
+    if (strcmp(englishName, "Cancel") == 0) return "取消";
+    if (strcmp(englishName, "Error:") == 0) return "錯誤：";
+    if (strcmp(englishName, "Checking WiFi...") == 0) return "正在檢查 WiFi...";
+    if (strcmp(englishName, "Loading...") == 0) return "載入中...";
+    if (strcmp(englishName, "No entries found") == 0) return "找不到條目";
+    if (strcmp(englishName, "No server URL configured") == 0) return "尚未設定伺服器網址";
+    if (strcmp(englishName, "Failed to fetch feed") == 0) return "取得目錄失敗";
+    if (strcmp(englishName, "Failed to parse feed") == 0) return "解析目錄失敗";
+    if (strcmp(englishName, "WiFi connection failed") == 0) return "WiFi 連線失敗";
+    if (strcmp(englishName, "Syncing time...") == 0) return "正在同步時間...";
+    if (strcmp(englishName, "Calculating document hash...") == 0) return "正在計算文件雜湊...";
+    if (strcmp(englishName, "Failed to calculate document hash") == 0) return "計算文件雜湊失敗";
+    if (strcmp(englishName, "Fetching remote progress...") == 0) return "正在取得雲端進度...";
+    if (strcmp(englishName, "Uploading progress...") == 0) return "正在上傳進度...";
+    if (strcmp(englishName, "No credentials configured") == 0) return "尚未設定帳號憑證";
+    if (strcmp(englishName, "Set up KOReader account in Settings") == 0) return "請到設定中配置 KOReader 帳號";
+    if (strcmp(englishName, "Progress found!") == 0) return "已找到進度！";
+    if (strcmp(englishName, "Remote:") == 0) return "雲端：";
+    if (strcmp(englishName, "Local:") == 0) return "本地：";
+    if (strcmp(englishName, "Apply remote progress") == 0) return "套用雲端進度";
+    if (strcmp(englishName, "Upload local progress") == 0) return "上傳本地進度";
+    if (strcmp(englishName, "No remote progress found") == 0) return "找不到雲端進度";
+    if (strcmp(englishName, "Upload current position?") == 0) return "要上傳目前閱讀位置嗎？";
+    if (strcmp(englishName, "Progress uploaded!") == 0) return "進度上傳完成！";
+    if (strcmp(englishName, "Sync failed") == 0) return "同步失敗";
+    if (strcmp(englishName, "Section ") == 0) return "章節 ";
+    if (strcmp(englishName, "  Page %d, %.2f%% overall") == 0) return "  第 %d 頁，總進度 %.2f%%";
+    if (strcmp(englishName, "  Page %d/%d, %.2f%% overall") == 0) return "  第 %d/%d 頁，總進度 %.2f%%";
+    if (strcmp(englishName, "  From: %s") == 0) return "  來源：%s";
+    if (strcmp(englishName, "ON") == 0) return "開";
+    if (strcmp(englishName, "OFF") == 0) return "關";
 
     // --------------- 6. 設定選項值通用對映 ---------------
     // 緊湊/正常/寬鬆
