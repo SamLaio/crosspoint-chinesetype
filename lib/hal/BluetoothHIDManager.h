@@ -16,6 +16,7 @@ struct BluetoothDevice {
   std::string address;
   std::string name;
   int rssi;
+  uint8_t addressType = 0;
   bool isHID = false;
 };
 
@@ -101,6 +102,7 @@ private:
 
   bool _enabled = false;
   bool _scanning = false;
+  unsigned long _scanEndTime = 0;
   std::vector<BluetoothDevice> _discoveredDevices;
   std::vector<ConnectedDevice> _connectedDevices;
   std::function<void(uint16_t)> _inputCallback;

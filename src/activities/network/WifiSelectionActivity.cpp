@@ -234,11 +234,11 @@ void WifiSelectionActivity::attemptConnection() {
   try {
     auto& btMgr = BluetoothHIDManager::getInstance();
     if (btMgr.isEnabled()) {
-      Serial.printf("WIFI", "Disabling Bluetooth to enable WiFi (mutual exclusion)");
+      Serial.printf("WIFI Disabling Bluetooth to enable WiFi (mutual exclusion)\n");
       btMgr.disable();
     }
   } catch (...) {
-    Serial.printf("WIFI", "Could not access Bluetooth manager");
+    Serial.printf("WIFI Could not access Bluetooth manager\n");
   }
 
   WiFi.mode(WIFI_STA);

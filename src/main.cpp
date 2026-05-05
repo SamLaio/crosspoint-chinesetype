@@ -224,11 +224,11 @@ void enterDeepSleep() {
   try {
     auto& btMgr = BluetoothHIDManager::getInstance();
     if (btMgr.isEnabled()) {
-      Serial.printf("SLP", "Disabling Bluetooth before deep sleep");
+      Serial.printf("SLP Disabling Bluetooth before deep sleep\n");
       btMgr.disable();
     }
   } catch (...) {
-    Serial.printf("SLP", "Could not disable Bluetooth");
+    Serial.printf("SLP Could not disable Bluetooth\n");
   }
 
 
@@ -364,28 +364,32 @@ void setup() {
     // Enable Bluetooth on boot if configured
     if (SETTINGS.bluetoothEnabled) {
       if (btMgr.enable()) {
-        Serial.printf("MAIN", "Bluetooth enabled on boot");
+        Serial.printf("MAIN Bluetooth enabled on boot\n");
 
         // Auto-reconnect: attempt to connect to the last paired device up to 3 times
         std::string lastAddr, lastName;
         btMgr.startScan(2000);
+        while (btMgr.isScanning()) {
+          btMgr.updateActivity();
+          delay(20);
+        }
         if (btMgr.loadLastConnectedDevice(lastAddr, lastName)) {
-          Serial.printf("MAIN", "Auto-connecting to last device %s (%s)", lastName.c_str(), lastAddr.c_str());
+          Serial.printf("MAIN Auto-connecting to last device %s (%s)\n", lastName.c_str(), lastAddr.c_str());
           if (btMgr.connectToDeviceWithRetries(lastAddr, 1)) {
-            Serial.printf("MAIN", "Auto-connect successful");
+            Serial.printf("MAIN Auto-connect successful\n");
           } else {
-            Serial.printf("MAIN", "Auto-connect failed after retries");
+            Serial.printf("MAIN Auto-connect failed after retries\n");
           }
         }
 
       } else {
-        Serial.printf("MAIN", "Failed to enable Bluetooth on boot");
+        Serial.printf("MAIN Failed to enable Bluetooth on boot\n");
       }
     }
     
-    Serial.printf("MAIN", "Bluetooth HID initialized with button injection");
+    Serial.printf("MAIN Bluetooth HID initialized with button injection\n");
   } catch (...) {
-    Serial.printf("MAIN", "Failed to initialize Bluetooth HID");
+    Serial.printf("MAIN Failed to initialize Bluetooth HID\n");
   }
 
   switch (gpio.getWakeupReason()) {

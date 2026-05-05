@@ -12,6 +12,15 @@ static const char* HID_SERVICE_UUID = "1812";
 static const char* HID_REPORT_UUID = "2A4D";
 static const char* HID_INFO_UUID = "2A4A";
 
+static constexpr uint8_t HID_KEY_ARROW_RIGHT = 0x4F;
+static constexpr uint8_t HID_KEY_ARROW_LEFT = 0x50;
+static constexpr uint8_t HID_KEY_ARROW_DOWN = 0x51;
+static constexpr uint8_t HID_KEY_ARROW_UP = 0x52;
+static constexpr uint8_t HID_KEY_ENTER = 0x28;
+static constexpr uint8_t HID_KEY_ESCAPE = 0x29;
+static constexpr uint8_t HID_KEY_BACKSPACE = 0x2A;
+static constexpr uint8_t HID_KEY_SPACE = 0x2C;
+
 // Global static for singleton
 static BluetoothHIDManager* g_instance = nullptr;
 
@@ -159,6 +168,7 @@ void BluetoothHIDManager::startScan(uint32_t durationMs) {
     if (!pScan) {
       Serial.printf("BT Failed to get scan object");
       _scanning = false;
+      _scanEndTime = 0;
       return;
     }
     
@@ -178,22 +188,16 @@ void BluetoothHIDManager::startScan(uint32_t durationMs) {
     if (!started) {
       Serial.printf("BT Failed to start scan!");
       _scanning = false;
+      _scanEndTime = 0;
       return;
     }
     
-    Serial.printf("BT Scan started, waiting %lu ms...", durationMs);
-    // Wait for the specified duration
-    delay(durationMs);
-    
-    Serial.printf("BT Stopping scan after %lu ms...", durationMs);
-    // Stop the scan
-    pScan->stop();
-    
-    _scanning = false;
-    Serial.printf("BT Scan complete, found %d devices", _discoveredDevices.size());
+    _scanEndTime = durationMs > 0 ? millis() + durationMs : 0;
+    Serial.printf("BT Scan started for %lu ms", durationMs);
   } catch (const std::exception& e) {
     Serial.printf("BT Scan failed: %s", e.what());
     _scanning = false;
+    _scanEndTime = 0;
     lastError = std::string("Scan failed: ") + e.what();
   }
 }
@@ -214,6 +218,8 @@ void BluetoothHIDManager::stopScan() {
   }
   
   _scanning = false;
+  _scanEndTime = 0;
+  Serial.printf("BT Scan complete, found %d devices", _discoveredDevices.size());
 }
 
 void BluetoothHIDManager::onScanResult(NimBLEAdvertisedDevice* advertisedDevice) {
@@ -222,6 +228,7 @@ void BluetoothHIDManager::onScanResult(NimBLEAdvertisedDevice* advertisedDevice)
   std::string address = advertisedDevice->getAddress().toString();
   std::string name = advertisedDevice->getName();
   int rssi = advertisedDevice->getRSSI();
+  uint8_t addressType = advertisedDevice->getAddressType();
   
   // Check if device advertises HID service
   bool isHID = advertisedDevice->isAdvertisingService(NimBLEUUID(HID_SERVICE_UUID));
@@ -230,6 +237,7 @@ void BluetoothHIDManager::onScanResult(NimBLEAdvertisedDevice* advertisedDevice)
   for (auto& dev : _discoveredDevices) {
     if (dev.address == address) {
       dev.rssi = rssi; // Update RSSI
+      dev.addressType = addressType;
       if (isHID) dev.isHID = true;
       return;
     }
@@ -240,6 +248,7 @@ void BluetoothHIDManager::onScanResult(NimBLEAdvertisedDevice* advertisedDevice)
   device.address = address;
   device.name = name.empty() ? "Unknown" : name;
   device.rssi = rssi;
+  device.addressType = addressType;
   device.isHID = isHID;
   
   _discoveredDevices.push_back(device);
@@ -274,9 +283,11 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
   
   // 保留你要求的攔截邏輯：必須在掃描列表中
   bool seen = false;
+  uint8_t addressType = BLE_ADDR_PUBLIC;
   for (const auto& dev : _discoveredDevices) {
     if (dev.address == address) {
       seen = true;
+      addressType = dev.addressType;
       if (!dev.isHID) {
         Serial.printf("BT Device %s not advertising HID, aborting connect", address.c_str());
         lastError = "Not HID device";
@@ -306,11 +317,14 @@ bool BluetoothHIDManager::connectToDevice(const std::string& address) {
     static ClientCallbacks clientCallbacks;
     pClient->setClientCallbacks(&clientCallbacks);
 
-    // ====================== 唯一修復：隨機地址型別 ======================
-    NimBLEAddress bleAddress(address, BLE_ADDR_RANDOM);
-    // ====================================================================
-    
-    if (!pClient->connect(bleAddress)) {
+    bool connected = pClient->connect(NimBLEAddress(address, addressType));
+    if (!connected) {
+      uint8_t fallbackType = addressType == BLE_ADDR_RANDOM ? BLE_ADDR_PUBLIC : BLE_ADDR_RANDOM;
+      Serial.printf("BT Failed with address type %u, retrying with type %u", addressType, fallbackType);
+      connected = pClient->connect(NimBLEAddress(address, fallbackType));
+    }
+
+    if (!connected) {
       lastError = "Connection failed";
       Serial.printf("BT Failed to connect to %s", address.c_str());
       try {
@@ -632,6 +646,11 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
         isPressed = true;
         Serial.printf("BT 6鍵翻頁器 [下一頁] 按下\n");
       }
+      else if (pData[2] != 0x00) {
+        keycode = pData[2];
+        isPressed = true;
+        Serial.printf("BT 6-byte keyboard key: 0x%02X\n", keycode);
+      }
       else {
         keycode = 0x00;
         isPressed = false;
@@ -679,7 +698,11 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
     if (btn != 0xFF) {
       unsigned long now = millis();
       if (now - device->lastInjectionTime >= 150) {
-        String buttonName = (btn == HalGPIO::BTN_DOWN) ? "PageForward" : "PageBack";
+        String buttonName = "Unknown";
+        if (btn == HalGPIO::BTN_UP) buttonName = "PageBack";
+        else if (btn == HalGPIO::BTN_DOWN) buttonName = "PageForward";
+        else if (btn == HalGPIO::BTN_BACK) buttonName = "Back";
+        else if (btn == HalGPIO::BTN_CONFIRM) buttonName = "Confirm";
         Serial.printf("BT Mapped key -> %s\n", buttonName.c_str());
         Serial.printf("BT Injecting button: %d\n", btn);
         g_instance->_buttonInjector(btn);
@@ -728,7 +751,19 @@ uint8_t BluetoothHIDManager::mapKeycodeToButton(uint8_t keycode, const DevicePro
   
   // If we have a device profile, ONLY map keycodes specific to that profile
   if (profile) {
-    if (keycode == profile->pageUpCode) {
+    if (keycode == HID_KEY_ARROW_UP || keycode == HID_KEY_ARROW_LEFT) {
+      Serial.printf("BT Matched keyboard arrow 0x%02X -> PageBack", keycode);
+      return HalGPIO::BTN_UP;
+    } else if (keycode == HID_KEY_ARROW_DOWN || keycode == HID_KEY_ARROW_RIGHT) {
+      Serial.printf("BT Matched keyboard arrow 0x%02X -> PageForward", keycode);
+      return HalGPIO::BTN_DOWN;
+    } else if (keycode == HID_KEY_ENTER || keycode == HID_KEY_SPACE) {
+      Serial.printf("BT Matched keyboard confirm key 0x%02X -> Confirm", keycode);
+      return HalGPIO::BTN_CONFIRM;
+    } else if (keycode == HID_KEY_ESCAPE || keycode == HID_KEY_BACKSPACE) {
+      Serial.printf("BT Matched keyboard back key 0x%02X -> Back", keycode);
+      return HalGPIO::BTN_BACK;
+    } else if (keycode == profile->pageUpCode) {
       Serial.printf("BT Matched profile pageUpCode 0x%02X (%s) -> PageBack", keycode, profile->name);
       return HalGPIO::BTN_UP;
     } else if (keycode == profile->pageDownCode) {
@@ -747,15 +782,29 @@ uint8_t BluetoothHIDManager::mapKeycodeToButton(uint8_t keycode, const DevicePro
     // 翻頁器核心對映（按需修改）
     case 0x01:   // 左Ctrl → 上一頁
     case 0x4B:   // PageUp → 上一頁
+    case HID_KEY_ARROW_UP:    // ArrowUp → 上一頁
+    case HID_KEY_ARROW_LEFT:  // ArrowLeft → 上一頁
     case 0xE9:   // Consumer PageUp → 上一頁
       Serial.printf("BT Mapped key 0x%02X -> PageBack", keycode);
       return HalGPIO::BTN_UP;
     
     case 0x02:   // 左Shift → 下一頁
     case 0x4E:   // PageDown → 下一頁
+    case HID_KEY_ARROW_DOWN:   // ArrowDown → 下一頁
+    case HID_KEY_ARROW_RIGHT:  // ArrowRight → 下一頁
     case 0xEA:   // Consumer PageDown → 下一頁
       Serial.printf("BT Mapped key 0x%02X -> PageForward", keycode);
       return HalGPIO::BTN_DOWN;
+
+    case HID_KEY_ENTER:  // Enter → 確認
+    case HID_KEY_SPACE:  // Space → 確認
+      Serial.printf("BT Mapped key 0x%02X -> Confirm", keycode);
+      return HalGPIO::BTN_CONFIRM;
+
+    case HID_KEY_ESCAPE:     // Esc → 返回
+    case HID_KEY_BACKSPACE:  // Backspace → 返回
+      Serial.printf("BT Mapped key 0x%02X -> Back", keycode);
+      return HalGPIO::BTN_BACK;
 
     case 0x00:   // 忽略釋放事件
       return 0xFF;
@@ -767,6 +816,10 @@ uint8_t BluetoothHIDManager::mapKeycodeToButton(uint8_t keycode, const DevicePro
 }
 
 void BluetoothHIDManager::updateActivity() {
+  if (_scanning && _scanEndTime > 0 && static_cast<long>(millis() - _scanEndTime) >= 0) {
+    stopScan();
+  }
+
   // Check inactivity timeouts every 10 seconds
   unsigned long now = millis();
   if (now - lastMaintenanceCheck < 10000) {
@@ -884,4 +937,3 @@ bool BluetoothHIDManager::loadLastConnectedDevice(std::string& address, std::str
   Serial.printf("BT Loaded last connected device: %s (%s)", name.c_str(), address.c_str());
   return true;
 }
-

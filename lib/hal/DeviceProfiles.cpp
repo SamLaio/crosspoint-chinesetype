@@ -1,7 +1,8 @@
 #include "DeviceProfiles.h"
 
+#include <Arduino.h>
 #include <cstring>
-#include <HardwareSerial.h>
+
 namespace DeviceProfiles {
 
 const DeviceProfile* findDeviceProfile(const char* macAddress, const char* deviceName) {
@@ -28,12 +29,12 @@ const DeviceProfile* findDeviceProfile(const char* macAddress, const char* devic
         }
         
         if (matches) {
-          Serial.printf("DEV", "✓ Matched device profile by MAC: %s -> %s", macAddress, KNOWN_DEVICES[i].name);
+          Serial.printf("DEV Matched device profile by MAC: %s -> %s\n", macAddress, KNOWN_DEVICES[i].name);
           return &KNOWN_DEVICES[i];
         }
       }
     }
-    Serial.printf("DEV", "No MAC match found for: %s", macAddress);
+    Serial.printf("DEV No MAC match found for: %s\n", macAddress);
   }
 
   // Then try to find by device name (flexible matching)
@@ -43,7 +44,7 @@ const DeviceProfile* findDeviceProfile(const char* macAddress, const char* devic
       
       // Try exact match first
       if (strcmp(deviceName, profileName) == 0) {
-        Serial.printf("DEV", "✓ Matched device profile by exact name: %s", profileName);
+        Serial.printf("DEV Matched device profile by exact name: %s\n", profileName);
         return &KNOWN_DEVICES[i];
       }
       
@@ -53,7 +54,7 @@ const DeviceProfile* findDeviceProfile(const char* macAddress, const char* devic
           strstr(deviceName, "GAME")) {
         if (strstr(deviceName, "Brick") || strstr(deviceName, "brick") || 
             strstr(deviceName, "BRICK")) {
-          Serial.printf("DEV", "✓ Matched GameBrick by name pattern: %s -> IINE Game Brick", deviceName);
+          Serial.printf("DEV Matched GameBrick by name pattern: %s -> IINE Game Brick\n", deviceName);
           return &KNOWN_DEVICES[0];  // Return GameBrick profile
         }
       }
@@ -63,13 +64,13 @@ const DeviceProfile* findDeviceProfile(const char* macAddress, const char* devic
           strstr(deviceName, "Mini")) {
         if (strstr(deviceName, "KEYBOARD") || strstr(deviceName, "keyboard") || 
             strstr(deviceName, "Keyboard")) {
-          Serial.printf("DEV", "✓ Matched MINI_KEYBOARD by name pattern: %s", deviceName);
+          Serial.printf("DEV Matched MINI_KEYBOARD by name pattern: %s\n", deviceName);
           return &KNOWN_DEVICES[1];  // Return MINI_KEYBOARD profile
         }
       }
     }
     
-    Serial.printf("DEV", "No profile match for device name: %s", deviceName);
+    Serial.printf("DEV No profile match for device name: %s\n", deviceName);
   }
 
   return nullptr;
@@ -88,12 +89,12 @@ const DeviceProfile* getCustomProfile() {
 
 void setCustomProfile(uint8_t pageUpCode, uint8_t pageDownCode, uint8_t reportByteIndex) {
   // TODO: Implement settings persistence for custom profiles
-  Serial.printf("DEV", "Custom profile set: up=0x%02X down=0x%02X byte=%d", pageUpCode, pageDownCode, reportByteIndex);
+  Serial.printf("DEV Custom profile set: up=0x%02X down=0x%02X byte=%d\n", pageUpCode, pageDownCode, reportByteIndex);
 }
 
 void clearCustomProfile() {
   // TODO: Implement settings clearing
-  Serial.printf("DEV", "Custom profile cleared");
+  Serial.printf("DEV Custom profile cleared\n");
 }
 
 }  // namespace DeviceProfiles
