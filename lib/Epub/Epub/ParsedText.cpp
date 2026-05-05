@@ -121,6 +121,17 @@ bool isCJKUnit(const std::string& unit) {
     // UTF-8中文/標點首位元組範圍：0xE0~0xEF
     return firstByte >= 0xE0 && firstByte <= 0xEF;
 }
+
+bool shouldApplyInterWordSpacing(const std::string& previousUnit, const std::string& currentUnit,
+                                 const bool attachesToPrevious) {
+  if (attachesToPrevious) {
+    return false;
+  }
+
+  // CJK layout units are split per character for line breaking. They should not
+  // create stretchable word gaps for justification.
+  return !isCJKUnit(previousUnit) && !isCJKUnit(currentUnit);
+}
 // 輔助函式：獲取list中指定索引的元素（適配嵌入式環境）
 template <typename T>
 const T& getListElement(const std::list<T>& lst, size_t index) {
@@ -281,7 +292,11 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
 
     for (size_t j = i; j < totalWordCount; ++j) {
       // Add space before word j, unless it's the first word on the line or a continuation
-      const int gap = j > static_cast<size_t>(i) && !continuesVec[j] ? spaceWidth : 0;
+      const int gap = j > static_cast<size_t>(i) &&
+                              shouldApplyInterWordSpacing(getListElement(words, j - 1), getListElement(words, j),
+                                                          continuesVec[j])
+                          ? spaceWidth
+                          : 0;
       currlen += wordWidths[j] + gap;
 
       if (currlen > effectivePageWidth) {
@@ -344,7 +359,9 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
             int gapCount = 0;
             for (size_t k = currentWordIndex; k <= prevBreakIndex; ++k) {
                 prevLineWidth += wordWidths[k];
-                if (k > currentWordIndex && !continuesVec[k] && !isCJKUnit(getListElement(words, k))) {
+                if (k > currentWordIndex &&
+                    shouldApplyInterWordSpacing(getListElement(words, k - 1), getListElement(words, k),
+                                                continuesVec[k])) {
                     gapCount++;
                 }
             }
@@ -433,7 +450,11 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
     // Consume as many words as possible for current line, splitting when prefixes fit
     while (currentIndex < wordWidths.size()) {
       const bool isFirstWord = currentIndex == lineStart;
-      const int spacing = isFirstWord || continuesVec[currentIndex] ? 0 : spaceWidth;
+      const int spacing =
+          !isFirstWord && shouldApplyInterWordSpacing(getListElement(words, currentIndex - 1),
+                                                      getListElement(words, currentIndex), continuesVec[currentIndex])
+              ? spaceWidth
+              : 0;
       const int candidateWidth = spacing + wordWidths[currentIndex];
 
       // Word fits on current line
@@ -478,7 +499,9 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
             int gapCount = 0;
             for (size_t k = lineStart; k < currentIndex; ++k) {
                 lineWidth += wordWidths[k];
-                if (k > lineStart && !continuesVec[k] && !isCJKUnit(getListElement(words, k))) {
+                if (k > lineStart &&
+                    shouldApplyInterWordSpacing(getListElement(words, k - 1), getListElement(words, k),
+                                                continuesVec[k])) {
                     gapCount++;
                 }
             }
@@ -620,7 +643,10 @@ void ParsedText::extractLine(const size_t breakIndex, const int pageWidth, const
   for (size_t wordIdx = 0; wordIdx < lineWordCount; wordIdx++) {
     lineWordWidthSum += wordWidths[lastBreakAt + wordIdx];
     // Count gaps: each word after the first creates a gap, unless it's a continuation
-    if (wordIdx > 0 && !continuesVec[lastBreakAt + wordIdx]) {
+    const size_t absoluteWordIdx = lastBreakAt + wordIdx;
+    if (wordIdx > 0 &&
+        shouldApplyInterWordSpacing(getListElement(words, wordIdx - 1), getListElement(words, wordIdx),
+                                    continuesVec[absoluteWordIdx])) {
       actualGapCount++;
     }
   }
@@ -655,9 +681,12 @@ void ParsedText::extractLine(const size_t breakIndex, const int pageWidth, const
     lineXPos.push_back(xpos);
 
     // Add spacing after this word, unless the next word is a continuation
-    const bool nextIsContinuation = wordIdx + 1 < lineWordCount && continuesVec[lastBreakAt + wordIdx + 1];
+    const bool nextNeedsSpacing =
+        wordIdx + 1 < lineWordCount &&
+        shouldApplyInterWordSpacing(getListElement(words, wordIdx), getListElement(words, wordIdx + 1),
+                                    continuesVec[lastBreakAt + wordIdx + 1]);
 
-    xpos += currentWordWidth + (nextIsContinuation ? 0 : spacing);
+    xpos += currentWordWidth + (nextNeedsSpacing ? spacing : 0);
   }
 
   // Iterators always start at the beginning as we are moving content with splice below
