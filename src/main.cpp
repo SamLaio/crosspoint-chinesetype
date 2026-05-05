@@ -28,8 +28,6 @@
 #include "activities/util/FullScreenMessageActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
-#include "activities/browser/JianGuoBrowserActivity.h"
-
 #include <BluetoothHIDManager.h>
 #include "util/ButtonNavigator.h"
 
@@ -224,6 +222,8 @@ void enterDeepSleep() {
   try {
     auto& btMgr = BluetoothHIDManager::getInstance();
     if (btMgr.isEnabled()) {
+      SETTINGS.bluetoothEnabled = 1;
+      SETTINGS.saveToFile();
       Serial.printf("SLP Disabling Bluetooth before deep sleep\n");
       btMgr.disable();
     }
@@ -281,15 +281,10 @@ void onGoToBrowser() {
   exitActivity();
   enterNewActivity(new OpdsBookBrowserActivity(renderer, mappedInputManager, onGoHome));
 }
-void onGoToJianGuoYun() {
-  exitActivity();
-  enterNewActivity(new JianGuoBrowserActivity(renderer, mappedInputManager, onGoHome));
-}
-
 void onGoHome() {
   exitActivity();
   enterNewActivity(new HomeActivity(renderer, mappedInputManager, onGoToReader, onGoToMyLibrary, onGoToRecentBooks,
-                                    onGoToSettings, onGoToFileTransfer, onGoToBrowser,onGoToJianGuoYun));
+                                    onGoToSettings, onGoToFileTransfer, onGoToBrowser));
 }
 
 void setupDisplayAndFonts() {
@@ -368,14 +363,14 @@ void setup() {
 
         // Auto-reconnect: attempt to connect to the last paired device up to 3 times
         std::string lastAddr, lastName;
-        btMgr.startScan(2000);
-        while (btMgr.isScanning()) {
-          btMgr.updateActivity();
-          delay(20);
-        }
         if (btMgr.loadLastConnectedDevice(lastAddr, lastName)) {
+          btMgr.startScan(5000);
+          while (btMgr.isScanning()) {
+            btMgr.updateActivity();
+            delay(20);
+          }
           Serial.printf("MAIN Auto-connecting to last device %s (%s)\n", lastName.c_str(), lastAddr.c_str());
-          if (btMgr.connectToDeviceWithRetries(lastAddr, 1)) {
+          if (btMgr.connectToDeviceWithRetries(lastAddr, 3)) {
             Serial.printf("MAIN Auto-connect successful\n");
           } else {
             Serial.printf("MAIN Auto-connect failed after retries\n");

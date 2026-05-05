@@ -38,8 +38,6 @@ class HttpDownloader {
    */
   static DownloadError downloadToFile(const std::string& url, const std::string& destPath,
                                       ProgressCallback progress = nullptr);
-  static DownloadError downloadToFile_jg(const std::string& url, const std::string& destPath,
-                                      ProgressCallback progress = nullptr);
  private:
   static constexpr size_t DOWNLOAD_CHUNK_SIZE = 2048;
 };

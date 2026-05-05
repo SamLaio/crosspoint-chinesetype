@@ -173,11 +173,6 @@ class CrossPointSettings {
   char opdsUsername[64] = "";
   char opdsPassword[64] = "";
 
-      // 堅果雲 settings
-  char jgUsername[64] = "";    // 堅果雲賬號（郵箱）
-  char jgAppPassword[64] = ""; // 堅果雲應用密碼
-  char jgBookFolder[128] = ""; // 電子書資料夾路徑
-
   // Z-Library 配置
 char zlibEmail[64] = "";
 char zlibPassword[64] = "";

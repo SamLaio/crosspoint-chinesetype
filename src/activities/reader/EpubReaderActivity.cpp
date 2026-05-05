@@ -17,8 +17,6 @@
 #include "components/UITheme.h"
 #include "fontIds.h"
 
-#include "JianGuoSyncActivity.h"
-
 
 namespace {
 // pagesPerRefresh now comes from SETTINGS.getRefreshFrequency()
@@ -685,32 +683,6 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
       }
       break;
     }
-    case EpubReaderMenuActivity::MenuAction::SYNCY: {
-        xSemaphoreTake(renderingMutex, portMAX_DELAY);
-        exitActivity();
-        enterNewActivity(new JianGuoSyncActivity(
-            renderer, mappedInput, epub, epub->getPath(),currentSpineIndex,
-            [this]() {
-              exitActivity();
-              updateRequired = true;
-            },
-            [this](int newSpineIndex) {
-              Serial.printf("[%lu] [JG] 同步完成，新的 spine index: %d\n", millis(), newSpineIndex);
-              // On sync complete - update position and defer exit
-              if (currentSpineIndex != newSpineIndex) {
-                currentSpineIndex = newSpineIndex;
-                exitActivity();
-                nextPageNumber = 0;
-                section.reset();
-                updateRequired = true;
-              }
-            }
-          
-          ));
-        xSemaphoreGive(renderingMutex);
-      break;
-    }
-
   }
 }
 

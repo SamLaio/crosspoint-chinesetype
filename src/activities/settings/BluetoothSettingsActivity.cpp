@@ -2,6 +2,8 @@
 
 #include <GfxRenderer.h>
 
+#include <algorithm>
+
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
@@ -44,6 +46,7 @@ void BluetoothSettingsActivity::onEnter() {
       } else {
         lastError = "Failed to restore BT";
         SETTINGS.bluetoothEnabled = 0;
+        SETTINGS.saveToFile();
       }
     } else if (!SETTINGS.bluetoothEnabled && btMgr->isEnabled()) {
       Serial.printf("BT Disabling Bluetooth per settings (disabled)");
@@ -295,6 +298,7 @@ void BluetoothSettingsActivity::render() {
 void BluetoothSettingsActivity::renderMainMenu() {
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
+  constexpr int sidePadding = 20;
 
   renderer.clearScreen();
 
@@ -315,11 +319,13 @@ void BluetoothSettingsActivity::renderMainMenu() {
   } else {
     statusLine = "藍芽錯誤";
   }
-  renderer.drawText(SMALL_FONT_ID, 20, 45, statusLine.c_str());
+  statusLine = renderer.truncatedText(SMALL_FONT_ID, statusLine.c_str(), pageWidth - sidePadding * 2);
+  renderer.drawText(SMALL_FONT_ID, sidePadding, 45, statusLine.c_str());
 
   // Error message if any
   if (!lastError.empty()) {
-    renderer.drawText(UI_10_FONT_ID, 20, 75, lastError.c_str());
+    const auto errorLine = renderer.truncatedText(UI_10_FONT_ID, lastError.c_str(), pageWidth - sidePadding * 2);
+    renderer.drawText(UI_10_FONT_ID, sidePadding, 75, errorLine.c_str());
   }
 
   // Menu items
@@ -351,6 +357,10 @@ void BluetoothSettingsActivity::renderMainMenu() {
 void BluetoothSettingsActivity::renderDeviceList() {
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
+  constexpr int sidePadding = 20;
+  constexpr int indicatorX = 5;
+  constexpr int textX = 25;
+  const int contentRight = pageWidth - sidePadding;
 
   renderer.clearScreen();
 
@@ -375,6 +385,8 @@ void BluetoothSettingsActivity::renderDeviceList() {
   if (btMgr->isScanning()) {
     headerText += " (掃描中...)";
   }
+  headerText = renderer.truncatedText(UI_12_FONT_ID, headerText.c_str(), pageWidth - sidePadding * 2,
+                                      EpdFontFamily::BOLD);
   renderer.drawCenteredText(UI_12_FONT_ID, 15, headerText.c_str(), true, EpdFontFamily::BOLD);
 
   // Device count
@@ -384,16 +396,18 @@ void BluetoothSettingsActivity::renderDeviceList() {
   } else {
     snprintf(countStr, sizeof(countStr), "找到 %zu 個裝置", devices.size());
   }
-  renderer.drawText(SMALL_FONT_ID, 20, 45, countStr);
+  auto countLine = renderer.truncatedText(SMALL_FONT_ID, countStr, pageWidth - sidePadding * 2);
+  renderer.drawText(SMALL_FONT_ID, sidePadding, 45, countLine.c_str());
 
   // Device list
   constexpr int startY = 70;
-  constexpr int lineHeight = 35;
-  const int maxVisibleDevices = (pageHeight - startY - 60) / lineHeight;
+  constexpr int lineHeight = 28;
+  constexpr int actionAreaHeight = 78;
+  const int maxVisibleDevices = std::max(1, (pageHeight - startY - actionAreaHeight) / lineHeight);
 
   // Calculate scroll offset
   int scrollOffset = 0;
-  if (selectedIndex >= maxVisibleDevices) {
+  if (selectedIndex < static_cast<int>(devices.size()) && selectedIndex >= maxVisibleDevices) {
     scrollOffset = selectedIndex - maxVisibleDevices + 1;
   }
 
@@ -404,7 +418,7 @@ void BluetoothSettingsActivity::renderDeviceList() {
 
     // Check if selected
     if (static_cast<int>(i) == selectedIndex) {
-      renderer.drawText(UI_10_FONT_ID, 5, deviceY, ">");
+      renderer.drawText(UI_10_FONT_ID, indicatorX, deviceY, ">");
     }
 
     // Device name and connection status
@@ -414,32 +428,38 @@ void BluetoothSettingsActivity::renderDeviceList() {
     
     char deviceStr[64];
     snprintf(deviceStr, sizeof(deviceStr), "%s%s %s", connMark, hidMark, device.name.c_str());
-    renderer.drawText(UI_10_FONT_ID, 25, deviceY, deviceStr);
 
-    // Signal strength on next line
+    // Keep device name and RSSI on the same row without overlap.
     std::string signalStr = getSignalStrengthIndicator(device.rssi);
     char rssiStr[32];
     snprintf(rssiStr, sizeof(rssiStr), "%s (%d dBm)", signalStr.c_str(), device.rssi);
-    renderer.drawText(SMALL_FONT_ID, 35, deviceY + 15, rssiStr);
+    const int rssiWidth = renderer.getTextWidth(SMALL_FONT_ID, rssiStr);
+    const int rssiX = std::max(textX, contentRight - rssiWidth);
+    const int nameMaxWidth = std::max(40, rssiX - textX - 8);
+    auto clippedDevice = renderer.truncatedText(UI_10_FONT_ID, deviceStr, nameMaxWidth);
+    renderer.drawText(UI_10_FONT_ID, textX, deviceY, clippedDevice.c_str());
+    renderer.drawText(SMALL_FONT_ID, rssiX, deviceY + 2, rssiStr);
   }
 
   // Action buttons
-  const int actionStartY = startY + maxVisibleDevices * lineHeight + 5;
+  const int actionStartY = startY + maxVisibleDevices * lineHeight + 8;
   int actionIndex = static_cast<int>(devices.size());
   
   // Refresh button
   if (static_cast<int>(devices.size()) == selectedIndex) {
-    renderer.drawText(UI_10_FONT_ID, 5, actionStartY, ">");
+    renderer.drawText(UI_10_FONT_ID, indicatorX, actionStartY, ">");
   }
-  renderer.drawText(UI_10_FONT_ID, 25, actionStartY, "< 重新整理掃描 >");
+  const auto refreshText = renderer.truncatedText(UI_10_FONT_ID, "< 重新整理掃描 >", contentRight - textX);
+  renderer.drawText(UI_10_FONT_ID, textX, actionStartY, refreshText.c_str());
   
   // Disconnect button (if any connected)
   if (!connectedDevices.empty()) {
     int disconnectY = actionStartY + lineHeight;
     if (actionIndex + 1 == selectedIndex) {
-      renderer.drawText(UI_10_FONT_ID, 5, disconnectY, ">");
+      renderer.drawText(UI_10_FONT_ID, indicatorX, disconnectY, ">");
     }
-    renderer.drawText(UI_10_FONT_ID, 25, disconnectY, "< 斷開連線 >");
+    const auto disconnectText = renderer.truncatedText(UI_10_FONT_ID, "< 斷開連線 >", contentRight - textX);
+    renderer.drawText(UI_10_FONT_ID, textX, disconnectY, disconnectText.c_str());
   }
 
   // Button hints

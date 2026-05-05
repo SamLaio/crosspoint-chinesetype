@@ -14,7 +14,6 @@
 #include <EpdFontLoader.h>
 #include "FontSelectionActivity.h"
 #include "fontIds.h"
-#include "JianGuoYunSettingsActivity.h"
 #include "languageMapper.h"
 #include "BluetoothSettingsActivity.h"
 
@@ -63,7 +62,6 @@ void SettingsActivity::onEnter() {
   systemSettings.push_back(SettingInfo::Action("bluetooth"));
   systemSettings.push_back(SettingInfo::Action("KOReader Sync"));
   systemSettings.push_back(SettingInfo::Action("OPDS Browser"));
-  systemSettings.push_back(SettingInfo::Action("堅果雲資訊配置"));
   systemSettings.push_back(SettingInfo::Action("Clear Cache"));
   systemSettings.push_back(SettingInfo::Action("Check for updates"));
   systemSettings.push_back(SettingInfo::Action("Set Custom Font Family"));
@@ -225,14 +223,6 @@ void SettingsActivity::toggleCurrentSetting() {
         exitActivity();
         updateRequired = true;
             }));
-      xSemaphoreGive(renderingMutex);
-    } else if (strcmp(setting.name, "堅果雲資訊配置") == 0) {
-    xSemaphoreTake(renderingMutex, portMAX_DELAY);
-    exitActivity();
-    enterNewActivity(new JianGuoYunSettingsActivity(renderer, mappedInput, [this] {
-      exitActivity();
-      updateRequired = true;
-    }));
       xSemaphoreGive(renderingMutex);
     } else if (strcmp(setting.name, "Clear Cache") == 0) {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);

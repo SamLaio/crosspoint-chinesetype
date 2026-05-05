@@ -34,7 +34,6 @@ int HomeActivity::getMenuItemCount() const {
   if (hasOpdsUrl) {
     count++;
   }
-  if (hasjianguoUrl) count++;
   return count;
 
 }
@@ -128,7 +127,6 @@ void HomeActivity::onEnter() {
   renderingMutex = xSemaphoreCreateMutex();
   // Check if OPDS browser URL is configured
   hasOpdsUrl = strlen(SETTINGS.opdsServerUrl) > 0;
-  hasjianguoUrl = strlen(SETTINGS.jgUsername) > 0;
 
   selectorIndex = 0;
 
@@ -219,7 +217,6 @@ void HomeActivity::loop() {
     const int myLibraryIdx = idx++;
     const int recentsIdx = idx++;
     const int opdsLibraryIdx = hasOpdsUrl ? idx++ : -1;
-    const int jgLibraryIdx = hasjianguoUrl ? idx++ : -1;
     const int fileTransferIdx = idx++;
     const int settingsIdx = idx;
 
@@ -231,8 +228,6 @@ void HomeActivity::loop() {
       onRecentsOpen();
     } else if (menuSelectedIndex == opdsLibraryIdx) {
       onOpdsBrowserOpen();
-    } else if (menuSelectedIndex == jgLibraryIdx) {
-      onJianGuoYunOpen();
     } else if (menuSelectedIndex == fileTransferIdx) {
       onFileTransferOpen();
     } else if (menuSelectedIndex == settingsIdx) {
@@ -279,10 +274,6 @@ std::vector<const char*> menuItems = {"挑選一本書", "最近閱讀"};
 if (hasOpdsUrl) {
     menuItems.push_back("OPDS 瀏覽器");
 }
-if (hasjianguoUrl) {
-    menuItems.push_back("堅果雲");
-}
-
 
 menuItems.push_back("wifi功能");
 menuItems.push_back("設定");

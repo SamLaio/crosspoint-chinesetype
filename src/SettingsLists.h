@@ -102,12 +102,5 @@ inline std::vector<SettingInfo> getSettingsList() {
       SettingInfo::String("OPDS Password", SETTINGS.opdsPassword, sizeof(SETTINGS.opdsPassword), "opdsPassword",
                           "OPDS Browser"),
 
-      // --- 堅果雲配置 (web-only, uses CrossPointSettings char arrays) ---
-      SettingInfo::String("堅果雲賬號", SETTINGS.jgUsername, sizeof(SETTINGS.jgUsername), "jgUsername",
-                          "堅果雲配置"),
-      SettingInfo::String("堅果雲應用密碼", SETTINGS.jgAppPassword, sizeof(SETTINGS.jgAppPassword), "jgAppPassword",
-                          "堅果雲配置"),
-      SettingInfo::String("堅果雲讀取目錄", SETTINGS.jgBookFolder, sizeof(SETTINGS.jgBookFolder), "jgBookFolder",
-                          "堅果雲配置"),
   };
 }

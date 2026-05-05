@@ -381,7 +381,7 @@ def main():
         print(f"\n找到书籍：{book['title']} (ID: {book['id']}, Hash: {book['hash']})")
 
         # 3. 获取下载直链（核心！）
-        # 方式1：直接获取下载直链（推荐，可用于坚果云WebDAV下载）
+        # 方式1：直接获取下载直链
         book_info = zlib.getBookFile(book["id"], book["hash"])
         if book_info:
             filename, file_content = book_info

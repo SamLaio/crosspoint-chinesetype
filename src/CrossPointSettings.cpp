@@ -20,9 +20,9 @@ void readAndValidate(FsFile& file, uint8_t& member, const uint8_t maxValue) {
 }
 
 namespace {
-constexpr uint8_t SETTINGS_FILE_VERSION = 6;
+constexpr uint8_t SETTINGS_FILE_VERSION = 7;
 // 注意：如果修改了欄位數量，需要同步更新這個值
-constexpr uint8_t SETTINGS_COUNT = 46;  // customSleepUsePxc 寫到序列末尾
+constexpr uint8_t SETTINGS_COUNT = 43;  // customSleepUsePxc 寫到序列末尾
 constexpr char SETTINGS_FILE[] = "/.crosspoint/settings.bin";
 
 // Validate front button mapping to ensure each hardware button is unique.
@@ -117,9 +117,6 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writePod(outputFile, hyphenationEnabled);
   serialization::writeString(outputFile, std::string(opdsUsername));
   serialization::writeString(outputFile, std::string(opdsPassword));
-  serialization::writeString(outputFile, std::string(jgBookFolder));
-  serialization::writeString(outputFile, std::string(jgUsername));
-  serialization::writeString(outputFile, std::string(jgAppPassword));
   // 修復點1：新增sleepScreenCoverFilter的寫入（和讀取順序對應）
   serialization::writePod(outputFile, sleepScreenCoverFilter);
   serialization::writePod(outputFile, uiTheme);
@@ -149,7 +146,7 @@ bool CrossPointSettings::loadFromFile() {
 
   uint8_t version;
   serialization::readPod(inputFile, version);
-  if (version != 5 && version != SETTINGS_FILE_VERSION) {
+  if (version < 5 || version > SETTINGS_FILE_VERSION) {
     Serial.printf("[%lu] [CPS] Deserialization failed: Unknown version %u\n", millis(), version);
     inputFile.close();
     return false;
@@ -241,27 +238,15 @@ bool CrossPointSettings::loadFromFile() {
       opdsPassword[sizeof(opdsPassword) - 1] = '\0';
     }
     if (++settingsRead >= fileSettingsCount) break;
-    {
-      std::string urlStr;
-      serialization::readString(inputFile, urlStr);
-      strncpy(jgBookFolder, urlStr.c_str(), sizeof(jgBookFolder) - 1);
-      jgBookFolder[sizeof(jgBookFolder) - 1] = '\0';
+    if (version < 7) {
+      std::string discarded;
+      serialization::readString(inputFile, discarded);
+      if (++settingsRead >= fileSettingsCount) break;
+      serialization::readString(inputFile, discarded);
+      if (++settingsRead >= fileSettingsCount) break;
+      serialization::readString(inputFile, discarded);
+      if (++settingsRead >= fileSettingsCount) break;
     }
-    if (++settingsRead >= fileSettingsCount) break;
-    {
-      std::string usernameStr;
-      serialization::readString(inputFile, usernameStr);
-      strncpy(jgUsername, usernameStr.c_str(), sizeof(jgUsername) - 1);
-      jgUsername[sizeof(jgUsername) - 1] = '\0';
-    }
-    if (++settingsRead >= fileSettingsCount) break;
-    {
-      std::string passwordStr;
-      serialization::readString(inputFile, passwordStr);
-      strncpy(jgAppPassword, passwordStr.c_str(), sizeof(jgAppPassword) - 1);
-      jgAppPassword[sizeof(jgAppPassword) - 1] = '\0';
-    }
-    if (++settingsRead >= fileSettingsCount) break;
     
     // 修復點2：讀取sleepScreenCoverFilter（和寫入順序對應）
     serialization::readPod(inputFile, sleepScreenCoverFilter);
@@ -315,7 +300,6 @@ bool CrossPointSettings::loadFromFile() {
   }
 
   inputFile.close();
-  bluetoothEnabled = 0;//先預設藍芽關閉
   Serial.printf("[%lu] [CPS] Settings loaded from file\n", millis());
   return true;
 }
