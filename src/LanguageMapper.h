@@ -4,6 +4,131 @@
 // 引入必要的標頭檔案（strcmp依賴）
 #include <cstring>
 
+#include "CrossPointSettings.h"
+
+struct LanguageMapEntry {
+    const char* key;
+    const char* zhTw;
+    const char* zhCn;
+    const char* en;
+};
+
+static const LanguageMapEntry LANGUAGE_MAP[] = {
+    {"Settings", "設定", "设置", "Settings"},
+    {"Display", "顯示設定", "显示设置", "Display"},
+    {"Reader", "閱讀設定", "阅读设置", "Reader"},
+    {"Controls", "按鈕設定", "按钮设置", "Controls"},
+    {"System", "系統設定", "系统设置", "System"},
+    {"Language", "語言", "语言", "Language"},
+    {"繁體中文", "繁體中文", "繁体中文", "Traditional Chinese"},
+    {"简体中文", "簡體中文", "简体中文", "Simplified Chinese"},
+    {"English", "英文", "英文", "English"},
+
+    {"休眠屏", "休眠屏", "休眠屏", "Sleep Screen"},
+    {"休眠屏封面模式", "休眠屏封面模式", "休眠屏封面模式", "Sleep Screen Cover Mode"},
+    {"休眠屏封面濾鏡", "休眠屏封面濾鏡", "休眠屏封面滤镜", "Sleep Screen Cover Filter"},
+    {"狀態列", "狀態列", "状态栏", "Status Bar"},
+    {"隱藏電池百分比", "隱藏電池百分比", "隐藏电池百分比", "Hide Battery %"},
+    {"重新整理頻率", "重新整理頻率", "刷新频率", "Refresh Frequency"},
+    {"UI 主題", "UI 主題", "UI 主题", "UI Theme"},
+    {"抗陽光褪色", "抗陽光褪色", "抗阳光褪色", "Sunlight Fading Compensation"},
+    {"字型", "字型", "字体", "Font Family"},
+    {"字號", "字號", "字号", "Font Size"},
+    {"行間距", "行間距", "行间距", "Line Spacing"},
+    {"首行縮排", "首行縮排", "首行缩进", "First Line Indent"},
+    {"字間距", "字間距", "字间距", "Word Spacing"},
+    {"上邊距", "上邊距", "上边距", "Top Margin"},
+    {"下邊距", "下邊距", "下边距", "Bottom Margin"},
+    {"左邊距", "左邊距", "左边距", "Left Margin"},
+    {"右邊距", "右邊距", "右边距", "Right Margin"},
+    {"閱讀背景", "閱讀背景", "阅读背景", "Reading Background"},
+    {"劃線", "劃線", "划线", "Underline"},
+    {"對齊方式", "對齊方式", "对齐方式", "Paragraph Alignment"},
+    {"是否使用書籍內嵌樣式", "是否使用書籍內嵌樣式", "是否使用书籍内嵌样式", "Book's Embedded Style"},
+    {"連字元", "連字元", "连字符", "Hyphenation"},
+    {"閱讀方向", "閱讀方向", "阅读方向", "Reading Orientation"},
+    {"額外段間距", "額外段間距", "额外段间距", "Extra Paragraph Spacing"},
+    {"抗鋸齒", "抗鋸齒", "抗锯齿", "Text Anti-Aliasing"},
+    {"側邊按鈕設定（僅閱讀）", "側邊按鈕設定（僅閱讀）", "侧边按钮设置（仅阅读）", "Side Button Layout (reader)"},
+    {"長按跳章節", "長按跳章節", "长按跳章节", "Long-press Chapter Skip"},
+    {"短按電源鍵", "短按電源鍵", "短按电源键", "Short Power Button Click"},
+    {"休眠時間", "休眠時間", "休眠时间", "Time to Sleep"},
+    {"Set Custom Font Family", "設定自定義字型", "设置自定义字体", "Set Custom Font Family"},
+    {"bluetooth", "藍牙", "蓝牙", "Bluetooth"},
+    {"KOReader Sync", "KOReader 同步", "KOReader 同步", "KOReader Sync"},
+    {"OPDS Browser", "OPDS 瀏覽器", "OPDS 浏览器", "OPDS Browser"},
+    {"Clear Cache", "清理快取", "清理缓存", "Clear Cache"},
+    {"Check for updates", "檢查更新", "检查更新", "Check for updates"},
+    {"Remap Front Buttons", "重新對映前置按鍵", "重新映射前置按键", "Remap Front Buttons"},
+
+    {"預設黑", "預設黑", "默认黑", "Default Dark"},
+    {"預設白", "預設白", "默认白", "Default Light"},
+    {"自定義", "自定義", "自定义", "Custom"},
+    {"書籍封面", "書籍封面", "书籍封面", "Book Cover"},
+    {"透明桌布", "透明桌布", "透明壁纸", "Transparent Wallpaper"},
+    {"透明桌布2", "透明桌布2", "透明壁纸2", "Transparent Wallpaper 2"},
+    {"無", "無", "无", "None"},
+    {"封面 + 自定義", "封面 + 自定義", "封面 + 自定义", "Cover + Custom"},
+    {"適配", "適配", "适配", "Fit"},
+    {"裁剪", "裁剪", "裁剪", "Crop"},
+    {"增強對比度", "增強對比度", "增强对比度", "Contrast"},
+    {"反色", "反色", "反色", "Inverted"},
+    {"不顯示進度", "不顯示進度", "不显示进度", "No Progress"},
+    {"完整+百分比", "完整+百分比", "完整+百分比", "Full w/ Percentage"},
+    {"完整+書籍條", "完整+書籍條", "完整+书籍条", "Full w/ Book Bar"},
+    {"僅書籍條", "僅書籍條", "仅书籍条", "Book Bar Only"},
+    {"完整+章節條", "完整+章節條", "完整+章节条", "Full w/ Chapter Bar"},
+    {"從不", "從不", "从不", "Never"},
+    {"僅閱讀", "僅閱讀", "仅阅读", "In Reader"},
+    {"總是", "總是", "总是", "Always"},
+    {"經典", "經典", "经典", "Classic"},
+    {"內建字型", "內建字型", "内置字体", "Built-in"},
+    {"小", "小", "小", "Small"},
+    {"中", "中", "中", "Medium"},
+    {"大", "大", "大", "Large"},
+    {"特大", "特大", "特大", "X Large"},
+    {"兩邊對齊", "兩邊對齊", "两边对齐", "Justify"},
+    {"左對齊", "左對齊", "左对齐", "Left"},
+    {"居中", "居中", "居中", "Center"},
+    {"右對齊", "右對齊", "右对齐", "Right"},
+    {"書本樣式", "書本樣式", "书本样式", "Book's Style"},
+    {"預設方向", "預設方向", "默认方向", "Portrait"},
+    {"按鈕在左邊", "按鈕在左邊", "按钮在左边", "Landscape CW"},
+    {"按鈕在上邊", "按鈕在上邊", "按钮在上边", "Inverted"},
+    {"按鈕在右邊", "按鈕在右邊", "按钮在右边", "Landscape CCW"},
+    {"上, 下", "上, 下", "上, 下", "Prev, Next"},
+    {"下, 上", "下, 上", "下, 上", "Next, Prev"},
+    {"忽略", "忽略", "忽略", "Ignore"},
+    {"休眠", "休眠", "休眠", "Sleep"},
+    {"翻頁", "翻頁", "翻页", "Page Turn"},
+    {"開", "開", "开", "ON"},
+    {"關", "關", "关", "OFF"},
+    {"ON", "開", "开", "ON"},
+    {"OFF", "關", "关", "OFF"},
+    {"« Back", "<<返回", "<<返回", "<< Back"},
+    {"Toggle", "選擇", "选择", "Toggle"},
+    {"Select", "選擇", "选择", "Select"},
+    {"Up", "向上", "向上", "Up"},
+    {"Down", "向下", "向下", "Down"},
+};
+
+static const char* lookupLanguageName(const char* key) {
+    for (const auto& entry : LANGUAGE_MAP) {
+        if (strcmp(key, entry.key) == 0) {
+            switch (SETTINGS.uiLanguage) {
+                case CrossPointSettings::LANGUAGE_ZH_CN:
+                    return entry.zhCn;
+                case CrossPointSettings::LANGUAGE_EN:
+                    return entry.en;
+                case CrossPointSettings::LANGUAGE_ZH_TW:
+                default:
+                    return entry.zhTw;
+            }
+        }
+    }
+    return nullptr;
+}
+
 /**
  * @brief 英文設定項/選項 轉 中文顯示文字（底層邏輯仍用英文，僅顯示層轉換）
  * @param englishName 待轉換的英文字串（設定項名稱/選項值）
@@ -13,6 +138,14 @@ static const char* getChineseName(const char* englishName) {
     // 空指標兜底
     if (englishName == nullptr) {
         return "";
+    }
+
+    if (const char* localizedName = lookupLanguageName(englishName)) {
+        return localizedName;
+    }
+
+    if (SETTINGS.uiLanguage == CrossPointSettings::LANGUAGE_EN) {
+        return englishName;
     }
 
     // --------------- 1. 主分類標題對映 ---------------

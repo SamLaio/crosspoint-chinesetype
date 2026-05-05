@@ -121,6 +121,7 @@ class CrossPointSettings {
 
   // UI Theme
   enum UI_THEME { CLASSIC = 0, LYRA = 1 };
+  enum UI_LANGUAGE { LANGUAGE_ZH_TW = 0, LANGUAGE_ZH_CN = 1, LANGUAGE_EN = 2, UI_LANGUAGE_COUNT };
 
   // Sleep screen settings
   uint8_t sleepScreen = LIGHT;
@@ -196,6 +197,8 @@ uint8_t extraline = 1;
   uint8_t fadingFix = 0;
   // Use book's embedded CSS styles for EPUB rendering (1 = enabled, 0 = disabled)
   uint8_t embeddedStyle = 1;
+  // UI language
+  uint8_t uiLanguage = LANGUAGE_ZH_TW;
 
   ~CrossPointSettings() = default;
 

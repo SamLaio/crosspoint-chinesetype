@@ -14,7 +14,7 @@
 #include <EpdFontLoader.h>
 #include "FontSelectionActivity.h"
 #include "fontIds.h"
-#include "languageMapper.h"
+#include "LanguageMapper.h"
 #include "BluetoothSettingsActivity.h"
 
 #include "SettingsLists.h"
@@ -65,6 +65,8 @@ void SettingsActivity::onEnter() {
   systemSettings.push_back(SettingInfo::Action("Clear Cache"));
   systemSettings.push_back(SettingInfo::Action("Check for updates"));
   systemSettings.push_back(SettingInfo::Action("Set Custom Font Family"));
+  systemSettings.push_back(SettingInfo::Enum("Language", &CrossPointSettings::uiLanguage,
+                                             {"繁體中文", "简体中文", "English"}));
 
 
   // Reset selection to first category
@@ -287,7 +289,7 @@ void SettingsActivity::render() const {
 
   auto metrics = UITheme::getInstance().getMetrics();
 
-  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, "Settings");
+  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, getChineseName("Settings"));
 
   std::vector<TabInfo> tabs;
   tabs.reserve(categoryCount);
