@@ -305,9 +305,8 @@ TXT / Markdown 支援：
 閱讀背景使用 SD 卡中的快取檔：
 
 - 一般背景：`/.crosspoint/wallpaper_bg.pxc`
-- 直排專用背景：`/.crosspoint/wallpaper_bg_vertical.pxc`
 
-直排閱讀時，如果存在 `wallpaper_bg_vertical.pxc`，會優先使用它；如果不存在，會使用一般背景。
+目前直排不會自動產生或套用直排專用背景，會使用同一份一般背景。
 
 「劃線」是閱讀設定中的輔助線，不是背景圖片。橫排時會畫水平虛線，直排時會畫垂直虛線。
 
@@ -427,21 +426,13 @@ pio run
 
 本專案基於以下開源專案與成果修改：
 
-- [crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
-- [ruby-builds/crosspoint-reader custom-fonts 分支](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
-- [ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYFDroid/crosspointcn-fontcreator)
-- [thedrunkpenguin/crosspoint-reader-ble](https://github.com/thedrunkpenguin/crosspoint-reader-ble)
-- [QR_input PR](https://github.com/crosspoint-reader/crosspoint-reader/pull/839)
+- 參考改版專案：[crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
+- 自選字型功能參考：[ruby-builds/crosspoint-reader custom-fonts 分支](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
+- 字型制作工具：[ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYFDroid/crosspointcn-fontcreator)
+- 藍芽功能參考：[thedrunkpenguin/crosspoint-reader-ble](https://github.com/thedrunkpenguin/crosspoint-reader-ble)
+- 鍵盤 QR 輸入：[QR_input PR](https://github.com/crosspoint-reader/crosspoint-reader/pull/839)
+- crosspoint-chinesetype：https://github.com/icannotttt/crosspoint-chinesetype
 
 ## 授權
 
 本專案依 AGPL-3.0 授權。若修改、分享或再發布，請遵守授權條款並保留來源與修改說明。
-
-## 備註
-
-- 參考改版專案：crosspoint-reader
-- 自選字型功能參考：ruby-builds/crosspoint-reader (custom-fonts 分支)
-- 字型制作工具：ZYFDroid/crosspointcn-fontcreator
-- 藍芽功能參考：thedrunkpenguin/crosspoint-reader-ble
-- 鍵盤 QR 輸入：QR_input
-- crosspoint-chinesetype：https://github.com/icannotttt/crosspoint-chinesetype
