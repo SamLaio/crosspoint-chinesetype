@@ -51,6 +51,18 @@ void RecentBooksStore::updateBook(const std::string& path, const std::string& ti
   }
 }
 
+bool RecentBooksStore::removeBook(const std::string& path) {
+  auto it =
+      std::find_if(recentBooks.begin(), recentBooks.end(), [&](const RecentBook& book) { return book.path == path; });
+  if (it == recentBooks.end()) {
+    return false;
+  }
+
+  recentBooks.erase(it);
+  saveToFile();
+  return true;
+}
+
 bool RecentBooksStore::saveToFile() const {
   // Make sure the directory exists
   SdMan.mkdir("/.crosspoint");

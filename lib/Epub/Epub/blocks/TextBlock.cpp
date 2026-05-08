@@ -14,6 +14,24 @@ void TextBlock::render(const GfxRenderer& renderer, const int fontId, const int 
   auto wordIt = words.begin();
   auto wordStylesIt = wordStyles.begin();
   auto wordXposIt = wordXpos.begin();
+  if (blockStyle.verticalLayout) {
+    const int lineHeight = renderer.getLineHeight(fontId);
+    for (size_t i = 0; i < words.size(); i++) {
+      const int drawY = y + *wordXposIt;
+      if (drawY + lineHeight > renderer.getScreenHeight()) {
+        break;
+      }
+      const EpdFontFamily::Style currentStyle = *wordStylesIt;
+      const int charWidth = renderer.getTextWidth(fontId, wordIt->c_str(), currentStyle);
+      renderer.drawText(fontId, x - charWidth / 2, drawY, wordIt->c_str(), true, currentStyle);
+
+      std::advance(wordIt, 1);
+      std::advance(wordStylesIt, 1);
+      std::advance(wordXposIt, 1);
+    }
+    return;
+  }
+
   for (size_t i = 0; i < words.size(); i++) {
     const int wordX = *wordXposIt + x;
     const EpdFontFamily::Style currentStyle = *wordStylesIt;
@@ -73,6 +91,7 @@ bool TextBlock::serialize(FsFile& file) const {
   serialization::writePod(file, blockStyle.paddingRight);
   serialization::writePod(file, blockStyle.textIndent);
   serialization::writePod(file, blockStyle.textIndentDefined);
+  serialization::writePod(file, blockStyle.verticalLayout);
 
   return true;
 }
@@ -121,6 +140,7 @@ std::unique_ptr<TextBlock> TextBlock::deserialize(FsFile& file) {
   serialization::readPod(file, blockStyle.paddingRight);
   serialization::readPod(file, blockStyle.textIndent);
   serialization::readPod(file, blockStyle.textIndentDefined);
+  serialization::readPod(file, blockStyle.verticalLayout);
 
   return std::unique_ptr<TextBlock>(
       new TextBlock(std::move(words), std::move(wordXpos), std::move(wordStyles), blockStyle));

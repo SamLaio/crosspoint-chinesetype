@@ -26,7 +26,10 @@ class TxtReaderActivity final : public ActivityWithSubactivity {
   std::vector<std::string> currentPageLines;
   std::vector<int> currentPageIndentOffsets;//首行縮排需要
   int linesPerPage = 0;
+  int charsPerColumn = 0;
+  int columnsPerPage = 0;
   int viewportWidth = 0;
+  int viewportHeight = 0;
   bool initialized = false;
 
   // Cached settings for cache validation (different fonts/margins require re-indexing)

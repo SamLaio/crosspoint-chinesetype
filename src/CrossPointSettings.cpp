@@ -20,9 +20,9 @@ void readAndValidate(FsFile& file, uint8_t& member, const uint8_t maxValue) {
 }
 
 namespace {
-constexpr uint8_t SETTINGS_FILE_VERSION = 8;
+constexpr uint8_t SETTINGS_FILE_VERSION = 9;
 // 注意：如果修改了欄位數量，需要同步更新這個值
-constexpr uint8_t SETTINGS_COUNT = 44;  // uiLanguage 寫到序列末尾
+constexpr uint8_t SETTINGS_COUNT = 45;  // textLayout 寫到序列末尾
 constexpr char SETTINGS_FILE[] = "/.crosspoint/settings.bin";
 
 // Validate front button mapping to ensure each hardware button is unique.
@@ -132,6 +132,7 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writePod(outputFile, bluetoothEnabled );
   serialization::writePod(outputFile, customSleepUsePxc);
   serialization::writePod(outputFile, uiLanguage);
+  serialization::writePod(outputFile, textLayout);
   // New fields added at end for backward compatibility
   outputFile.close();
 
@@ -282,6 +283,8 @@ bool CrossPointSettings::loadFromFile() {
       serialization::readPod(inputFile, customSleepUsePxc);
       if (++settingsRead >= fileSettingsCount) break;
       readAndValidate(inputFile, uiLanguage, UI_LANGUAGE_COUNT);
+      if (++settingsRead >= fileSettingsCount) break;
+      readAndValidate(inputFile, textLayout, TEXT_LAYOUT_COUNT);
       if (++settingsRead >= fileSettingsCount) break;
     } else {
       // v5: 相容舊順序（customSleepUsePxc 在中間）

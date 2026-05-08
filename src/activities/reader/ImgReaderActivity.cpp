@@ -106,8 +106,6 @@ void ImgReaderActivity::onEnter() {
 }
 
 void ImgReaderActivity::loop() {
-  constexpr unsigned long goHomeMs = 1000;
-
   if (menuVisible) {
     if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
       menuVisible = false;
@@ -151,12 +149,7 @@ void ImgReaderActivity::loop() {
     return;
   }
 
-  if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= goHomeMs) {
-    onGoHome();
-    return;
-  }
-
-  if (mappedInput.wasReleased(MappedInputManager::Button::Back) && mappedInput.getHeldTime() < goHomeMs) {
+  if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     onGoBack();
     return;
   }

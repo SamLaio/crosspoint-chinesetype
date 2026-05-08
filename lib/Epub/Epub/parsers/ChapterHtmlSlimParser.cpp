@@ -861,6 +861,24 @@ void ChapterHtmlSlimParser::addLineToPage(std::shared_ptr<TextBlock> line) {
   currentPageNextY += lineHeight;
 }
 
+int getVerticalColumnWidth(const GfxRenderer& renderer, const int fontId, const uint8_t wordSpacing) {
+  return renderer.getTextWidth(fontId, "我") + 1 + (wordSpacing * 5) + 2;
+}
+
+void ChapterHtmlSlimParser::addVerticalColumnToPage(std::shared_ptr<TextBlock> column) {
+  const int columnWidth = getVerticalColumnWidth(renderer, fontId, wordSpacing);
+
+  if (currentPageNextX + columnWidth > viewportWidth) {
+    completePageFn(std::move(currentPage));
+    currentPage.reset(new Page());
+    currentPageNextX = 0;
+  }
+
+  const int xOffset = viewportWidth - currentPageNextX - (columnWidth / 2);
+  currentPage->elements.push_back(std::make_shared<PageLine>(column, xOffset, 0));
+  currentPageNextX += columnWidth;
+}
+
 void ChapterHtmlSlimParser::makePages() {
   if (!currentTextBlock) {
     Serial.printf("[%lu] [EHP] !! No text block to make pages for !!\n", millis());
@@ -870,12 +888,37 @@ void ChapterHtmlSlimParser::makePages() {
   if (!currentPage) {
     currentPage.reset(new Page());
     currentPageNextY = 0;
+    currentPageNextX = 0;
   }
 
   const int lineHeight = renderer.getLineHeight(fontId) * lineCompression;
 
   // Apply top spacing before the paragraph (stored in pixels)
   const BlockStyle& blockStyle = currentTextBlock->getBlockStyle();
+  if (verticalLayout) {
+    const int columnWidth = getVerticalColumnWidth(renderer, fontId, wordSpacing);
+    currentTextBlock->getBlockStyle().verticalLayout = true;
+    if (blockStyle.marginLeft > 0) {
+      currentPageNextX += blockStyle.marginLeft;
+    }
+    if (blockStyle.paddingLeft > 0) {
+      currentPageNextX += blockStyle.paddingLeft;
+    }
+    currentTextBlock->layoutAndExtractVerticalColumns(
+        renderer, fontId, viewportHeight, lineCompression,
+        [this](const std::shared_ptr<TextBlock>& textBlock) { addVerticalColumnToPage(textBlock); });
+    if (blockStyle.marginRight > 0) {
+      currentPageNextX += blockStyle.marginRight;
+    }
+    if (blockStyle.paddingRight > 0) {
+      currentPageNextX += blockStyle.paddingRight;
+    }
+    if (extraParagraphSpacing) {
+      currentPageNextX += columnWidth / 2;
+    }
+    return;
+  }
+
   if (blockStyle.marginTop > 0) {
     currentPageNextY += blockStyle.marginTop;
   }

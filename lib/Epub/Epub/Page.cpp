@@ -24,12 +24,26 @@ void PageLine::drawDashedLine(GfxRenderer& renderer, int x1, int y, int x2, bool
   }
 }
 
+void PageLine::drawDashedVerticalLine(GfxRenderer& renderer, int x, int y1, int y2, bool isDark) const {
+  int startY = std::min(y1, y2);
+  int endY = std::max(y1, y2);
+  int currentY = startY;
+
+  const int actualDash = 20;
+  const int actualGap = 10;
+
+  while (currentY < endY) {
+    int segmentEndY = std::min(currentY + actualDash, endY);
+    renderer.drawLine(x, currentY, x, segmentEndY, true);
+    currentY = segmentEndY + actualGap;
+  }
+}
+
 void PageLine::render(GfxRenderer& renderer, const int fontId, const int xOffset, const int yOffset) {
   block->render(renderer, fontId, xPos + xOffset, yPos + yOffset);
   //加線
-    if (CrossPointSettings::getInstance().extraline){
+  if (CrossPointSettings::getInstance().extraline){
   // 用螢幕寬度 + 文字高度計算虛線 ----
-  int screenWidth = renderer.getScreenWidth(); // 獲取螢幕總寬度
   int textHeight = renderer.getLineHeight(fontId); // 文字高度
   //Serial.printf("[%lu] [ERS] 測試能否讀取文字高度: %d", millis(),textHeight);
 
@@ -43,13 +57,21 @@ void PageLine::render(GfxRenderer& renderer, const int fontId, const int xOffset
   orientedMarginRight = horizontalViewableMargin;
   orientedMarginLeft += SETTINGS.screenMargin_Left;
   orientedMarginRight += SETTINGS.screenMargin_Right;
-  int viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;
-  int lineXStart = orientedMarginLeft; // 從螢幕最左側開始
-  int lineXEnd = screenWidth-orientedMarginRight; // 到螢幕最右側結束
-  int lineY = (yPos + yOffset) + textHeight+2; // 在文字下方繪製，+2畫素間距
 
-  // 繪製全屏寬度的水平虛線
-  drawDashedLine(renderer, lineXStart, lineY, lineXEnd, lineY);
+  if (block->getBlockStyle().verticalLayout) {
+    orientedMarginTop += SETTINGS.screenMargin_Top;
+    orientedMarginBottom += SETTINGS.screenMargin_Bottom;
+    int lineYStart = orientedMarginTop;
+    int lineYEnd = renderer.getScreenHeight() - orientedMarginBottom;
+    int lineX = (xPos + xOffset) - textHeight / 2 - 2;
+    drawDashedVerticalLine(renderer, lineX, lineYStart, lineYEnd, true);
+  } else {
+    int screenWidth = renderer.getScreenWidth(); // 獲取螢幕總寬度
+    int lineXStart = orientedMarginLeft; // 從螢幕最左側開始
+    int lineXEnd = screenWidth-orientedMarginRight; // 到螢幕最右側結束
+    int lineY = (yPos + yOffset) + textHeight+2; // 在文字下方繪製，+2畫素間距
+    drawDashedLine(renderer, lineXStart, lineY, lineXEnd, true);
+  }
   }
 }
 

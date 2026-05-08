@@ -29,6 +29,9 @@ class Epub {
   std::unique_ptr<CssParser> cssParser;
   // CSS files
   std::vector<std::string> cssFiles;
+  bool scannedBookWritingMode = false;
+  bool bookHasWritingMode = false;
+  CssWritingMode bookWritingMode = CssWritingMode::HorizontalTb;
 
   bool findContentOpfFile(std::string* contentOpfFile) const;
   bool parseContentOpf(BookMetadataCache::BookMetadata& bookMetadata, bool parseSpine = true);
@@ -37,6 +40,7 @@ class Epub {
   void parseCssFiles() const;
   std::string getCssRulesCache() const;
   bool loadCssRulesFromCache() const;
+  void scanBookWritingMode();
 
  public:
   explicit Epub(std::string filepath, const std::string& cacheDir) : filepath(std::move(filepath)) {
@@ -74,4 +78,6 @@ class Epub {
   size_t getBookSize() const;
   float calculateProgress(int currentSpineIndex, float currentSpineRead) const;
   const CssParser* getCssParser() const { return cssParser.get(); }
+  bool hasCssWritingMode() const;
+  CssWritingMode getCssWritingMode() const;
 };

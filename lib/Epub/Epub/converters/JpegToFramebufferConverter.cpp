@@ -12,6 +12,10 @@
 #include "DitherUtils.h"
 #include "PixelCache.h"
 
+namespace {
+constexpr size_t MAX_JPEG_SOURCE_PIXELS = 12UL * 1024UL * 1024UL;
+}
+
 struct JpegContext {
   FsFile& file;
   uint8_t buffer[512];
@@ -64,7 +68,7 @@ bool JpegToFramebufferConverter::decodeToFramebuffer(const std::string& imagePat
     return false;
   }
 
-  if (!validateImageDimensions(imageInfo.m_width, imageInfo.m_height, "JPEG")) {
+  if (!validateImageDimensions(imageInfo.m_width, imageInfo.m_height, "JPEG", MAX_JPEG_SOURCE_PIXELS)) {
     file.close();
     return false;
   }

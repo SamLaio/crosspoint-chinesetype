@@ -5,6 +5,7 @@
 // Matches order of PARAGRAPH_ALIGNMENT in CrossPointSettings
 enum class CssTextAlign : uint8_t { Justify = 0, Left = 1, Center = 2, Right = 3, None = 4 };
 enum class CssUnit : uint8_t { Pixels = 0, Em = 1, Rem = 2, Points = 3, Percent = 4 };
+enum class CssWritingMode : uint8_t { HorizontalTb = 0, VerticalRl = 1, VerticalLr = 2 };
 
 // Represents a CSS length value with its unit, allowing deferred resolution to pixels
 struct CssLength {
@@ -69,6 +70,7 @@ struct CssPropertyFlags {
   uint16_t paddingBottom : 1;
   uint16_t paddingLeft : 1;
   uint16_t paddingRight : 1;
+  uint16_t writingMode : 1;
 
   CssPropertyFlags()
       : textAlign(0),
@@ -83,17 +85,19 @@ struct CssPropertyFlags {
         paddingTop(0),
         paddingBottom(0),
         paddingLeft(0),
-        paddingRight(0) {}
+        paddingRight(0),
+        writingMode(0) {}
 
   [[nodiscard]] bool anySet() const {
     return textAlign || fontStyle || fontWeight || textDecoration || textIndent || marginTop || marginBottom ||
-           marginLeft || marginRight || paddingTop || paddingBottom || paddingLeft || paddingRight;
+           marginLeft || marginRight || paddingTop || paddingBottom || paddingLeft || paddingRight || writingMode;
   }
 
   void clearAll() {
     textAlign = fontStyle = fontWeight = textDecoration = textIndent = 0;
     marginTop = marginBottom = marginLeft = marginRight = 0;
     paddingTop = paddingBottom = paddingLeft = paddingRight = 0;
+    writingMode = 0;
   }
 };
 
@@ -105,6 +109,7 @@ struct CssStyle {
   CssFontStyle fontStyle = CssFontStyle::Normal;
   CssFontWeight fontWeight = CssFontWeight::Normal;
   CssTextDecoration textDecoration = CssTextDecoration::None;
+  CssWritingMode writingMode = CssWritingMode::HorizontalTb;
 
   CssLength textIndent;     // First-line indent (deferred resolution)
   CssLength marginTop;      // Vertical spacing before block
@@ -173,6 +178,10 @@ struct CssStyle {
       paddingRight = base.paddingRight;
       defined.paddingRight = 1;
     }
+    if (base.hasWritingMode()) {
+      writingMode = base.writingMode;
+      defined.writingMode = 1;
+    }
   }
 
   [[nodiscard]] bool hasTextAlign() const { return defined.textAlign; }
@@ -188,12 +197,17 @@ struct CssStyle {
   [[nodiscard]] bool hasPaddingBottom() const { return defined.paddingBottom; }
   [[nodiscard]] bool hasPaddingLeft() const { return defined.paddingLeft; }
   [[nodiscard]] bool hasPaddingRight() const { return defined.paddingRight; }
+  [[nodiscard]] bool hasWritingMode() const { return defined.writingMode; }
+  [[nodiscard]] bool isVerticalWritingMode() const {
+    return writingMode == CssWritingMode::VerticalRl || writingMode == CssWritingMode::VerticalLr;
+  }
 
   void reset() {
     textAlign = CssTextAlign::Left;
     fontStyle = CssFontStyle::Normal;
     fontWeight = CssFontWeight::Normal;
     textDecoration = CssTextDecoration::None;
+    writingMode = CssWritingMode::HorizontalTb;
     textIndent = CssLength{};
     marginTop = marginBottom = marginLeft = marginRight = CssLength{};
     paddingTop = paddingBottom = paddingLeft = paddingRight = CssLength{};

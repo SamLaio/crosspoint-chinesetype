@@ -6,6 +6,8 @@
 #include <SDCardManager.h>
 #include <Serialization.h>
 
+#include <algorithm>
+
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "EpubReaderChapterSelectionActivity.h"
@@ -21,20 +23,32 @@
 namespace {
 // pagesPerRefresh now comes from SETTINGS.getRefreshFrequency()
 constexpr unsigned long skipChapterMs = 700;
-constexpr unsigned long goHomeMs = 1000;
 constexpr int statusBarMargin = 20;
 constexpr int progressBarMarginTop = 1;
 constexpr uint32_t WALLPAPER_PXC_MAGIC = 0x31584350;   // "PXC1"
 constexpr uint16_t WALLPAPER_PXC_VERSION = 1;
 constexpr char WALLPAPER_PXC_PATH[] = "/.crosspoint/wallpaper_bg.pxc";
+constexpr char WALLPAPER_VERTICAL_PXC_PATH[] = "/.crosspoint/wallpaper_bg_vertical.pxc";
 constexpr uint8_t WALLPAPER_PXC_FIXED_ORIENTATION = CrossPointSettings::ORIENTATION::PORTRAIT;
 
-bool loadWallpaperPxcToFramebuffer(const std::string& pxcPath, GfxRenderer& renderer) {
-  FsFile input;
-  if (!SdMan.openFileForRead("SLP", pxcPath, input)) {
-    return false;
+bool readWallpaperPayload(FsFile& input, uint8_t* target, const uint32_t payloadSize) {
+  size_t totalRead = 0;
+  while (totalRead < payloadSize) {
+    const size_t toRead = std::min(static_cast<size_t>(1024), static_cast<size_t>(payloadSize - totalRead));
+    const int bytesRead = input.read(target + totalRead, toRead);
+    if (bytesRead <= 0) {
+      return false;
+    }
+    totalRead += static_cast<size_t>(bytesRead);
   }
+  return true;
+}
 
+bool isVerticalWritingMode(const CssWritingMode writingMode) {
+  return writingMode == CssWritingMode::VerticalRl || writingMode == CssWritingMode::VerticalLr;
+}
+
+bool readWallpaperPxcHeader(FsFile& input, const uint32_t expectedPayload) {
   uint32_t magic = 0;
   uint16_t version = 0;
   uint8_t cachedOrientation = 0;
@@ -47,10 +61,18 @@ bool loadWallpaperPxcToFramebuffer(const std::string& pxcPath, GfxRenderer& rend
   serialization::readPod(input, reserved);
   serialization::readPod(input, payloadSize);
 
+  return magic == WALLPAPER_PXC_MAGIC && version == WALLPAPER_PXC_VERSION &&
+         cachedOrientation == WALLPAPER_PXC_FIXED_ORIENTATION && payloadSize == expectedPayload;
+}
+
+bool loadWallpaperPxcToFramebuffer(const std::string& pxcPath, GfxRenderer& renderer) {
+  FsFile input;
+  if (!SdMan.openFileForRead("SLP", pxcPath, input)) {
+    return false;
+  }
+
   const uint32_t expectedPayload = static_cast<uint32_t>(renderer.getBufferSize());
-    if (magic != WALLPAPER_PXC_MAGIC || version != WALLPAPER_PXC_VERSION ||
-      cachedOrientation != WALLPAPER_PXC_FIXED_ORIENTATION ||
-      payloadSize != expectedPayload) {
+  if (!readWallpaperPxcHeader(input, expectedPayload)) {
     input.close();
     return false;
   }
@@ -61,19 +83,9 @@ bool loadWallpaperPxcToFramebuffer(const std::string& pxcPath, GfxRenderer& rend
     return false;
   }
 
-  size_t totalRead = 0;
-  while (totalRead < payloadSize) {
-    const size_t toRead = std::min(static_cast<size_t>(1024), static_cast<size_t>(payloadSize - totalRead));
-    const int bytesRead = input.read(frameBuffer + totalRead, toRead);
-    if (bytesRead <= 0) {
-      input.close();
-      return false;
-    }
-    totalRead += static_cast<size_t>(bytesRead);
-  }
-
+  const bool loaded = readWallpaperPayload(input, frameBuffer, expectedPayload);
   input.close();
-  return true;
+  return loaded;
 }
 
 bool saveWallpaperPxcFromFramebuffer(const std::string& pxcPath, GfxRenderer& renderer) {
@@ -210,6 +222,13 @@ void EpubReaderActivity::onEnter() {
   APP_STATE.saveToFile();
   RECENT_BOOKS.addBook(epub->getPath(), epub->getTitle(), epub->getAuthor(), epub->getThumbBmpPath());
 
+  useBookEmbeddedStyle = SETTINGS.embeddedStyle;
+  if (shouldAskLayoutConflict()) {
+    state = EPUBState::LAYOUT_CONFLICT;
+    layoutConflictSelection = 0;
+    skipNextButtonCheck = true;
+  }
+
   // Trigger first update
   updateRequired = true;
 
@@ -242,6 +261,42 @@ void EpubReaderActivity::onExit() {
 }
 
 void EpubReaderActivity::loop() {
+  if (state == EPUBState::LAYOUT_CONFLICT) {
+    if (skipNextButtonCheck) {
+      const bool buttonsCleared = !mappedInput.isPressed(MappedInputManager::Button::Back) &&
+                                  !mappedInput.isPressed(MappedInputManager::Button::Confirm) &&
+                                  !mappedInput.isPressed(MappedInputManager::Button::Left) &&
+                                  !mappedInput.isPressed(MappedInputManager::Button::Right) &&
+                                  !mappedInput.wasReleased(MappedInputManager::Button::Back) &&
+                                  !mappedInput.wasReleased(MappedInputManager::Button::Confirm) &&
+                                  !mappedInput.wasReleased(MappedInputManager::Button::Left) &&
+                                  !mappedInput.wasReleased(MappedInputManager::Button::Right);
+      if (buttonsCleared) {
+        skipNextButtonCheck = false;
+      }
+      return;
+    }
+
+    if (mappedInput.wasReleased(MappedInputManager::Button::Left) ||
+        mappedInput.wasReleased(MappedInputManager::Button::Right)) {
+      layoutConflictSelection = 1 - layoutConflictSelection;
+      updateRequired = true;
+      return;
+    }
+
+    if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+      layoutConflictSelection = 1;
+      applyLayoutConflictChoice();
+      return;
+    }
+
+    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+      applyLayoutConflictChoice();
+      return;
+    }
+    return;
+  }
+
   if(state== EPUBState::READING){
     if (mappedInput.isPressed(MappedInputManager::Button::Confirm) && mappedInput.getHeldTime() >= 1000) {
       Serial.printf("[%lu] [ERS] Long press detected, entering settings\n", millis());
@@ -315,14 +370,7 @@ void EpubReaderActivity::loop() {
       xSemaphoreGive(renderingMutex);
     }
 
-    // Long press BACK (1s+) goes directly to home
-    if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= goHomeMs) {
-      onGoHome();
-      return;
-    }
-
-    // Short press BACK goes to file selection
-    if (mappedInput.wasReleased(MappedInputManager::Button::Back) && mappedInput.getHeldTime() < goHomeMs) {
+    if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
       onGoBack();
       return;
     }
@@ -734,6 +782,11 @@ void EpubReaderActivity::renderScreen() {
     return;
   }
 
+  if (state == EPUBState::LAYOUT_CONFLICT) {
+    renderLayoutConflictPrompt();
+    return;
+  }
+
   // edge case handling for sub-zero spine index
   if (currentSpineIndex < 0) {
     currentSpineIndex = 0;
@@ -780,6 +833,10 @@ void EpubReaderActivity::renderScreen() {
   orientedMarginRight += SETTINGS.screenMargin_Right;
   orientedMarginBottom += SETTINGS.screenMargin_Bottom; 
 
+  const bool readerSettingVertical = SETTINGS.textLayout == CrossPointSettings::TEXT_VERTICAL;
+  const bool bookStyleVertical = epub && epub->hasCssWritingMode() && isVerticalWritingMode(epub->getCssWritingMode());
+  const bool verticalLayout = !useBookEmbeddedStyle && readerSettingVertical;
+  const bool backgroundVerticalLayout = readerSettingVertical || bookStyleVertical;
 
   if (!section) {
     const auto filepath = epub->getSpineItem(currentSpineIndex).href;
@@ -794,14 +851,14 @@ void EpubReaderActivity::renderScreen() {
 
     if (!section->loadSectionFile(SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
                                   SETTINGS.extraParagraphSpacing, SETTINGS.paragraphAlignment, viewportWidth,
-                                  viewportHeight, SETTINGS.hyphenationEnabled,SETTINGS.wordSpacing,SETTINGS.firstlineintented, SETTINGS.embeddedStyle)) {
+                                  viewportHeight, SETTINGS.hyphenationEnabled,SETTINGS.wordSpacing,SETTINGS.firstlineintented, useBookEmbeddedStyle, verticalLayout)) {
       Serial.printf("[%lu] [ERS] Cache not found, building...\n", millis());
 
       const auto popupFn = [this]() { GUI.drawPopup(renderer, "Indexing..."); };
 
       if (!section->createSectionFile(SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
                                       SETTINGS.extraParagraphSpacing, SETTINGS.paragraphAlignment, viewportWidth,
-                                      viewportHeight, SETTINGS.hyphenationEnabled, SETTINGS.wordSpacing, SETTINGS.firstlineintented, SETTINGS.embeddedStyle, popupFn)) {
+                                      viewportHeight, SETTINGS.hyphenationEnabled, SETTINGS.wordSpacing, SETTINGS.firstlineintented, useBookEmbeddedStyle, verticalLayout, popupFn)) {
         Serial.printf("[%lu] [ERS] Failed to persist page data to SD\n", millis());
         section.reset();
         return;
@@ -841,8 +898,9 @@ void EpubReaderActivity::renderScreen() {
   renderer.clearScreen();
     //加背景
     if(SETTINGS.ReadingScreenEnabled){
-      Serial.printf("[%lu] [ERS] 桌布螢幕開啟，渲染桌布螢幕\n");
-      renderPngSleepScreen(renderer);
+      Serial.printf("[%lu] [ERS] 桌布螢幕開啟，渲染桌布螢幕%s\n", millis(),
+                    backgroundVerticalLayout ? " (vertical)" : "");
+      renderPngSleepScreen(renderer, backgroundVerticalLayout);
     }
 
 
@@ -977,8 +1035,63 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   renderer.restoreBwBuffer();
 }
 
+bool EpubReaderActivity::shouldAskLayoutConflict() const {
+  if (!epub || !epub->hasCssWritingMode()) {
+    return false;
+  }
+
+  const bool bookVertical = isVerticalWritingMode(epub->getCssWritingMode());
+  const bool readerVertical = SETTINGS.textLayout == CrossPointSettings::TEXT_VERTICAL;
+  return bookVertical != readerVertical;
+}
+
+void EpubReaderActivity::applyLayoutConflictChoice() {
+  xSemaphoreTake(renderingMutex, portMAX_DELAY);
+  useBookEmbeddedStyle = layoutConflictSelection == 0;
+  section.reset();
+  xSemaphoreGive(renderingMutex);
+
+  state = EPUBState::READING;
+  skipNextButtonCheck = true;
+  updateRequired = true;
+}
+
+void EpubReaderActivity::renderLayoutConflictPrompt() {
+  renderer.clearScreen();
+
+  const int screenWidth = renderer.getScreenWidth();
+  const int contentX = 24;
+  const int buttonY = 250;
+  constexpr int buttonWidth = 180;
+  constexpr int buttonHeight = 44;
+  constexpr int buttonGap = 24;
+  const int buttonsX = (screenWidth - (buttonWidth * 2 + buttonGap)) / 2;
+
+  renderer.drawCenteredText(UI_12_FONT_ID, 90, "目前排版與書本排版衝突", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_10_FONT_ID, 130, "請選擇要使用哪一種排版");
+
+  const bool bookSelected = layoutConflictSelection == 0;
+  const bool readerSelected = layoutConflictSelection == 1;
+
+  auto drawChoice = [&](const int x, const char* label, const bool selected) {
+    if (selected) {
+      renderer.fillRect(x, buttonY, buttonWidth, buttonHeight, true);
+    }
+    renderer.drawRect(x, buttonY, buttonWidth, buttonHeight, !selected);
+    const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, label, EpdFontFamily::BOLD);
+    const int textX = x + (buttonWidth - textWidth) / 2;
+    renderer.drawText(UI_10_FONT_ID, textX, buttonY + 13, label, !selected, EpdFontFamily::BOLD);
+  };
+
+  drawChoice(buttonsX, "使用書本排版", bookSelected);
+  drawChoice(buttonsX + buttonWidth + buttonGap, "使用閱讀設定", readerSelected);
+
+  renderer.drawText(UI_10_FONT_ID, contentX, 330, "左右切換，確認選擇，返回使用閱讀設定");
+  renderer.displayBuffer();
+}
+
 void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const int orientedMarginBottom,
-                                         const int orientedMarginTop, const int orientedMarginLeft) const {
+                                        const int orientedMarginTop, const int orientedMarginLeft) const {
   auto metrics = UITheme::getInstance().getMetrics();
 
   // determine visible status bar elements
@@ -1091,9 +1204,13 @@ void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const in
 
 
 
-void EpubReaderActivity::renderPngSleepScreen(GfxRenderer& renderer) const {
-  const std::string pxcPath = WALLPAPER_PXC_PATH;
-  if (loadWallpaperPxcToFramebuffer(pxcPath, renderer)) {
+void EpubReaderActivity::renderPngSleepScreen(GfxRenderer& renderer, const bool verticalLayout) const {
+  if (verticalLayout && loadWallpaperPxcToFramebuffer(WALLPAPER_VERTICAL_PXC_PATH, renderer)) {
+    Serial.printf("[%lu] [SLP] Loaded vertical wallpaper PXC cache\n", millis());
+    return;
+  }
+
+  if (loadWallpaperPxcToFramebuffer(WALLPAPER_PXC_PATH, renderer)) {
     Serial.printf("[%lu] [SLP] Loaded wallpaper PXC cache\n", millis());
     return;
   }

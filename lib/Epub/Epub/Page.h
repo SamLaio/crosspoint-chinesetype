@@ -29,6 +29,7 @@ class PageLine final : public PageElement {
   std::shared_ptr<TextBlock> block;
   //加虛線
   void drawDashedLine(GfxRenderer& renderer, int x1, int y, int x2, bool isDark) const;
+  void drawDashedVerticalLine(GfxRenderer& renderer, int x, int y1, int y2, bool isDark) const;
 
  public:
   PageLine(std::shared_ptr<TextBlock> block, const int16_t xPos, const int16_t yPos)

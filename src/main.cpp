@@ -21,9 +21,9 @@
 #include "activities/browser/OpdsBookBrowserActivity.h"
 #include "activities/home/HomeActivity.h"
 #include "activities/home/MyLibraryActivity.h"
-#include "activities/home/RecentBooksActivity.h"
 #include "activities/network/CrossPointWebServerActivity.h"
 #include "activities/reader/ReaderActivity.h"
+#include "activities/settings/BluetoothSettingsActivity.h"
 #include "activities/settings/SettingsActivity.h"
 #include "activities/util/FullScreenMessageActivity.h"
 #include "components/UITheme.h"
@@ -245,11 +245,16 @@ void enterDeepSleep() {
 
 void onGoHome();
 void onGoToMyLibraryWithPath(const std::string& path);
-void onGoToRecentBooks();
 void onGoToReader(const std::string& initialEpubPath) {
   exitActivity();
   enterNewActivity(
       new ReaderActivity(renderer, mappedInputManager, initialEpubPath, onGoHome, onGoToMyLibraryWithPath));
+}
+
+void onGoToReaderFromLibrary(const std::string& initialEpubPath) {
+  exitActivity();
+  enterNewActivity(new ReaderActivity(renderer, mappedInputManager, initialEpubPath, onGoHome, onGoToMyLibraryWithPath,
+                                      true));
 }
 
 void onGoToFileTransfer() {
@@ -264,27 +269,28 @@ void onGoToSettings() {
 
 void onGoToMyLibrary() {
   exitActivity();
-  enterNewActivity(new MyLibraryActivity(renderer, mappedInputManager, onGoHome, onGoToReader));
-}
-
-void onGoToRecentBooks() {
-  exitActivity();
-  enterNewActivity(new RecentBooksActivity(renderer, mappedInputManager, onGoHome, onGoToReader));
+  enterNewActivity(new MyLibraryActivity(renderer, mappedInputManager, onGoHome, onGoToReaderFromLibrary));
 }
 
 void onGoToMyLibraryWithPath(const std::string& path) {
   exitActivity();
-  enterNewActivity(new MyLibraryActivity(renderer, mappedInputManager, onGoHome, onGoToReader, path));
+  enterNewActivity(new MyLibraryActivity(renderer, mappedInputManager, onGoHome, onGoToReaderFromLibrary, path));
 }
 
 void onGoToBrowser() {
   exitActivity();
   enterNewActivity(new OpdsBookBrowserActivity(renderer, mappedInputManager, onGoHome));
 }
+
+void onGoToBluetooth() {
+  exitActivity();
+  enterNewActivity(new BluetoothSettingsActivity(renderer, mappedInputManager, onGoHome));
+}
+
 void onGoHome() {
   exitActivity();
-  enterNewActivity(new HomeActivity(renderer, mappedInputManager, onGoToReader, onGoToMyLibrary, onGoToRecentBooks,
-                                    onGoToSettings, onGoToFileTransfer, onGoToBrowser));
+  enterNewActivity(new HomeActivity(renderer, mappedInputManager, onGoToReader, onGoToMyLibrary, onGoToSettings,
+                                    onGoToFileTransfer, onGoToBrowser, onGoToBluetooth));
 }
 
 void setupDisplayAndFonts() {

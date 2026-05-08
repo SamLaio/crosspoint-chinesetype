@@ -38,6 +38,8 @@ class MyLibraryActivity final : public ActivityWithSubactivity {
   std::string copySourcePath;  // 待複製的源路徑
   bool hasCopyData = false;    // 是否有待複製內容
   bool isCutMode = false;  
+  bool actionMenuVisible = false;
+  bool ignoreActionMenuConfirmRelease = false;
   //搜尋模式
   bool isSearchMode = false;
   std::vector<std::string> searchResults; //搜尋結果
@@ -52,19 +54,15 @@ class MyLibraryActivity final : public ActivityWithSubactivity {
   static void sortFileList(std::vector<std::string>& strs); // 新增靜態成員函式宣告
   void doSearch(const char* keyword); // 執行搜尋（接收char*)
 
-  // ✅ 6個頂部選項列舉
   enum class TopOption { 
-      OPEN = 0,        // 開啟
-      DELETE = 1,      // 刪除
-      COPY = 2,        // 複製
-      CUT = 3,         // 剪下
+      CANCEL = 0,
+      DELETE = 1,
+      COPY = 2,
+      CUT = 3,
       PASTE = 4
-      // ,        // 貼上
-      // SEARCH = 5,        // 搜尋
-      // CANCEL_SEARCH = 6   // 取消搜尋
   };
-  TopOption topSelectorIndex = TopOption::OPEN;
-  const int topOptionCount = 7;
+  TopOption topSelectorIndex = TopOption::CANCEL;
+  static constexpr int topOptionCount = 5;
   char SEARCH_KEYWORD[100] = "賽博"; // 搜尋關鍵詞（示例：包含“賽博”的檔案）
 
 

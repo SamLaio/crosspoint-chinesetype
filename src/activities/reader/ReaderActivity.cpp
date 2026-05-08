@@ -83,12 +83,21 @@ void ReaderActivity::goToLibrary(const std::string& fromBookPath) {
   onGoToLibrary(initialPath);
 }
 
+void ReaderActivity::goBackFromReader(const std::string& fromBookPath) {
+  if (returnToLibraryOnBack) {
+    goToLibrary(fromBookPath);
+  } else {
+    onGoBack();
+  }
+}
+
 void ReaderActivity::onGoToEpubReader(std::unique_ptr<Epub> epub) {
   const auto epubPath = epub->getPath();
   currentBookPath = epubPath;
   exitActivity();
   enterNewActivity(new EpubReaderActivity(
-      renderer, mappedInput, std::move(epub), [this, epubPath] { goToLibrary(epubPath); }, [this] { onGoBack(); }));
+      renderer, mappedInput, std::move(epub), [this, epubPath] { goBackFromReader(epubPath); },
+      [this] { onGoBack(); }));
 }
 
 void ReaderActivity::onGoToXtcReader(std::unique_ptr<Xtc> xtc) {
@@ -96,7 +105,7 @@ void ReaderActivity::onGoToXtcReader(std::unique_ptr<Xtc> xtc) {
   currentBookPath = xtcPath;
   exitActivity();
   enterNewActivity(new XtcReaderActivity(
-      renderer, mappedInput, std::move(xtc), [this, xtcPath] { goToLibrary(xtcPath); }, [this] { onGoBack(); }));
+      renderer, mappedInput, std::move(xtc), [this, xtcPath] { goBackFromReader(xtcPath); }, [this] { onGoBack(); }));
 }
 
 void ReaderActivity::onGoToTxtReader(std::unique_ptr<Txt> txt) {
@@ -104,14 +113,14 @@ void ReaderActivity::onGoToTxtReader(std::unique_ptr<Txt> txt) {
   currentBookPath = txtPath;
   exitActivity();
   enterNewActivity(new TxtReaderActivity(
-      renderer, mappedInput, std::move(txt), [this, txtPath] { goToLibrary(txtPath); }, [this] { onGoBack(); }));
+      renderer, mappedInput, std::move(txt), [this, txtPath] { goBackFromReader(txtPath); }, [this] { onGoBack(); }));
 }
 
 void ReaderActivity::onGoToImgReader(ImgReaderActivity::ImageType imageType, const std::string& imagePath) {
   currentBookPath = imagePath;
   exitActivity();
   enterNewActivity(new ImgReaderActivity(renderer, mappedInput, imagePath, imageType,
-                                         [this, imagePath] { goToLibrary(imagePath); }, [this] { onGoBack(); }));
+                                         [this, imagePath] { goBackFromReader(imagePath); }, [this] { onGoBack(); }));
 }
 
 void ReaderActivity::onEnter() {

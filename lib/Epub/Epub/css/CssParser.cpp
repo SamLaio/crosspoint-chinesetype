@@ -253,6 +253,19 @@ CssTextDecoration CssParser::interpretDecoration(const std::string& val) {
   return CssTextDecoration::None;
 }
 
+CssWritingMode CssParser::interpretWritingMode(const std::string& val) {
+  const std::string v = normalized(val);
+
+  if (v.find("vertical-rl") != std::string::npos || v.find("tb-rl") != std::string::npos) {
+    return CssWritingMode::VerticalRl;
+  }
+  if (v.find("vertical-lr") != std::string::npos || v.find("tb-lr") != std::string::npos) {
+    return CssWritingMode::VerticalLr;
+  }
+
+  return CssWritingMode::HorizontalTb;
+}
+
 CssLength CssParser::interpretLength(const std::string& val) {
   const std::string v = normalized(val);
   if (v.empty()) return CssLength{};
@@ -365,6 +378,10 @@ CssStyle CssParser::parseDeclarations(const std::string& declBlock) {
     } else if (propName == "text-decoration" || propName == "text-decoration-line") {
       style.textDecoration = interpretDecoration(propValue);
       style.defined.textDecoration = 1;
+    } else if (propName == "writing-mode" || propName == "-webkit-writing-mode" ||
+               propName == "epub-writing-mode" || propName == "-epub-writing-mode") {
+      style.writingMode = interpretWritingMode(propValue);
+      style.defined.writingMode = 1;
     } else if (propName == "text-indent") {
       style.textIndent = interpretLength(propValue);
       style.defined.textIndent = 1;
@@ -513,6 +530,30 @@ CssStyle CssParser::resolveStyle(const std::string& tagName, const std::string& 
   return result;
 }
 
+bool CssParser::hasWritingMode() const {
+  for (const auto& pair : rulesBySelector_) {
+    if (pair.second.hasWritingMode()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+CssWritingMode CssParser::getPrimaryWritingMode() const {
+  bool hasHorizontal = false;
+  for (const auto& pair : rulesBySelector_) {
+    if (!pair.second.hasWritingMode()) {
+      continue;
+    }
+    if (pair.second.isVerticalWritingMode()) {
+      return pair.second.writingMode;
+    }
+    hasHorizontal = true;
+  }
+
+  return hasHorizontal ? CssWritingMode::HorizontalTb : CssWritingMode::HorizontalTb;
+}
+
 // Inline style parsing (static - doesn't need rule database)
 
 CssStyle CssParser::parseInlineStyle(const std::string& styleValue) { return parseDeclarations(styleValue); }
@@ -520,7 +561,7 @@ CssStyle CssParser::parseInlineStyle(const std::string& styleValue) { return par
 // Cache serialization
 
 // Cache format version - increment when format changes
-constexpr uint8_t CSS_CACHE_VERSION = 2;
+constexpr uint8_t CSS_CACHE_VERSION = 3;
 
 bool CssParser::saveToCache(FsFile& file) const {
   if (!file) {
@@ -547,6 +588,7 @@ bool CssParser::saveToCache(FsFile& file) const {
     file.write(static_cast<uint8_t>(style.fontStyle));
     file.write(static_cast<uint8_t>(style.fontWeight));
     file.write(static_cast<uint8_t>(style.textDecoration));
+    file.write(static_cast<uint8_t>(style.writingMode));
 
     // Write CssLength fields (value + unit)
     auto writeLength = [&file](const CssLength& len) {
@@ -579,6 +621,7 @@ bool CssParser::saveToCache(FsFile& file) const {
     if (style.defined.paddingBottom) definedBits |= 1 << 10;
     if (style.defined.paddingLeft) definedBits |= 1 << 11;
     if (style.defined.paddingRight) definedBits |= 1 << 12;
+    if (style.defined.writingMode) definedBits |= 1 << 13;
     file.write(reinterpret_cast<const uint8_t*>(&definedBits), sizeof(definedBits));
   }
 
@@ -651,6 +694,12 @@ bool CssParser::loadFromCache(FsFile& file) {
     }
     style.textDecoration = static_cast<CssTextDecoration>(enumVal);
 
+    if (file.read(&enumVal, 1) != 1) {
+      rulesBySelector_.clear();
+      return false;
+    }
+    style.writingMode = static_cast<CssWritingMode>(enumVal);
+
     // Read CssLength fields
     auto readLength = [&file](CssLength& len) -> bool {
       if (file.read(&len.value, sizeof(len.value)) != sizeof(len.value)) {
@@ -690,6 +739,7 @@ bool CssParser::loadFromCache(FsFile& file) {
     style.defined.paddingBottom = (definedBits & 1 << 10) != 0;
     style.defined.paddingLeft = (definedBits & 1 << 11) != 0;
     style.defined.paddingRight = (definedBits & 1 << 12) != 0;
+    style.defined.writingMode = (definedBits & 1 << 13) != 0;
 
     rulesBySelector_[selector] = style;
   }

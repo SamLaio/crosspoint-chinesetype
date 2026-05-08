@@ -70,6 +70,8 @@ class CssParser {
    * Get count of loaded rule sets
    */
   [[nodiscard]] size_t ruleCount() const { return rulesBySelector_.size(); }
+  [[nodiscard]] bool hasWritingMode() const;
+  [[nodiscard]] CssWritingMode getPrimaryWritingMode() const;
 
   /**
    * Clear all loaded rules
@@ -104,6 +106,7 @@ class CssParser {
   static CssFontStyle interpretFontStyle(const std::string& val);
   static CssFontWeight interpretFontWeight(const std::string& val);
   static CssTextDecoration interpretDecoration(const std::string& val);
+  static CssWritingMode interpretWritingMode(const std::string& val);
   static CssLength interpretLength(const std::string& val);
   static int8_t interpretSpacing(const std::string& val);
 

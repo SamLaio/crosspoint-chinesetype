@@ -21,7 +21,6 @@
 
 namespace {
 constexpr unsigned long skipPageMs = 700;
-constexpr unsigned long goHomeMs = 1000;
 constexpr int loadedMaxPage_per= 500;//新增
 }  // namespace
 
@@ -114,14 +113,7 @@ void XtcReaderActivity::loop() {
     }
   }
 
-  // Long press BACK (1s+) goes directly to home
-  if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= goHomeMs) {
-    onGoHome();
-    return;
-  }
-
-  // Short press BACK goes to file selection
-  if (mappedInput.wasReleased(MappedInputManager::Button::Back) && mappedInput.getHeldTime() < goHomeMs) {
+  if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     onGoBack();
     return;
   }

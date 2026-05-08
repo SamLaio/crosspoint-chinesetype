@@ -43,6 +43,7 @@ inline std::vector<SettingInfo> getSettingsList() {
     SettingInfo::Toggle("劃線", &CrossPointSettings::extraline,"劃線","Reader"),
     SettingInfo::Enum("對齊方式", &CrossPointSettings::paragraphAlignment,
                       {"兩邊對齊", "左對齊", "居中", "右對齊", "書本樣式"}, "對齊方式", "Reader"),
+    SettingInfo::Enum("文字排版", &CrossPointSettings::textLayout, {"橫排", "直排"}, "文字排版", "Reader"),
     SettingInfo::Toggle("是否使用書籍內嵌樣式", &CrossPointSettings::embeddedStyle,"是否使用書籍內嵌樣式","Reader"),
     SettingInfo::Toggle("連字元", &CrossPointSettings::hyphenationEnabled,"連字元","Reader"),
     SettingInfo::Enum("閱讀方向", &CrossPointSettings::orientation,

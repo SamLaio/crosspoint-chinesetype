@@ -54,4 +54,7 @@ class ParsedText {
   void layoutAndExtractLines(const GfxRenderer& renderer, int fontId, uint16_t viewportWidth,
                              const std::function<void(std::shared_ptr<TextBlock>)>& processLine,
                              bool includeLastLine = true);
+  void layoutAndExtractVerticalColumns(const GfxRenderer& renderer, int fontId, uint16_t viewportHeight,
+                                       float lineCompression,
+                                       const std::function<void(std::shared_ptr<TextBlock>)>& processColumn);
 };

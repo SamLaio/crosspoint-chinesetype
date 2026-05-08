@@ -5,6 +5,9 @@
 #include <Serialization.h>
 #include <Utf8.h>
 
+#include <algorithm>
+#include <cstring>
+
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "MappedInputManager.h"
@@ -15,14 +18,21 @@
 #include "TxtReaderChapterSelectionActivity.h"
 
 namespace {
-constexpr unsigned long goHomeMs = 1000;
 constexpr int statusBarMargin = 20;
 constexpr int progressBarMarginTop = 1;
 constexpr size_t CHUNK_SIZE = 8 * 1024;  // 8KB chunk for reading
 
 // Cache file magic and version
 constexpr uint32_t CACHE_MAGIC = 0x54585449;  // "TXTI"
-constexpr uint8_t CACHE_VERSION = 3;          // Increment when cache format changes
+constexpr uint8_t CACHE_VERSION = 4;          // Increment when cache format changes
+
+size_t utf8CharLen(const uint8_t lead) {
+  if ((lead & 0x80) == 0) return 1;
+  if ((lead & 0xE0) == 0xC0) return 2;
+  if ((lead & 0xF0) == 0xE0) return 3;
+  if ((lead & 0xF8) == 0xF0) return 4;
+  return 1;
+}
 
 }  // namespace
 
@@ -133,14 +143,7 @@ void TxtReaderActivity::loop() {
       xSemaphoreGive(renderingMutex);
     }
   }
-  // Long press BACK (1s+) goes directly to home
-  if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= goHomeMs) {
-    onGoHome();
-    return;
-  }
-
-  // Short press BACK goes to file selection
-  if (mappedInput.wasReleased(MappedInputManager::Button::Back) && mappedInput.getHeldTime() < goHomeMs) {
+  if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     onGoBack();
     return;
   }
@@ -176,7 +179,7 @@ void TxtReaderActivity::loop() {
       if (!chapter_initialized) {
         chapter_initializeReader(chapternum);
       }
-      currentPage = totalPages;
+      currentPage = totalPages > 0 ? totalPages - 1 : 0;
       updateRequired = true;
       Serial.printf("[%lu] [TRS] Switch to chapter %d (prev), start from page 0\n", millis(), chapternum);
     }
@@ -185,17 +188,28 @@ void TxtReaderActivity::loop() {
       currentPage++;
       updateRequired = true;
     } else {
-      // 下一章：先獲取總章節數，避免越界
-      //int totalChapters = txt->getTotalChapters(); // todo
-      //if (chapternum < totalChapters - 1) {
-        chapternum++;
-        chapter_initialized = false;  // 重置初始化標記
-        pageOffsets.clear();          // 清空上一章節頁碼
-        totalPages = 0;               // 重置總頁數
-        currentPage = 0;
+      const int nextChapter = chapternum + 1;
+      if (!txt->isChapterExist(nextChapter)) {
+        const int pageBegin = (nextChapter / 25) * 25;
+        txt->parseChapterIndexAndOffset(pageBegin);
+      }
+      if (!txt->isChapterExist(nextChapter)) {
+        const int currentPageBegin = (chapternum / 25) * 25;
+        txt->parseChapterIndexAndOffset(currentPageBegin);
+        currentPage = totalPages > 0 ? totalPages - 1 : 0;
         updateRequired = true;
-        Serial.printf("[%lu] [TRS] Switch to chapter %d (next), start from page 0\n", millis(), chapternum);
-      //}
+        Serial.printf("[%lu] [TRS] Already at final chapter/page, stay on chapter %d page %d\n", millis(), chapternum,
+                      currentPage);
+        return;
+      }
+
+      chapternum = nextChapter;
+      chapter_initialized = false;  // 重置初始化標記
+      pageOffsets.clear();          // 清空上一章節頁碼
+      totalPages = 0;               // 重置總頁數
+      currentPage = 0;
+      updateRequired = true;
+      Serial.printf("[%lu] [TRS] Switch to chapter %d (next), start from page 0\n", millis(), chapternum);
     }
   }
 }
@@ -232,6 +246,10 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
   // Store current settings for cache validation
   cachedFontId = SETTINGS.getReaderFontId();
   cachedParagraphAlignment = SETTINGS.paragraphAlignment;
+  cachedScreenMargin = SETTINGS.screenMargin_Top + SETTINGS.screenMargin_Bottom + SETTINGS.screenMargin_Left +
+                       SETTINGS.screenMargin_Right;
+  needIndent = SETTINGS.firstlineintented;
+  wordSpacing = 1 + (SETTINGS.wordSpacing * 5);
 
   // Calculate viewport dimensions
   int orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft;
@@ -260,15 +278,26 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
   orientedMarginBottom += SETTINGS.screenMargin_Bottom;
   
   viewportWidth = renderer.getScreenWidth() - orientedMarginLeft - orientedMarginRight;
-  const int viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;
+  viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;
   //行距加這裡？
   float lineHeight = renderer.getLineHeight(cachedFontId)* SETTINGS.getReaderLineCompression();
 
-  linesPerPage = viewportHeight / lineHeight;
-  if (linesPerPage < 1) linesPerPage = 1;
+  if (SETTINGS.textLayout == CrossPointSettings::TEXT_VERTICAL) {
+    charsPerColumn = (viewportHeight - 2) / lineHeight;
+    if (charsPerColumn < 1) charsPerColumn = 1;
+    const int columnWidth = renderer.getTextWidth(cachedFontId, "中") + wordSpacing + 2;
+    columnsPerPage = (viewportWidth - 2) / std::max(columnWidth, 1);
+    if (columnsPerPage < 1) columnsPerPage = 1;
+    linesPerPage = columnsPerPage;
+  } else {
+    linesPerPage = viewportHeight / lineHeight;
+    if (linesPerPage < 1) linesPerPage = 1;
+    charsPerColumn = 0;
+    columnsPerPage = 0;
+  }
 
-  Serial.printf("[%lu] [TRS] Viewport: %dx%d, lines per page: %d (chapter %d)\n", millis(), viewportWidth, viewportHeight,
-                linesPerPage, chapter_num);
+  Serial.printf("[%lu] [TRS] Viewport: %dx%d, lines per page: %d, chars per column: %d (chapter %d)\n", millis(),
+                viewportWidth, viewportHeight, linesPerPage, charsPerColumn, chapter_num);
 
   if (!chapter_loadPageIndexCache(chapter_num)) {
     // Cache not found, build page index for current chapter
@@ -286,24 +315,23 @@ void TxtReaderActivity::chapter_initializeReader(int chapter_num) {
     // 帶重試的章節起止偏移獲取：重試時僅等待，不重複觸發重解析
     size_t chapterOffsetbegin = txt->getChapterOffsetByIndex(chapter_num);
     size_t chapterOffsetend = txt->getChapterendOffsetByIndex(chapter_num);
-    for (int r = 0; r < 5 && (chapterOffsetbegin == 0 || chapterOffsetend == 0); r++) {
+    for (int r = 0; r < 5 && !txt->isChapterExist(chapter_num); r++) {
       vTaskDelay(20 / portTICK_PERIOD_MS);
       chapterOffsetbegin = txt->getChapterOffsetByIndex(chapter_num);
       chapterOffsetend = txt->getChapterendOffsetByIndex(chapter_num);
       Serial.printf("[TRS] Retry get chapter %d range (attempt %d)\n", chapter_num, r + 1);
     }
 
+    if (!txt->isChapterExist(chapter_num)) {
+      Serial.printf("[%lu] [TRS] Chapter %d not found, cannot build page index\n", millis(), chapter_num);
+      totalPages = 0;
+      return;
+    }
 
     // 處理最後一章：結束位置為檔案末尾
     if (chapterOffsetend == 0 || chapterOffsetend <= chapterOffsetbegin) {
       chapterOffsetend = txt->getFileSize();
     }
-    //加個判斷防止解析全書
-    if (chapterOffsetend - chapterOffsetbegin > 100000) {
-    Serial.printf("[%lu] [TRS] 章節讀取失敗，確認鍵進入目錄重選\n", 
-                  millis());
-    return;
-   }
     buildPageIndex(chapterOffsetbegin, chapterOffsetend - 1);
     //儲存為章節快取
     chapter_savePageIndexCache(chapter_num);
@@ -395,6 +423,85 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset,size_t endOffset, std::ve
     return false;
   }
   buffer[chunkSize] = '\0';
+
+  if (SETTINGS.textLayout == CrossPointSettings::TEXT_VERTICAL) {
+    const std::string indentStr = "\xe2\x80\x83\xe2\x80\x83";
+    const int maxColumns = std::max(columnsPerPage, 1);
+    const int maxChars = std::max(charsPerColumn, 1);
+    int columnChars = 0;
+    std::string column;
+    bool verticalNeedIndent = SETTINGS.firstlineintented;
+    size_t pos = 0;
+
+    if (offset > 0) {
+      uint8_t previousByte = 0;
+      if (txt->readContent(&previousByte, offset - 1, 1)) {
+        verticalNeedIndent = SETTINGS.firstlineintented && (previousByte == '\n' || previousByte == '\r');
+      }
+    }
+
+    auto pushColumn = [&]() {
+      outLines.push_back(column);
+      column.clear();
+      columnChars = 0;
+    };
+
+    while (pos < chunkSize && static_cast<int>(outLines.size()) < maxColumns) {
+      const uint8_t byte = buffer[pos];
+      if (byte == '\r') {
+        pos++;
+        continue;
+      }
+      if (byte == '\n') {
+        if (!column.empty()) {
+          pushColumn();
+        }
+        verticalNeedIndent = SETTINGS.firstlineintented;
+        pos++;
+        continue;
+      }
+
+      if (columnChars >= maxChars) {
+        pushColumn();
+        if (static_cast<int>(outLines.size()) >= maxColumns) {
+          break;
+        }
+      }
+
+      size_t charLen = utf8CharLen(byte);
+      if (pos + charLen > chunkSize) {
+        break;
+      }
+      if (verticalNeedIndent && column.empty()) {
+        const bool hasLeadingIndent = pos + indentStr.size() <= chunkSize &&
+                                      memcmp(buffer + pos, indentStr.data(), indentStr.size()) == 0;
+        if (hasLeadingIndent) {
+          verticalNeedIndent = false;
+        } else if (maxChars > 2) {
+          column.append(indentStr);
+          columnChars += 2;
+          verticalNeedIndent = false;
+        } else {
+          verticalNeedIndent = false;
+        }
+      }
+      column.append(reinterpret_cast<char*>(buffer + pos), charLen);
+      pos += charLen;
+      columnChars++;
+    }
+
+    if (!column.empty() && static_cast<int>(outLines.size()) < maxColumns) {
+      pushColumn();
+    }
+
+    if (pos == 0 && !outLines.empty()) {
+      pos = 1;
+    }
+
+    nextOffset = std::min(offset + pos, virtualFileEnd);
+    free(buffer);
+    return !outLines.empty();
+  }
 
   // Parse lines from buffer
   size_t pos = 0;
@@ -575,8 +682,7 @@ void TxtReaderActivity::renderPage() {
   float lineHeight = renderer.getLineHeight(cachedFontId)* SETTINGS.getReaderLineCompression();
   const int contentWidth = viewportWidth;
 
-  // Render text lines with alignment
-  auto renderLines = [&]() {
+  auto renderHorizontalLines = [&]() {
     int y = orientedMarginTop;
     for (const auto& line : currentPageLines) {
       if (!line.empty()) {
@@ -610,8 +716,76 @@ void TxtReaderActivity::renderPage() {
     }
   };
 
+  auto renderVerticalColumns = [&]() {
+    const int columnWidth = renderer.getTextWidth(cachedFontId, "中") + wordSpacing + 2;
+    const int minX = orientedMarginLeft;
+    const int maxX = renderer.getScreenWidth() - orientedMarginRight;
+    const int minY = orientedMarginTop;
+    const int maxY = renderer.getScreenHeight() - orientedMarginBottom;
+    const int contentHeight = maxY - minY;
+    auto countUtf8Chars = [](const std::string& text) {
+      int count = 0;
+      for (size_t i = 0; i < text.size();) {
+        const size_t charLen = utf8CharLen(static_cast<uint8_t>(text[i]));
+        i += std::max<size_t>(charLen, 1);
+        count++;
+      }
+      return count;
+    };
+    int x = maxX - columnWidth;
+    for (const auto& column : currentPageLines) {
+      if (x < minX) {
+        break;
+      }
+      int y = minY;
+      const int columnTextHeight = static_cast<int>(countUtf8Chars(column) * lineHeight);
+      switch (cachedParagraphAlignment) {
+        case CrossPointSettings::CENTER_ALIGN:
+          y = minY + std::max(0, (contentHeight - columnTextHeight) / 2);
+          break;
+        case CrossPointSettings::RIGHT_ALIGN:
+          y = maxY - columnTextHeight;
+          if (y < minY) y = minY;
+          break;
+        case CrossPointSettings::JUSTIFIED:
+        case CrossPointSettings::LEFT_ALIGN:
+        case CrossPointSettings::BOOK_STYLE:
+        default:
+          break;
+      }
+      for (size_t i = 0; i < column.size();) {
+        const size_t charLen = utf8CharLen(static_cast<uint8_t>(column[i]));
+        const std::string ch = column.substr(i, charLen);
+        if (y + lineHeight > maxY) {
+          break;
+        }
+        const int charWidth = renderer.getTextWidth(cachedFontId, ch.c_str());
+        int drawX = x + (columnWidth - charWidth) / 2;
+        drawX = std::max(minX, std::min(drawX, maxX - charWidth));
+        if (drawX < minX || drawX + charWidth > maxX) {
+          break;
+        }
+        renderer.drawText(cachedFontId, drawX, y, ch.c_str());
+        y += lineHeight;
+        i += charLen;
+      }
+      x -= columnWidth;
+      if (x < minX) {
+        break;
+      }
+    }
+  };
+
+  auto renderText = [&]() {
+    if (SETTINGS.textLayout == CrossPointSettings::TEXT_VERTICAL) {
+      renderVerticalColumns();
+    } else {
+      renderHorizontalLines();
+    }
+  };
+
   // First pass: BW rendering
-  renderLines();
+  renderText();
   renderStatusBar(orientedMarginRight, orientedMarginBottom, orientedMarginTop, orientedMarginLeft);
 
   if (pagesUntilFullRefresh <= 1) {
@@ -629,12 +803,12 @@ void TxtReaderActivity::renderPage() {
 
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
-    renderLines();
+    renderText();
     renderer.copyGrayscaleLsbBuffers();
 
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
-    renderLines();
+    renderText();
     renderer.copyGrayscaleMsbBuffers();
 
     renderer.displayGrayBuffer();
@@ -899,10 +1073,10 @@ bool TxtReaderActivity::chapter_loadPageIndexCache(int chapternum) {
     return false;
   }
 
-  bool needIndent;
-  Serial.printf("[%lu] [TRS] first line indent: %d\n", millis(), needIndent);
-  serialization::readPod(f, needIndent);
-  if (needIndent != SETTINGS.firstlineintented) {
+  bool cachedFirstLineIndent;
+  serialization::readPod(f, cachedFirstLineIndent);
+  Serial.printf("[%lu] [TRS] first line indent: %d\n", millis(), cachedFirstLineIndent);
+  if (cachedFirstLineIndent != SETTINGS.firstlineintented) {
     Serial.printf("[%lu] [TRS] Cache first line indent mismatch, rebuilding\n", millis());
     f.close();
     return false;
@@ -920,6 +1094,22 @@ bool TxtReaderActivity::chapter_loadPageIndexCache(int chapternum) {
   serialization::readPod(f, alignment);
   if (alignment != cachedParagraphAlignment) {
     Serial.printf("[%lu] [TRS] Cache paragraph alignment mismatch, rebuilding\n", millis());
+    f.close();
+    return false;
+  }
+
+  uint8_t textLayout;
+  serialization::readPod(f, textLayout);
+  if (textLayout != SETTINGS.textLayout) {
+    Serial.printf("[%lu] [TRS] Cache text layout mismatch, rebuilding\n", millis());
+    f.close();
+    return false;
+  }
+
+  int32_t cachedCharsPerColumn;
+  serialization::readPod(f, cachedCharsPerColumn);
+  if (SETTINGS.textLayout == CrossPointSettings::TEXT_VERTICAL && cachedCharsPerColumn != charsPerColumn) {
+    Serial.printf("[%lu] [TRS] Cache chars per column mismatch, rebuilding\n", millis());
     f.close();
     return false;
   }
@@ -965,6 +1155,8 @@ void TxtReaderActivity::chapter_savePageIndexCache(int chapternum) const {
   //結束
   serialization::writePod(f, static_cast<int32_t>(cachedScreenMargin));
   serialization::writePod(f, cachedParagraphAlignment);
+  serialization::writePod(f, SETTINGS.textLayout);
+  serialization::writePod(f, static_cast<int32_t>(charsPerColumn));
   serialization::writePod(f, static_cast<uint32_t>(pageOffsets.size()));
 
   // Write page offsets

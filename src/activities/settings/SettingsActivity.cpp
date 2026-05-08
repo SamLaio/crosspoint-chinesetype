@@ -2,6 +2,7 @@
 
 #include <GfxRenderer.h>
 #include <HardwareSerial.h>
+#include <SDCardManager.h>
 
 #include "ButtonRemapActivity.h"
 #include "CalibreSettingsActivity.h"
@@ -24,7 +25,38 @@
 const char* SettingsActivity::categoryNames[categoryCount] = {"Display", "Reader", "Controls", "System"};
 
 namespace {
-constexpr int changeTabsMs = 700;
+void clearTxtReaderCaches() {
+  auto root = SdMan.open("/.crosspoint");
+  if (!root || !root.isDirectory()) {
+    Serial.printf("[%lu] [SETTINGS] TXT cache directory not found\n", millis());
+    if (root) root.close();
+    return;
+  }
+
+  int clearedCount = 0;
+  int failedCount = 0;
+  char name[128];
+  for (auto file = root.openNextFile(); file; file = root.openNextFile()) {
+    file.getName(name, sizeof(name));
+    String itemName(name);
+    if (file.isDirectory() && itemName.startsWith("txt_")) {
+      String fullPath = "/.crosspoint/" + itemName;
+      file.close();
+      if (SdMan.removeDir(fullPath.c_str())) {
+        clearedCount++;
+      } else {
+        failedCount++;
+        Serial.printf("[%lu] [SETTINGS] Failed to remove TXT cache: %s\n", millis(), fullPath.c_str());
+      }
+    } else {
+      file.close();
+    }
+  }
+  root.close();
+
+  Serial.printf("[%lu] [SETTINGS] Reader settings changed, TXT cache cleared: %d removed, %d failed\n", millis(),
+                clearedCount, failedCount);
+}
 
 }  // namespace
 
@@ -36,6 +68,7 @@ void SettingsActivity::taskTrampoline(void* param) {
 void SettingsActivity::onEnter() {
   Activity::onEnter();
   renderingMutex = xSemaphoreCreateMutex();
+  readerSettingsOnEnter = captureReaderSettings();
 
   // Build per-category vectors from the shared settings list
   displaySettings.clear();
@@ -108,23 +141,11 @@ void SettingsActivity::loop() {
     subActivity->loop();
     return;
   }
-  bool hasChangedCategory = false;
 
-  // Handle actions with early return
-  if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
-    if (selectedSettingIndex == 0) {
-      selectedCategoryIndex = (selectedCategoryIndex < categoryCount - 1) ? (selectedCategoryIndex + 1) : 0;
-      hasChangedCategory = true;
-      updateRequired = true;
-    } else {
-      toggleCurrentSetting();
-      updateRequired = true;
-      return;
-    }
-  }
-
-  if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
+  if (mappedInput.wasPressed(MappedInputManager::Button::Back) ||
+      mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
     SETTINGS.saveToFile();
+    clearTxtCachesIfReaderSettingsChanged();
     EpdFontLoader::loadFontsFromSd(renderer);
     onGoHome();
     return;
@@ -134,46 +155,42 @@ void SettingsActivity::loop() {
   const bool downReleased = mappedInput.wasReleased(MappedInputManager::Button::Down);
   const bool leftReleased = mappedInput.wasReleased(MappedInputManager::Button::Left);
   const bool rightReleased = mappedInput.wasReleased(MappedInputManager::Button::Right);
-  const bool changeTab = mappedInput.getHeldTime() > changeTabsMs;
 
-  // Handle navigation
-  if (upReleased && changeTab) {
-    hasChangedCategory = true;
-    selectedCategoryIndex = (selectedCategoryIndex > 0) ? (selectedCategoryIndex - 1) : (categoryCount - 1);
-    updateRequired = true;
-  } else if (downReleased && changeTab) {
-    hasChangedCategory = true;
-    selectedCategoryIndex = (selectedCategoryIndex < categoryCount - 1) ? (selectedCategoryIndex + 1) : 0;
-    updateRequired = true;
-  } else if (upReleased || leftReleased) {
+  if (upReleased) {
     selectedSettingIndex = (selectedSettingIndex > 0) ? (selectedSettingIndex - 1) : (settingsCount);
     updateRequired = true;
-  } else if (rightReleased || downReleased) {
+  } else if (downReleased) {
     selectedSettingIndex = (selectedSettingIndex < settingsCount) ? (selectedSettingIndex + 1) : 0;
     updateRequired = true;
   }
 
-  if (hasChangedCategory) {
-    selectedSettingIndex = (selectedSettingIndex == 0) ? 0 : 1;
-    switch (selectedCategoryIndex) {
-      case 0:  // Display
-        currentSettings = &displaySettings;
-        break;
-      case 1:  // Reader
-        currentSettings = &readerSettings;
-        break;
-      case 2:  // Controls
-        currentSettings = &controlsSettings;
-        break;
-      case 3:  // System
-        currentSettings = &systemSettings;
-        break;
+  if (leftReleased || rightReleased) {
+    const int direction = rightReleased ? 1 : -1;
+    if (selectedSettingIndex == 0) {
+      selectedCategoryIndex = (selectedCategoryIndex + direction + categoryCount) % categoryCount;
+      switch (selectedCategoryIndex) {
+        case 0:  // Display
+          currentSettings = &displaySettings;
+          break;
+        case 1:  // Reader
+          currentSettings = &readerSettings;
+          break;
+        case 2:  // Controls
+          currentSettings = &controlsSettings;
+          break;
+        case 3:  // System
+          currentSettings = &systemSettings;
+          break;
+      }
+      settingsCount = static_cast<int>(currentSettings->size());
+    } else {
+      adjustCurrentSetting(direction);
     }
-     settingsCount = static_cast<int>(currentSettings->size());
+    updateRequired = true;
   }
 }
 
-void SettingsActivity::toggleCurrentSetting() {
+void SettingsActivity::adjustCurrentSetting(int direction) {
   int selectedSetting = selectedSettingIndex - 1;
   if (selectedSetting < 0 || selectedSetting >= settingsCount) {
     return;
@@ -187,21 +204,27 @@ void SettingsActivity::toggleCurrentSetting() {
     SETTINGS.*(setting.valuePtr) = !currentValue;
   } else if (setting.type == SettingType::ENUM && setting.valuePtr != nullptr) {
     const uint8_t currentValue = SETTINGS.*(setting.valuePtr);
-    SETTINGS.*(setting.valuePtr) = (currentValue + 1) % static_cast<uint8_t>(setting.enumValues.size());
+    const int valueCount = static_cast<int>(setting.enumValues.size());
+    if (valueCount <= 0) {
+      return;
+    }
+    SETTINGS.*(setting.valuePtr) = static_cast<uint8_t>((currentValue + direction + valueCount) % valueCount);
 } else if (setting.type == SettingType::VALUE && setting.valuePtr != nullptr) {
     // ========== 匹配 ValueRange 結構體的 VALUE 邏輯 ==========
     // 1. 讀取當前值（型別匹配：uint8_t，避免有符號/無符號錯誤）
     const uint8_t currentValue = SETTINGS.*(setting.valuePtr); 
-    // 2. 計算新值：當前值 + 步長（改用 valueRange.step）
-    uint8_t newValue = currentValue + setting.valueRange.step;
-    // 3. 迴圈邏輯：超過最大值則回到最小值（改用 valueRange.min/max）
-    // 比如 40 + 5 = 45 > 40 → 重置為 0；35 + 5 = 40 ≤40 → 保留40
+    int newValue = currentValue + direction * setting.valueRange.step;
     if (newValue > setting.valueRange.max) {
         newValue = setting.valueRange.min;
-    }   
+    } else if (newValue < setting.valueRange.min) {
+        newValue = setting.valueRange.max;
+    }
     // 4. 寫回新值（這一步是真正改變數值的核心）
-    SETTINGS.*(setting.valuePtr) = newValue;
+    SETTINGS.*(setting.valuePtr) = static_cast<uint8_t>(newValue);
 } else if (setting.type == SettingType::ACTION) {
+    if (direction < 0) {
+      return;
+    }
     if (strcmp(setting.name, "Remap Front Buttons") == 0) {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       exitActivity();
@@ -267,6 +290,51 @@ void SettingsActivity::toggleCurrentSetting() {
   }
 
   SETTINGS.saveToFile();
+}
+
+SettingsActivity::ReaderSettingsSnapshot SettingsActivity::captureReaderSettings() const {
+  ReaderSettingsSnapshot snapshot;
+  snapshot.fontFamily = SETTINGS.fontFamily;
+  snapshot.fontSize = SETTINGS.fontSize;
+  snapshot.lineSpacing = SETTINGS.lineSpacing;
+  snapshot.firstlineintented = SETTINGS.firstlineintented;
+  snapshot.wordSpacing = SETTINGS.wordSpacing;
+  snapshot.screenMarginTop = SETTINGS.screenMargin_Top;
+  snapshot.screenMarginBottom = SETTINGS.screenMargin_Bottom;
+  snapshot.screenMarginLeft = SETTINGS.screenMargin_Left;
+  snapshot.screenMarginRight = SETTINGS.screenMargin_Right;
+  snapshot.extraline = SETTINGS.extraline;
+  snapshot.paragraphAlignment = SETTINGS.paragraphAlignment;
+  snapshot.textLayout = SETTINGS.textLayout;
+  snapshot.orientation = SETTINGS.orientation;
+  snapshot.extraParagraphSpacing = SETTINGS.extraParagraphSpacing;
+  snapshot.textAntiAliasing = SETTINGS.textAntiAliasing;
+  return snapshot;
+}
+
+bool SettingsActivity::readerSettingsChanged() const {
+  const auto current = captureReaderSettings();
+  return readerSettingsOnEnter.fontFamily != current.fontFamily || readerSettingsOnEnter.fontSize != current.fontSize ||
+         readerSettingsOnEnter.lineSpacing != current.lineSpacing ||
+         readerSettingsOnEnter.firstlineintented != current.firstlineintented ||
+         readerSettingsOnEnter.wordSpacing != current.wordSpacing ||
+         readerSettingsOnEnter.screenMarginTop != current.screenMarginTop ||
+         readerSettingsOnEnter.screenMarginBottom != current.screenMarginBottom ||
+         readerSettingsOnEnter.screenMarginLeft != current.screenMarginLeft ||
+         readerSettingsOnEnter.screenMarginRight != current.screenMarginRight ||
+         readerSettingsOnEnter.extraline != current.extraline ||
+         readerSettingsOnEnter.paragraphAlignment != current.paragraphAlignment ||
+         readerSettingsOnEnter.textLayout != current.textLayout || readerSettingsOnEnter.orientation != current.orientation ||
+         readerSettingsOnEnter.extraParagraphSpacing != current.extraParagraphSpacing ||
+         readerSettingsOnEnter.textAntiAliasing != current.textAntiAliasing;
+}
+
+void SettingsActivity::clearTxtCachesIfReaderSettingsChanged() {
+  if (!readerSettingsChanged()) {
+    return;
+  }
+  clearTxtReaderCaches();
+  readerSettingsOnEnter = captureReaderSettings();
 }
 
 void SettingsActivity::displayTaskLoop() {
@@ -348,7 +416,7 @@ void SettingsActivity::render() const {
                     metrics.versionTextY, CROSSPOINT_VERSION);
 
   // Draw help text
-  const auto labels = mappedInput.mapLabels(getChineseName("« Back"), getChineseName("Toggle"), getChineseName("Up"), getChineseName("Down"));
+  const auto labels = mappedInput.mapLabels("返回", "返回", "前項", "後項");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   // Always use standard refresh for settings screen

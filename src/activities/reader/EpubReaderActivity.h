@@ -14,6 +14,7 @@ class EpubReaderActivity final : public ActivityWithSubactivity {
   enum class EPUBState {
       READING,
       SETTING,
+      LAYOUT_CONFLICT,
       LEFT_MARGIN_SETTING,
       RIGHT_MARGIN_SETTING,
       TOP_MARGIN_SETTING, 
@@ -40,6 +41,8 @@ class EpubReaderActivity final : public ActivityWithSubactivity {
   bool pendingGoHome = false;           // Defer go home to avoid race condition with display task
   bool skipNextButtonCheck = false;     // Skip button processing for one frame after subactivity exit
   bool pendingMarginRelayout = false;   // Defer heavy section relayout until margin-setting is confirmed
+  bool useBookEmbeddedStyle = true;      // Per-open EPUB style choice after resolving layout conflicts
+  int layoutConflictSelection = 0;       // 0 = book CSS layout, 1 = reader setting layout
   const std::function<void()> onGoBack;
   const std::function<void()> onGoHome;
 
@@ -56,7 +59,10 @@ class EpubReaderActivity final : public ActivityWithSubactivity {
   void onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction action);
   void applyOrientation(uint8_t orientation);
 
-  void renderPngSleepScreen(GfxRenderer& renderer) const;
+  void renderPngSleepScreen(GfxRenderer& renderer, bool verticalLayout) const;
+  void renderLayoutConflictPrompt();
+  bool shouldAskLayoutConflict() const;
+  void applyLayoutConflictChoice();
 
   static EPUBState state;
 

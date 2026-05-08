@@ -14,9 +14,7 @@
 
 
 namespace {
-constexpr int SKIP_PAGE_MS = 700;
-constexpr unsigned long GO_HOME_MS = 1000;
-//防止誤刪，把刪除改為長按confirm
+constexpr unsigned long SHOW_ACTION_MENU_MS = 700;
 constexpr int COPY_BUF_SIZE = 256; // 256位元組緩衝區，適配小運存
 }  // namespace
 //把原來幾個函式加上
@@ -285,15 +283,15 @@ void MyLibraryActivity::onEnter() {
   loadFiles();
 
   selectorIndex = 0;
-  //新增
-  topSelectorIndex = TopOption::OPEN;
+  topSelectorIndex = TopOption::CANCEL;
+  actionMenuVisible = false;
+  ignoreActionMenuConfirmRelease = false;
   copySourcePath = "";
   hasCopyData = false;
   isCutMode = false; 
   isSearchMode = false;
   searchResults.clear();
   originalBasePath = "";
-  //新增結束
 
   updateRequired = true;
 
@@ -340,28 +338,41 @@ void MyLibraryActivity::loop() {
       pendingSearch = false;
       updateRequired = true;
   }
-  // Long press BACK (1s+) goes to root folder
-  if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= GO_HOME_MS &&
-      basepath != "/") {
-    basepath = "/";
-    loadFiles();
-    selectorIndex = 0;
+  if (!actionMenuVisible && mappedInput.isPressed(MappedInputManager::Button::Confirm) &&
+      mappedInput.getHeldTime() >= SHOW_ACTION_MENU_MS) {
+    actionMenuVisible = true;
+    ignoreActionMenuConfirmRelease = true;
+    topSelectorIndex = TopOption::CANCEL;
     updateRequired = true;
     return;
   }
- //新增開始
-   const bool topPrevPressed = mappedInput.wasReleased(MappedInputManager::Button::Left);
-  const bool topNextPressed = mappedInput.wasReleased(MappedInputManager::Button::Right);
-  
-  if (topPrevPressed) {
-    topSelectorIndex = (TopOption)(((int)topSelectorIndex - 1 + topOptionCount) % topOptionCount);
-    updateRequired = true;
-  } else if (topNextPressed) {
-    topSelectorIndex = (TopOption)(((int)topSelectorIndex + 1) % topOptionCount);
-    updateRequired = true;
+
+  if (actionMenuVisible) {
+    if (ignoreActionMenuConfirmRelease && mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+      ignoreActionMenuConfirmRelease = false;
+      return;
+    }
+    if (mappedInput.wasReleased(MappedInputManager::Button::Left)) {
+      topSelectorIndex = (TopOption)(((int)topSelectorIndex - 1 + topOptionCount) % topOptionCount);
+      updateRequired = true;
+      return;
+    }
+    if (mappedInput.wasReleased(MappedInputManager::Button::Right)) {
+      topSelectorIndex = (TopOption)(((int)topSelectorIndex + 1) % topOptionCount);
+      updateRequired = true;
+      return;
+    }
   }
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    if (actionMenuVisible && topSelectorIndex == TopOption::CANCEL) {
+      actionMenuVisible = false;
+      ignoreActionMenuConfirmRelease = false;
+      topSelectorIndex = TopOption::CANCEL;
+      updateRequired = true;
+      return;
+    }
+
     // ===== 新增：統一獲取選中項的完整路徑 =====
     std::string selectedItem;    // 選中的項（檔名/完整路徑）
     std::string fullPath;        // 最終要操作的完整路徑
@@ -388,47 +399,49 @@ void MyLibraryActivity::loop() {
     // 無有效選中項，直接返回
     if (!hasValidSelection) return;
 
-    // ===== 原有邏輯全部改用 fullPath/selectedItem，不再用 files[selectorIndex] =====
-    switch (topSelectorIndex) {
-      case TopOption::OPEN: 
-        if (isSearchMode) {
-          // 搜尋模式：直接開啟（selectedItem是完整路徑，且只有檔案）
+    if (!actionMenuVisible) {
+      if (isSearchMode) {
+        onSelectBook(fullPath);
+      } else {
+        if (selectedItem.back() == '/') {
+          if (basepath != "/") {
+            basepath += "/";
+          }
+          basepath += selectedItem.substr(0, selectedItem.length() - 1);
+          loadFiles();
+          selectorIndex = 0;
+        } else {
           onSelectBook(fullPath);
-        } else {
-          // 普通模式：修復巢狀目錄路徑拼接
-          if (selectedItem.back() == '/') {
-            // 正確拼接巢狀路徑：basepath + "/" + 子目錄名（去掉末尾的/）
-            if (basepath != "/") {
-              basepath += "/"; // 確保basepath以/結尾
-            }
-            basepath += selectedItem.substr(0, selectedItem.length() - 1);
-            loadFiles(); // 重新載入當前巢狀目錄的檔案
-            selectorIndex = 0;
-          } else {
-            onSelectBook(fullPath);
-          }
         }
-        updateRequired = true;
-        return;
+      }
+      updateRequired = true;
+      return;
+    }
 
+    // ===== 操作列邏輯全部改用 fullPath/selectedItem，不再用 files[selectorIndex] =====
+    switch (topSelectorIndex) {
+      case TopOption::CANCEL:
+        actionMenuVisible = false;
+        ignoreActionMenuConfirmRelease = false;
+        topSelectorIndex = TopOption::CANCEL;
+        break;
       case TopOption::DELETE: 
-        if (mappedInput.getHeldTime() >= 500) {
-          deleteFileOrDir(fullPath); // 改用統一的fullPath
-          // 刪除後重新整理列表（區分模式）
-          if (isSearchMode) {
-            executeSearch(); // 搜尋模式：重新搜尋
-          } else {
-            loadFiles();     // 普通模式：重新載入
-          }
+        deleteFileOrDir(fullPath); // 改用統一的fullPath
+        if (isSearchMode) {
+          executeSearch(); // 搜尋模式：重新搜尋
         } else {
-          Serial.printf("[刪除] 需長按Confirm確認刪除\n");
+          loadFiles();     // 普通模式：重新載入
         }
+        actionMenuVisible = false;
+        ignoreActionMenuConfirmRelease = false;
         break;
 
       case TopOption::COPY: 
         copySourcePath = fullPath; // 改用統一的fullPath
         hasCopyData = true;
         isCutMode = false;
+        actionMenuVisible = false;
+        ignoreActionMenuConfirmRelease = false;
         Serial.printf("[複製] 已選中：%s\n", copySourcePath.c_str());
         break;
 
@@ -436,6 +449,8 @@ void MyLibraryActivity::loop() {
         copySourcePath = fullPath; // 改用統一的fullPath
         hasCopyData = true;
         isCutMode = true;
+        actionMenuVisible = false;
+        ignoreActionMenuConfirmRelease = false;
         Serial.printf("[剪下] 已選中：%s（貼上後將刪除原始檔）\n", copySourcePath.c_str());
         break;
 
@@ -466,6 +481,8 @@ void MyLibraryActivity::loop() {
 
         hasCopyData = false;
         copySourcePath = "";
+        actionMenuVisible = false;
+        ignoreActionMenuConfirmRelease = false;
         // 貼上後重新整理列表（區分模式）
         if (isSearchMode) {
           executeSearch();
@@ -475,14 +492,6 @@ void MyLibraryActivity::loop() {
         break;
       }
 
-      // case TopOption::SEARCH:
-      //   if (!isSearchMode) {
-      //     executeSearch();
-      //   }
-      //   break;
-      // case TopOption::CANCEL_SEARCH:
-      //   cancelSearch();
-      //   break;
     }
     updateRequired = true;
     return;
@@ -497,16 +506,14 @@ void MyLibraryActivity::loop() {
   ;
   const bool downReleased = mappedInput.wasReleased(MappedInputManager::Button::Down);
 
-  const bool skipPage = mappedInput.getHeldTime() > SKIP_PAGE_MS;
-  const int pageItems = UITheme::getInstance().getNumberOfItemsPerPage(renderer, true, false, true, false);
-
-  //把檔案開啟的邏輯放上面了
-  //這裡去掉了
-  //後面沒動
-
 if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-  // Short press: go up one directory, or go home if at root
-  if (mappedInput.getHeldTime() < GO_HOME_MS) {
+  if (actionMenuVisible) {
+    actionMenuVisible = false;
+    ignoreActionMenuConfirmRelease = false;
+    topSelectorIndex = TopOption::CANCEL;
+    updateRequired = true;
+    return;
+  }
     if (basepath != "/") {
       const std::string oldPath = basepath;
 
@@ -525,24 +532,18 @@ if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     } else {
       onGoHome();
     }
-  }
 }
 
   const auto& displayList = isSearchMode ? searchResults : files;
   int listSize = static_cast<int>(displayList.size());
+  if (listSize <= 0) {
+    return;
+  }
   if (upReleased) {
-    if (skipPage) {
-      selectorIndex = std::max(static_cast<int>((selectorIndex / pageItems - 1) * pageItems), 0);
-    } else {
-      selectorIndex = (selectorIndex + listSize - 1) % listSize;
-    }
+    selectorIndex = (selectorIndex + listSize - 1) % listSize;
     updateRequired = true;
   } else if (downReleased) {
-    if (skipPage) {
-      selectorIndex = std::min(static_cast<int>((selectorIndex / pageItems + 1) * pageItems), listSize - 1);
-    } else {
-      selectorIndex = (selectorIndex + 1) % listSize;
-    }
+    selectorIndex = (selectorIndex + 1) % listSize;
     updateRequired = true;
   }
 }
@@ -571,42 +572,40 @@ void MyLibraryActivity::render() const {
   auto metrics = UITheme::getInstance().getMetrics();
   auto folderName = basepath == "/" ? "SD card" : basepath.substr(basepath.rfind('/') + 1).c_str();
   GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, folderName);
-  //開始新增
-  //constexpr const char* topItems[7] = {"開啟", "刪除", "複製", "剪下", "貼上", "搜尋", "取消搜尋"};
-  constexpr const char* topItems[5] = {"開啟", "刪除", "複製", "剪下", "貼上"};
-  constexpr int margin = 10;
-  constexpr int menuSpacing = 5;
-  const int menuTileWidth = (pageWidth - 2 * margin - 3 * menuSpacing) / 4;
-  constexpr int menuTileHeight = 30;
-  constexpr int topMenuY = 15;
- // 分頁顯示（一行3個）防止擋電源
-  int startIdx = ((int)topSelectorIndex / 3) * 3;
-  if (startIdx + 3 > 5) startIdx = 3;
+  if (actionMenuVisible) {
+    constexpr const char* topItems[topOptionCount] = {"取消", "刪除", "複製", "剪下", "貼上"};
+    constexpr int visibleActionItems = 3;
+    constexpr int margin = 10;
+    constexpr int menuSpacing = 5;
+    const int menuTileWidth = (pageWidth - 2 * margin - (visibleActionItems - 1) * menuSpacing) / visibleActionItems;
+    constexpr int menuTileHeight = 28;
+    const int topMenuY = metrics.topPadding + metrics.headerHeight - menuTileHeight - 5;
+    int startIdx = ((int)topSelectorIndex / visibleActionItems) * visibleActionItems;
 
-  for (int i = 0; i < 3; i++) {
-    int btnIdx = startIdx + i;
-    if (btnIdx >= 5) break;
-    
-    int tileX = margin + i * (menuTileWidth + menuSpacing);
-    int tileY = topMenuY;
-    bool selected = (TopOption)btnIdx == topSelectorIndex;
+    for (int i = 0; i < visibleActionItems; i++) {
+      const int itemIndex = startIdx + i;
+      if (itemIndex >= topOptionCount) {
+        break;
+      }
 
-    if (selected) {
-      renderer.fillRect(tileX, tileY, menuTileWidth, menuTileHeight);
-    } else {
-      renderer.drawRect(tileX, tileY, menuTileWidth, menuTileHeight);
+      const int tileX = margin + i * (menuTileWidth + menuSpacing);
+      const int tileY = topMenuY;
+      const bool selected = (TopOption)itemIndex == topSelectorIndex;
+
+      if (selected) {
+        renderer.fillRect(tileX, tileY, menuTileWidth, menuTileHeight);
+      } else {
+        renderer.drawRect(tileX, tileY, menuTileWidth, menuTileHeight);
+      }
+
+      const int textX = tileX + (menuTileWidth - renderer.getTextWidth(UI_10_FONT_ID, topItems[itemIndex])) / 2;
+      const int textY = tileY + (menuTileHeight - renderer.getLineHeight(UI_10_FONT_ID)) / 2;
+      renderer.drawText(UI_10_FONT_ID, textX, textY, topItems[itemIndex], !selected, EpdFontFamily::BOLD);
     }
-
-    int buttonCenterY = tileY;
-    int textX = tileX + (menuTileWidth - renderer.getTextWidth(UI_10_FONT_ID, topItems[btnIdx])) / 2;
-    renderer.drawText(UI_10_FONT_ID, textX, buttonCenterY, topItems[btnIdx], !selected, EpdFontFamily::BOLD);
   }
-  //新增結束
-
-
 
   const int contentTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
-  const int contentHeight = pageHeight - contentTop - metrics.buttonHintsHeight - metrics.verticalSpacing;
+  const int contentHeight = pageHeight - contentTop - metrics.verticalSpacing;
 
   // 核心：根據是否搜尋模式，選擇要顯示的列表（files 或 searchResults）
   const auto& displayList = isSearchMode ? searchResults : files;
@@ -631,9 +630,6 @@ void MyLibraryActivity::render() const {
   }
   //側邊繪製，防止有的使用者問
   GUI.drawSideButtonHints(renderer, "向上", "向下");
-  // Help text
-  const auto labels = mappedInput.mapLabels("« 返回", "選擇", "左選", "右選");
-  GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
 }

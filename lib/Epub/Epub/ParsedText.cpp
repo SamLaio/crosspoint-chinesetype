@@ -132,6 +132,14 @@ bool shouldApplyInterWordSpacing(const std::string& previousUnit, const std::str
   // create stretchable word gaps for justification.
   return !isCJKUnit(previousUnit) && !isCJKUnit(currentUnit);
 }
+
+size_t utf8CharLength(const unsigned char c) {
+  if (c < 0x80) return 1;
+  if ((c & 0xE0) == 0xC0) return 2;
+  if ((c & 0xF0) == 0xE0) return 3;
+  if ((c & 0xF8) == 0xF0) return 4;
+  return 1;
+}
 // 輔助函式：獲取list中指定索引的元素（適配嵌入式環境）
 template <typename T>
 const T& getListElement(const std::list<T>& lst, size_t index) {
@@ -225,6 +233,72 @@ void ParsedText::layoutAndExtractLines(const GfxRenderer& renderer, const int fo
   for (size_t i = 0; i < lineCount; ++i) {
     extractLine(i, pageWidth, spaceWidth, wordWidths, continuesVec, lineBreakIndices, processLine,renderer, fontId);
   }
+}
+
+void ParsedText::layoutAndExtractVerticalColumns(
+    const GfxRenderer& renderer, const int fontId, const uint16_t viewportHeight, const float lineCompression,
+    const std::function<void(std::shared_ptr<TextBlock>)>& processColumn) {
+  if (words.empty()) {
+    return;
+  }
+
+  const int lineHeight = static_cast<int>(renderer.getLineHeight(fontId) * lineCompression);
+  const int charAdvance = lineHeight + 1 + (wordSpacing * 5);
+  if (charAdvance <= 0 || viewportHeight < lineHeight) {
+    return;
+  }
+
+  std::list<std::string> columnWords;
+  std::list<uint16_t> columnYpos;
+  std::list<EpdFontFamily::Style> columnStyles;
+  uint16_t nextY = firstlineintented ? static_cast<uint16_t>(std::min(lineHeight * 2, static_cast<int>(viewportHeight - lineHeight))) : 0;
+  bool firstColumn = true;
+
+  auto flushColumn = [&]() {
+    if (columnWords.empty()) {
+      return;
+    }
+    BlockStyle columnStyle = blockStyle;
+    columnStyle.verticalLayout = true;
+    processColumn(std::make_shared<TextBlock>(columnWords, columnYpos, columnStyles, columnStyle));
+    columnWords.clear();
+    columnYpos.clear();
+    columnStyles.clear();
+    nextY = 0;
+    firstColumn = false;
+  };
+
+  auto wordIt = words.begin();
+  auto styleIt = wordStyles.begin();
+  while (wordIt != words.end()) {
+    const std::string& word = *wordIt;
+    size_t pos = 0;
+    while (pos < word.size()) {
+      const unsigned char c = static_cast<unsigned char>(word[pos]);
+      const size_t len = std::min(utf8CharLength(c), word.size() - pos);
+      std::string unit = word.substr(pos, len);
+      pos += len;
+
+      if (unit == " " || unit == "\n" || unit == "\r" || unit == "\t") {
+        continue;
+      }
+
+      if (nextY + lineHeight > viewportHeight) {
+        flushColumn();
+      }
+      if (firstColumn && columnWords.empty() && firstlineintented && nextY + lineHeight > viewportHeight) {
+        nextY = 0;
+      }
+      columnWords.push_back(unit);
+      columnYpos.push_back(nextY);
+      columnStyles.push_back(*styleIt);
+      nextY = static_cast<uint16_t>(nextY + charAdvance);
+    }
+    std::advance(wordIt, 1);
+    std::advance(styleIt, 1);
+  }
+
+  flushColumn();
 }
 
 std::vector<uint16_t> ParsedText::calculateWordWidths(const GfxRenderer& renderer, const int fontId) {

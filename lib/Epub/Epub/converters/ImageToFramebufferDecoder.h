@@ -1,6 +1,7 @@
 #pragma once
 #include <SdFat.h>
 
+#include <cstddef>
 #include <memory>
 #include <string>
 
@@ -33,8 +34,9 @@ class ImageToFramebufferDecoder {
 
  protected:
   // Size validation helpers
-  static constexpr int MAX_SOURCE_PIXELS = 3145728;  // 2048 * 1536
+  static constexpr size_t MAX_SOURCE_PIXELS = 3145728;  // 2048 * 1536
 
   bool validateImageDimensions(int width, int height, const std::string& format);
+  bool validateImageDimensions(int width, int height, const std::string& format, size_t maxPixels);
   void warnUnsupportedFeature(const std::string& feature, const std::string& imagePath);
 };

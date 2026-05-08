@@ -91,6 +91,30 @@ bool renderFromCache(GfxRenderer& renderer, const std::string& cachePath, int x,
   return true;
 }
 
+bool cacheMatchesDimensions(const std::string& cachePath, int expectedWidth, int expectedHeight) {
+  FsFile cacheFile;
+  if (!SdMan.openFileForRead("IMG", cachePath, cacheFile)) {
+    return false;
+  }
+
+  uint16_t cachedWidth = 0;
+  uint16_t cachedHeight = 0;
+  const bool headerOk = cacheFile.read(&cachedWidth, 2) == 2 && cacheFile.read(&cachedHeight, 2) == 2 &&
+                        abs(cachedWidth - expectedWidth) <= 1 && abs(cachedHeight - expectedHeight) <= 1;
+  if (!headerOk) {
+    cacheFile.close();
+    return false;
+  }
+  const uint32_t expectedSize = 4 + static_cast<uint32_t>((cachedWidth + 3) / 4) * cachedHeight;
+  const bool ok = cacheFile.size() >= expectedSize;
+  cacheFile.close();
+  return ok;
+}
+
+bool isEpubTempImagePath(const std::string& imagePath) {
+  return imagePath.find("/.crosspoint/epub_") != std::string::npos && imagePath.find("/img_") != std::string::npos;
+}
+
 }  // namespace
 
 void ImageBlock::render(GfxRenderer& renderer, const int x, const int y) {
@@ -152,6 +176,13 @@ void ImageBlock::render(GfxRenderer& renderer, const int x, const int y) {
   if (!success) {
     Serial.printf("IMG", "Failed to decode image: %s", imagePath.c_str());
     return;
+  }
+
+  if (!cachePath.empty() && cacheMatchesDimensions(cachePath, width, height) && isEpubTempImagePath(imagePath) &&
+      SdMan.exists(imagePath.c_str())) {
+    if (SdMan.remove(imagePath.c_str())) {
+      Serial.printf("IMG", "Removed original EPUB temp image after pixel cache write: %s", imagePath.c_str());
+    }
   }
 
   Serial.printf("IMG", "Decode successful");
