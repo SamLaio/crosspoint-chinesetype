@@ -1,222 +1,231 @@
-# 版本資訊
-第一次寫韌體，歡迎大家指導批評~ 可以的話點點star⭐，謝謝
+# CrossPoint ChineseType
 
-本專案僅支援xteink x4.
+XTEink X4 電子紙閱讀器韌體，基於 `crosspoint-reader` 修改，目標是讓中文閱讀、SD 卡檔案瀏覽、EPUB/TXT 排版、圖片背景、Wi-Fi 傳書與藍牙翻頁在 X4 上更好用。
 
-2026.4.13 本專案已結束 感謝支援。
-！！支援學習，反對商業化，請注意開源協議為AGPL 3.0
+目前版本：`1.1.1-allocate`
 
-基於 **crosspoint 1.0.0** 版本修改而來，主要為了適配中文讀者，另外希望能夠完成自己想要的一些小功能，感謝以下開源專案及其貢獻者：
+> 本專案僅支援 XTEink X4。刷機有風險，請自行備份官方韌體並自行承擔刷機後果。
 
-- 參考改版專案：[crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
-- 自選字型功能參考：[ruby-builds/crosspoint-reader (custom-fonts分支)](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
-- 字型制作工具：[ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYFDroid/crosspointcn-fontcreator)
-- 藍芽功能參考：[thedrunkpenguin/crosspoint-reader-ble](https://github.com/thedrunkpenguin/crosspoint-reader-ble)
-- 鍵盤QR輸入:[QR_input](https://github.com/crosspoint-reader/crosspoint-reader/pull/839)
+## 主要功能
 
----
-# 開放貢獻式
+- 主畫面整合最近閱讀、SD 卡檔案區與功能選單。
+- 支援 EPUB、TXT/Markdown、XTC/XTCH、PNG/JPG/JPEG/BMP。
+- EPUB 支援書籍 CSS 排版偵測、直排/橫排衝突提示、閱讀設定排版、章節目錄、百分比跳轉與 KOReader 同步。
+- TXT 支援快取式排版、直排閱讀與閱讀設定套用。
+- 閱讀設定支援字型、字號、行距、字間距、首行縮排、邊距、對齊、直橫排、閱讀背景、劃線、抗鋸齒等。
+- 檔案管理支援開啟、刪除、複製、剪下、貼上與搜尋。
+- 圖片閱讀支援設為閱讀背景、自定義睡眠屏、透明桌布、旋轉 180 度與左右翻轉。
+- 支援 Wi-Fi 傳書、Web server、OPDS、Calibre 相關設定。
+- 支援藍牙 HID 裝置與按鍵重新映射。
+- 支援自訂字型、OTA、清除快取、KOReader 進度同步。
 
-已發詳細功能介紹： http://xhslink.com/o/4wo6yvTUpvn 
+## 按鈕概念
 
-多多少少的貢獻都可以哈，有程式設計能力的都可以玩一下，不用加我聯絡方式，當然，想加也歡迎，不是不歡迎哈哈哈哈，不過儘量聊韌體，去掉無用社交，咱們就是開放式玩起來。
+預設底部四鍵：
 
-如果有實在搞不懂的，可以小紅書@allocate 私聊傳送程式碼給我，以及想如何提及你（github名 gitee名或者小紅書名字或者什麼暱稱之類的），我將把你加入貢獻者
+- 返回 / 取消
+- 確認
+- 左
+- 右
 
-如何貢獻？
+側邊鍵：
 
-分叉倉庫：Fork the repo
+- 上
+- 下
 
-建立分支 （feature/dithering-improvement)：Create a branch (feature/dithering-improvement)
+閱讀中會使用 `PageBack` / `PageForward` 作為上一頁、下一頁，可透過設定對調側邊翻頁方向。底部四鍵可在設定頁重新映射。
 
-基於最新master做出修改：Submit a PR
+更完整的按鈕對照請看：
 
-提交：Submit a PR
+- [docs/button-mapping.md](docs/button-mapping.md)
+- [docs/screen-function-list.md](docs/screen-function-list.md)
 
-# 改版說明
+## 主畫面
 
-為避免爭議，共同維護開源社群的和諧友好氛圍。
+主畫面分成三個主要區域：
 
-如將韌體在社交平臺分享並傳遞給別人，需要遵循APGL開源協議（請注意這是強傳染開源協議），
+- 最近閱讀：顯示最近閱讀書籍，保留最多十本，可左右選擇並開啟。
+- SD 卡區：直接瀏覽 SD 卡資料夾與檔案，一頁顯示六項，選到資料夾會在同區載入內容，選到檔案會開啟。
+- 功能區：依序包含檔案管理、OPDS、Wi-Fi 功能、藍牙、設定等功能。
 
-並在釋出的第一時間以第一段落的形式闡明你本人的貢獻功能（不可以小字等特殊格式，需要與正文格式一致），為避免春秋筆法，本人做一個示例吧：
+狀態列會顯示電量與閱讀狀態相關資訊。
 
-如：開源庫原版作者為@allocate ，本人在原版基礎上增加以下功能：功能1、功能2、功能3...。(僅為示例，並無強制三個功能的要求)
+## 閱讀功能
 
-然後後面想寫啥寫啥
+### EPUB
 
-開源庫部分需要複製我版本資訊裡感謝的這些庫，並將我列為參考改版專案。感謝理解。
+EPUB 閱讀支援：
 
-# 閉源維護
+- 章節目錄
+- 百分比跳轉
+- 閱讀方向與螢幕方向
+- KOReader 同步
+- 書籍 CSS 排版與閱讀設定排版選擇
+- 直排 / 橫排衝突提示
+- 閱讀背景
+- 劃線設定
+- 進度儲存
 
-捲土重來，從內耗型人格改為外耗型
+如果 EPUB 內宣告的排版方向與閱讀設定不同，會出現提示，讓使用者選擇使用「書本排版」或「閱讀設定排版」。
 
-等我週末放程式碼，連同一個靜態網站的demo會放在主頁另一個庫吧，到時候新建一個，收集我的一些棄案，期待煥發新的生機，當然，這部分肯定不是AGPL開源協議hhh，會更開放一點，但是同樣禁商業化吧
+### TXT / Markdown
 
+TXT / Markdown 支援：
 
+- 章節選單
+- 進度儲存
+- 快取式排版
+- 直排閱讀
+- 閱讀設定套用
 
-----
-之前寫的：
+閱讀設定改變後，請清除快取或重新建立快取，避免舊快取沿用舊排版。
 
-韌體發展至今，本人不會再繼續進行功能研究，僅對目前的問題進行解決。
+### XTC / XTCH
 
-後續刷過的可以透過ota來更新，debug以及等待crosspoint海外組對中日韓的適配（一直不改分割槽表也是這個原因，想無縫接入海外組），相信已經不遠了。
+目前支援 `xtc` 與 `xtch`。XTC 可閱讀並儲存進度，但建議優先使用 EPUB 或 TXT。
 
-如果後續改版我的專案需要 @allocated 我，不然不要怪我說話難聽了。
+## 閱讀背景與劃線
 
-以下是一些碎碎念，不用看
+閱讀背景使用 SD 卡中的快取檔：
 
-不會再對閱星曈及任何商家進行無私貢獻，開源目前來說弊大於利，以後自己玩自己的開發板了。
+- 一般背景：`/.crosspoint/wallpaper_bg.pxc`
+- 直排專用背景：`/.crosspoint/wallpaper_bg_vertical.pxc`
 
-目前的程式碼庫不會刪除，因為我覺得中文的閱讀器epub解析開源原始碼很少。
+直排閱讀時，如果存在 `wallpaper_bg_vertical.pxc`，會優先使用它；如果不存在，會使用一般背景。
 
-crosspoint作為一個能在eps32-c3 僅可用記憶體300k不到的一個如此有限的板子上流暢執行的系統，是非常難得的，它的價值遠不止於此。它的存在證明了現在的閱讀器其實都可以進行一個記憶體最佳化，可以用更便宜的裝置進行一個更好的效果。
+「劃線」是閱讀設定中的輔助線，不是背景圖片。橫排時會畫水平虛線，直排時會畫垂直虛線。
 
-目前展示版本不包含我寫好的txt解析程式碼 圖片解析程式碼以及後面的功能。不過我覺得目前展示的部分已經足夠了，想根據這個版本寫後面的功能非常簡單。
+## 檔案管理
 
-後面還有一個簡單demo可能放出，是之前夢西遊大佬在s3上展示微信讀書的時候我感覺非常有意思自己研究的，原理很簡單，我後面覺得沒什麼用，就沒展示，誰想玩可以玩玩。
+檔案管理頁支援：
 
-xteink x4為什麼國外的開發環境可以做到這麼好，而國內本來做的人就少，開源的更少，不過目前的環境我感覺大家也都能理解。
+- 瀏覽 SD 卡資料夾
+- 開啟支援格式檔案
+- 長按確認顯示操作列
+- 操作列項目：取消、刪除、複製、剪下、貼上
+- 搜尋檔案
 
----
+操作列平常隱藏，只有長按確認才顯示。操作列顯示時可用左右切換操作，確認執行，取消隱藏操作列。
 
-# 免責宣告
+## 圖片功能
 
-刷機風險自擔。根據閱星曈官方來說，意思是刷機不保修，自行判斷吧。
+圖片閱讀支援 PNG、JPG、JPEG、BMP。
 
----
+圖片選單功能：
 
-# 當前進度
-
-- **EPUB**：排版完成。
-- **XTC**：實現動態管理功能
-- **TXT**：已全部完成，排版完成。支援utf-8的檔案。
-
----
-
-
-# 閱讀文字
-中英文均可
-
-
-
-## 一、刷機說明
-
-### 1.1 刷機準備
-- **TypeC 資料線**
-- **電腦**
-
-### 1.2 刷機步驟
-1. 下載 Release 頁面下的 bin 檔案
-2. 開啟網頁：https://xteink.dve.al/
-3. 首次刷機建議備份官方韌體：在 `full flash controls` 介面，選擇 `save full flash`
-4. 在 `OTA fast flash controls` 部分選擇下載好的 bin 檔案，點選 `flash firmware from file`
-5. 先短按復位鍵（SD 卡附近），再長按電源鍵
-
----
-
-## 二、Epub 閱讀
-
-### 2.1 注意事項
-首次進入 Epub 閱讀需要快取一段時間，請耐心等待。
-
-### 2.2 操作介面說明
-1. 進入閱讀介面後，**短按確認鍵**進入選單
-2. 選單欄支援：目錄、閱讀方向、直達進度、進度同步（koreader 開源閱讀）、清理快取等
-3. 目錄頁面操作：
-   - 短按 `UP/DOWN`：選單翻頁
-   - 短按 `LEFT/RIGHT`：選項選擇
-   - 長按 `LEFT/RIGHT`：選單快速翻頁
-4. 邊距設定：
-   - 進入閱讀介面後，**長按確認鍵**進入邊距設定
-   - 短按/長按 `LEFT`：減少/增加左邊距
-   - 短按/長按 `RIGHT`：減少/增加右邊距
-   - 短按/長按 `UP`：減少/增加上邊距
-   - 短按/長按 `DOWN`：減少/增加下邊距
-   - 說明：邊距設定在退出設定後生效，可透過黑框判斷邊距是否合適
-5. 翻頁操作：
-   - 短按 `LEFT/UP`：上一頁
-   - 短按 `RIGHT/DOWN`：下一頁
-   - 長按 `LEFT/UP`：上一章
-   - 長按 `RIGHT/DOWN`：下一章
-
----
-
-## 三、XTC 格式說明
-本人不再繼續適配 XTC 格式，目前僅支援 `xtc(1bit)` 和 `xtch(2bit)`。
-使用體驗不如 Epub 和 TXT，建議優先使用後兩者。
-
-**選單操作**：
-確認鍵進入目錄，短按 `UP/DOWN` 翻頁，短按 `LEFT/RIGHT` 選擇，長按 `LEFT/RIGHT` 快速翻頁。
-
----
-
-## 四、TXT 閱讀
-
-**選單操作**：
-確認鍵進入目錄，短按 `UP/DOWN` 翻頁，短按 `LEFT/RIGHT` 選擇，長按 `LEFT/RIGHT` 快速翻頁。
-注意：為了儘量少使用記憶體地開啟大txt，進行了一些策略調整，所以如果看到empty file，直接確認鍵進入目錄頁，如果目錄頁空白，使用側邊鍵前後翻兩下，拿到快取就顯示了。
-
----
-## 書籤
-1. xtc txt 長按確認鍵新增書籤
-2. epub在選單欄新增書籤
-
----
-
-## 五、自定義字型
-1. 開啟字型生成網站：https://epdfontweb.streamlit.app/
-   - 網站休眠時點選 `Yes, get this app back up!` 喚醒
-2. 上傳 `ttf/otf` 格式字型，選擇常用5000字/7000字，調整字號、字距、灰度後生成並下載
-3. 將生成的字型檔案放入 `fonts/` 資料夾，**請勿使用特殊符號**，建議用中文/字母/數字命名
-4. 進入：設定 → 系統設定 → 設定自定義字型，選擇需要的字型即可
-
----
-
-## 六、圖片選擇器
-選擇圖片進入後，支援以下操作：
 - 設為閱讀背景
 - 設為自定義睡眠屏
 - 設為透明桌布
-- 旋轉180度
+- 旋轉 180 度
 - 左右翻轉
 
----
+設為閱讀背景後會產生 `/.crosspoint/wallpaper_bg.pxc`。
 
-## 七、電源鍵操作
-**雙擊電源鍵**進入功能切換模式，可設定：
-- 忽略
-- 翻頁
-- 全刷
-- 截圖
-- wifi傳書
+## Wi-Fi、Web Server 與 OPDS
 
-截圖檔案儲存在 `screenshots/` 資料夾。
+韌體支援：
 
----
+- 加入既有 Wi-Fi
+- 建立熱點
+- 啟動 Web server 傳書
+- OPDS 書庫瀏覽與下載
+- Calibre / OPDS 帳號設定
 
-## 八、檔案管理器
-支援功能：開啟、刪除、複製、剪下、貼上、搜尋、退出搜尋
-使用 `LEFT/RIGHT` 切換功能頁面。
+相關文件：
 
-1. **刪除**：需要**長按確認鍵**，防止誤刪
-2. **複製/剪下**：操作後切換到目標目錄，點選貼上即可
-3. **搜尋**：僅支援搜尋 2 個漢字，依靠手機傳輸，找到後直接開啟；無需使用時點選退出搜尋
+- [docs/webserver.md](docs/webserver.md)
+- [docs/webserver-endpoints.md](docs/webserver-endpoints.md)
 
----
-## 九、藍芽功能
+## 藍牙
 
-如果誰想開發藍芽功能的話，根據我的經驗來說，藍芽應該放在閱讀內部，避免zip 藍芽 png 三大塊打架。
+藍牙功能主要支援 HID 裝置，例如鍵盤或翻頁器。可在藍牙設定頁掃描、連線與斷線裝置。
 
-僅支援HID藍芽裝置，就目前的反饋來說，還有我個人的嘗試來看，智聯縱維的就不要想了，他家應該使用了一套加密方法，沒有研究明白。
+不同品牌翻頁器相容性不同，若裝置使用私有加密協議，可能無法配對或無法正常映射。
 
-支援的裝置：機械鍵盤（薄膜的就不要想了） 蘿蔔兔翻頁器 free2翻頁器 ，其他家的只能自行嘗試了。
+## 自訂字型
 
-1.閱讀介面選單欄-bluetooth開啟藍芽並配對
+可使用自訂字型工具產生韌體可讀的字型檔，放入 SD 卡字型資料夾後，在設定頁選擇。
 
-2. 配對完成後開始按鍵對映--點選確認鍵 按下一個按鍵作為上一頁--點選確認鍵，按下一個按鍵作為下一頁
-   
-3. 藍芽休眠時間和系統休眠時間繫結
-   
-4. 如需要開機就使用藍芽，先開啟翻頁器，再開機
----
+字型建議使用中英文、數字命名，避免特殊符號造成路徑問題。
+
+## 快取
+
+韌體會在 SD 卡 `.crosspoint` 資料夾產生閱讀、封面、背景與排版快取。若遇到以下情況，建議清除快取：
+
+- 閱讀設定改變後排版未更新
+- TXT / EPUB 顯示仍沿用舊字距、行距或直橫排
+- 封面或背景快取異常
+- 書籍開啟後出現不符合預期的舊內容
+
+設定頁提供清除快取功能。
+
+## 刷機
+
+準備：
+
+- XTEink X4
+- Type-C 資料線
+- 電腦
+- 韌體 `.bin`
+
+步驟：
+
+1. 下載 Release 中的韌體 bin。
+2. 開啟刷機頁面：https://xteink.dve.al/
+3. 首次刷機建議先在 `full flash controls` 中備份官方韌體。
+4. 在 `OTA fast flash controls` 選擇 bin，執行 `flash firmware from file`。
+5. 依網頁提示操作裝置按鍵進入刷寫流程。
+
+## 開發建置
+
+本專案使用 PlatformIO。
+
+```bash
+pio run
+```
+
+常用環境：
+
+- `default`：開發版，版本字串含 `-allocate`
+- `gh_release`：release 版
+- `gh_release_rc`：release candidate
+- `slim`：精簡版，關閉 serial log
+
+目前目標板：
+
+- ESP32-C3
+- 16MB flash
+- Arduino framework
+
+主要設定見 [platformio.ini](platformio.ini)。
+
+## 專案文件
+
+- [docs/screen-function-list.md](docs/screen-function-list.md)：各畫面與功能清單
+- [docs/button-mapping.md](docs/button-mapping.md)：各畫面按鈕功能
+- [docs/file-formats.md](docs/file-formats.md)：快取與檔案格式
+- [docs/troubleshooting.md](docs/troubleshooting.md)：疑難排解
+- [docs/webserver.md](docs/webserver.md)：Web server 使用說明
+
+## 致謝
+
+本專案基於以下開源專案與成果修改：
+
+- [crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
+- [ruby-builds/crosspoint-reader custom-fonts 分支](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
+- [ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYFDroid/crosspointcn-fontcreator)
+- [thedrunkpenguin/crosspoint-reader-ble](https://github.com/thedrunkpenguin/crosspoint-reader-ble)
+- [QR_input PR](https://github.com/crosspoint-reader/crosspoint-reader/pull/839)
+
+## 授權
+
+本專案依 AGPL-3.0 授權。若修改、分享或再發布，請遵守授權條款並保留來源與修改說明。
+
+## 備註
+
+- 參考改版專案：crosspoint-reader
+- 自選字型功能參考：ruby-builds/crosspoint-reader (custom-fonts 分支)
+- 字型制作工具：ZYFDroid/crosspointcn-fontcreator
+- 藍芽功能參考：thedrunkpenguin/crosspoint-reader-ble
+- 鍵盤 QR 輸入：QR_input
+- crosspoint-chinesetype：https://github.com/icannotttt/crosspoint-chinesetype
