@@ -835,7 +835,7 @@ void EpubReaderActivity::renderScreen() {
 
   const bool readerSettingVertical = SETTINGS.textLayout == CrossPointSettings::TEXT_VERTICAL;
   const bool bookStyleVertical = epub && epub->hasCssWritingMode() && isVerticalWritingMode(epub->getCssWritingMode());
-  const bool verticalLayout = !useBookEmbeddedStyle && readerSettingVertical;
+  const bool verticalLayout = useBookEmbeddedStyle ? bookStyleVertical : readerSettingVertical;
   const bool backgroundVerticalLayout = readerSettingVertical || bookStyleVertical;
 
   if (!section) {

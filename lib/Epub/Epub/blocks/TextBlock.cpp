@@ -22,8 +22,8 @@ void TextBlock::render(const GfxRenderer& renderer, const int fontId, const int 
         break;
       }
       const EpdFontFamily::Style currentStyle = *wordStylesIt;
-      const int charWidth = renderer.getTextWidth(fontId, wordIt->c_str(), currentStyle);
-      renderer.drawText(fontId, x - charWidth / 2, drawY, wordIt->c_str(), true, currentStyle);
+      const int charWidth = renderer.getVerticalTextWidth(fontId, wordIt->c_str(), currentStyle);
+      renderer.drawVerticalText(fontId, x - charWidth / 2, drawY, wordIt->c_str(), true, currentStyle);
 
       std::advance(wordIt, 1);
       std::advance(wordStylesIt, 1);

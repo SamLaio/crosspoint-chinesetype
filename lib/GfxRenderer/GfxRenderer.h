@@ -109,6 +109,9 @@ class GfxRenderer {
                         EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
   void drawText(int fontId, int x, int y, const char* text, bool black = true,
                 EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
+  int getVerticalTextWidth(int fontId, const char* text, EpdFontFamily::Style style = EpdFontStyles::REGULAR) const;
+  void drawVerticalText(int fontId, int x, int y, const char* text, bool black = true,
+                        EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
   int getSpaceWidth(int fontId) const;
   int getTextAdvanceX(int fontId, const char* text) const;
   int getFontAscenderSize(int fontId) const;

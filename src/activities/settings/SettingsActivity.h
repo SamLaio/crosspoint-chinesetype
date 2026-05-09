@@ -137,6 +137,8 @@ class SettingsActivity final : public ActivityWithSubactivity {
   struct ReaderSettingsSnapshot {
     uint8_t fontFamily = 0;
     uint8_t fontSize = 0;
+    uint8_t customFontSize = 0;
+    char customFontFamily[64] = "";
     uint8_t lineSpacing = 0;
     uint8_t firstlineintented = 0;
     uint8_t wordSpacing = 0;

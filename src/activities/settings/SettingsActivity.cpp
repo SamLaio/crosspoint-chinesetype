@@ -4,6 +4,8 @@
 #include <HardwareSerial.h>
 #include <SDCardManager.h>
 
+#include <cstring>
+
 #include "ButtonRemapActivity.h"
 #include "CalibreSettingsActivity.h"
 #include "ClearCacheActivity.h"
@@ -296,6 +298,9 @@ SettingsActivity::ReaderSettingsSnapshot SettingsActivity::captureReaderSettings
   ReaderSettingsSnapshot snapshot;
   snapshot.fontFamily = SETTINGS.fontFamily;
   snapshot.fontSize = SETTINGS.fontSize;
+  snapshot.customFontSize = SETTINGS.customFontSize;
+  strncpy(snapshot.customFontFamily, SETTINGS.customFontFamily, sizeof(snapshot.customFontFamily) - 1);
+  snapshot.customFontFamily[sizeof(snapshot.customFontFamily) - 1] = '\0';
   snapshot.lineSpacing = SETTINGS.lineSpacing;
   snapshot.firstlineintented = SETTINGS.firstlineintented;
   snapshot.wordSpacing = SETTINGS.wordSpacing;
@@ -315,6 +320,9 @@ SettingsActivity::ReaderSettingsSnapshot SettingsActivity::captureReaderSettings
 bool SettingsActivity::readerSettingsChanged() const {
   const auto current = captureReaderSettings();
   return readerSettingsOnEnter.fontFamily != current.fontFamily || readerSettingsOnEnter.fontSize != current.fontSize ||
+         readerSettingsOnEnter.customFontSize != current.customFontSize ||
+         strncmp(readerSettingsOnEnter.customFontFamily, current.customFontFamily,
+                 sizeof(readerSettingsOnEnter.customFontFamily)) != 0 ||
          readerSettingsOnEnter.lineSpacing != current.lineSpacing ||
          readerSettingsOnEnter.firstlineintented != current.firstlineintented ||
          readerSettingsOnEnter.wordSpacing != current.wordSpacing ||

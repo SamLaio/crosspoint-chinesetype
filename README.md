@@ -1,438 +1,532 @@
 # CrossPoint ChineseType
 
-XTEink X4 電子紙閱讀器韌體，基於 `crosspoint-reader` 修改，目標是讓中文閱讀、SD 卡檔案瀏覽、EPUB/TXT 排版、圖片背景、Wi-Fi 傳書與藍牙翻頁在 X4 上更好用。
+XTEink X4 電子紙閱讀器韌體，基於 CrossPoint Reader 修改，重點放在中文閱讀、SD 卡檔案瀏覽、EPUB/TXT/XTC 閱讀、圖片背景、Wi-Fi 傳書、Calibre 無線傳書、OPDS、藍牙 HID 翻頁、自訂 `.epdfont` 字型與 EPUB/TXT 直排標點處理。
 
-目前版本：`1.1.1-allocate`
+目前 README 依照 2026-05-09 的程式碼重新掃描整理。
+
+目前版本：
+
+- 開發版：`zhTW_V2.1-allocate`
+- Release：`zhTW_V2.1`
+- Slim：`zhTW_V2.1-slim`
 
 > 本專案僅支援 XTEink X4。刷機有風險，請自行備份官方韌體並自行承擔刷機後果。
 
 ## 主要功能
 
-- 主畫面整合最近閱讀、SD 卡檔案區與功能選單。
-- 支援 EPUB、TXT/Markdown、XTC/XTCH、PNG/JPG/JPEG/BMP。
-- EPUB 支援書籍 CSS 排版偵測、直排/橫排衝突提示、閱讀設定排版、章節目錄、百分比跳轉與 KOReader 同步。
-- TXT 支援快取式排版、直排閱讀與閱讀設定套用。
-- 閱讀設定支援字型、字號、行距、字間距、首行縮排、邊距、對齊、直橫排、閱讀背景、劃線、抗鋸齒等。
-- 檔案管理支援開啟、刪除、複製、剪下、貼上與搜尋。
-- 圖片閱讀支援設為閱讀背景、自定義睡眠屏、透明桌布、旋轉 180 度與左右翻轉。
-- 支援 Wi-Fi 傳書、Web server、OPDS、Calibre 相關設定。
-- 支援藍牙 HID 裝置與按鍵重新映射。
-- 支援自訂字型、OTA、清除快取、KOReader 進度同步。
+- 主畫面顯示最近閱讀、SD 卡快速瀏覽區與功能入口。
+- 支援 EPUB、TXT、Markdown、XTC、XTCH、PNG、JPG、JPEG、BMP。
+- EPUB 支援章節目錄、百分比跳轉、閱讀方向、KOReader 進度同步、快取清理、書籍內嵌樣式與閱讀設定衝突選擇。
+- TXT/Markdown 支援章節目錄、快取式分頁、直排/橫排、行距、字距、邊距與進度保存。
+- XTC/XTCH 支援頁面閱讀、章節跳轉、分批載入與進度保存。
+- 圖片閱讀支援同資料夾前後切換、設為閱讀背景、自定義睡眠屏、透明桌布、旋轉 180 度、左右翻轉。
+- SD 卡檔案管理支援開啟、刪除、複製、剪下、貼上。
+- Wi-Fi 功能支援加入網路、建立 X4 熱點、Web 檔案管理、Calibre 無線傳書。
+- OPDS 瀏覽器可瀏覽 feed、進入目錄、翻 feed 頁與下載書籍。
+- Web 介面提供狀態、檔案管理、上傳、新建資料夾、下載、重新命名、移動、刪除與設定編輯。
+- 支援藍牙 HID 裝置、底部四鍵重新映射、自訂 `.epdfont` 字型、OTF/TTF 轉 `.epdffont` 工具、OTA 更新與清除快取。
+- EPUB/TXT 直排會處理常見 CJK 標點、半形標點、括號、引號、省略號與破折號的直排替換或 fallback 繪製。
 
-## 按鈕概念
+## 實體按鈕
 
-預設底部四鍵：
+裝置有底部四鍵、側邊上/下鍵與電源鍵。程式使用邏輯按鈕名稱描述操作：
 
-- 返回 / 取消
-- 確認
-- 左
-- 右
+- 底部四鍵預設為：返回、確認、左、右。
+- 底部四鍵可在 `設定 > 按鈕設定 > Remap Front Buttons` 重新指定。
+- 側邊上/下固定作為一般選單的上/下。
+- 閱讀頁的 `PageBack` / `PageForward` 由側邊上/下負責，可在 `側邊按鈕設定（僅閱讀）` 對調。
+- 電源鍵不參與重新映射；閱讀中可把 `短按電源鍵` 設為翻頁。
 
-側邊鍵：
-
-- 上
-- 下
-
-閱讀中會使用 `PageBack` / `PageForward` 作為上一頁、下一頁，可透過設定對調側邊翻頁方向。底部四鍵可在設定頁重新映射。
-
-更完整的按鈕對照請看：
-
-- [docs/button-mapping.md](docs/button-mapping.md)
-- [docs/screen-function-list.md](docs/screen-function-list.md)
-
-## 各頁按鈕說明
+## 裝置端畫面與按鈕
 
 ### 主畫面
 
-- 上 / 左：上一個項目
-- 下 / 右：下一個項目
-- 確認：開啟目前選到的書籍、檔案或功能
-- 返回：主畫面本身不做特殊處理
+畫面包含最近閱讀、SD 卡快速瀏覽與功能入口。
 
-### 主畫面 SD 卡區
+- 上/下：切換最近閱讀、SD 卡區、功能區。
+- 左/右：在目前區塊切換項目。
+- 確認或返回：開啟目前選到的項目。
+- 最近閱讀中長按確認：顯示 `清除閱讀記錄` 選單。
+- 清除選單中左/右切換 `取消` / `確認`，確認執行，返回關閉。
 
-- 左 / 右：在目前區塊內切換項目，超過一頁時翻到下一頁項目
-- 確認：資料夾會在同區載入內容，檔案會直接開啟
-- 返回：依主畫面邏輯處理
+功能入口包含：
 
-### 檔案管理
+- `檔案管理`
+- `opds`：只有設定 OPDS Server URL 後才顯示
+- `wifi功能`
+- `藍牙`
+- `設定`
 
-- 上 / 下：移動檔案清單
-- 確認短按：開啟資料夾或檔案
-- 確認長按：顯示上方操作列
-- 操作列顯示時左 / 右：切換取消、刪除、複製、剪下、貼上
-- 操作列顯示時確認：執行目前操作
-- 操作列選取消：隱藏操作列
-- 返回：回上一層資料夾，根目錄時返回主畫面
+### SD 卡快速瀏覽
 
-### EPUB / TXT / XTC 閱讀
+主畫面的 SD 卡區會顯示支援格式與資料夾。
 
-- 左 / PageBack：上一頁
-- 右 / PageForward：下一頁
-- 確認：EPUB 開啟閱讀選單，TXT / XTC 開啟章節選單
-- 返回：回到開啟來源畫面
-- 電源短按：若設定為翻頁，作為下一頁
-
-### EPUB 閱讀選單 / 章節選單
-
-- 上 / 左：上一項
-- 下 / 右：下一項
-- 確認：選擇目前項目
-- 返回：回閱讀頁
-
-### 百分比跳轉
-
-- 左：小幅降低百分比
-- 右：小幅提高百分比
-- 上：大幅提高百分比
-- 下：大幅降低百分比
-- 確認：套用跳轉
-- 返回：取消
-
-### 圖片閱讀
-
-- 左 / 上：上一張圖片
-- 右 / 下：下一張圖片
-- 確認：開啟圖片選單
-- 返回：回到檔案管理或原開啟來源
-
-圖片選單中：
-
-- 左 / 上：上一項
-- 右 / 下：下一項
-- 確認：執行目前選項
-- 返回：關閉選單
-
-### 設定頁
-
-- 上：上一個設定項
-- 下：下一個設定項
-- 選到分類列時左 / 右：切換設定分類
-- 選到一般設定時左：切到前一個值
-- 選到一般設定時右：切到後一個值
-- 選到動作項時右：執行該動作
-- 確認 / 返回：儲存設定並回主畫面
-
-### OPDS 瀏覽器
-
-- 上 / PageBack：上一項
-- 下 / PageForward：下一項
-- 左：上一頁 feed
-- 右：下一頁 feed
-- 確認：進入目錄或下載書籍
-- 返回：上一層或返回
-
-### Wi-Fi / Web Server / 網路模式
-
-- 上 / 左：上一項
-- 下 / 右：下一項
-- 確認：選擇目前項目
-- 返回：取消、離開或停止目前傳輸頁
-
-### 藍牙設定
-
-- 上 / 下：選擇項目
-- 確認：開關藍牙、連線、刷新或斷線
-- 左：裝置清單中回主選單
-- 右：裝置清單中重新掃描
-- 返回：回主選單或離開藍牙設定
-
-### 字型選擇
-
-- 上 / 左：上一項
-- 下 / 右：下一項
-- 確認：套用目前字型並離開
-- 返回：取消並離開
-
-### KOReader 同步
-
-- 上 / 左：上一個選項
-- 下 / 右：下一個選項
-- 確認：執行目前選項，例如套用遠端進度或上傳本機進度
-- 返回：取消或離開
-
-### OTA / 清除快取
-
-- 確認：開始更新或開始清除快取
-- 返回：取消或返回
-
-### 按鈕重新映射
-
-- 側邊上：重設底部四鍵為預設映射並離開
-- 側邊下：取消，不儲存並離開
-- 底部任一鍵：依畫面提示依序指定為返回、確認、左、右
-
-## 各畫面說明
-
-### 主畫面
-
-主畫面是開機後的主要入口，包含狀態列、最近閱讀、SD 卡檔案區與功能區。可直接開啟最近讀過的書、瀏覽 SD 卡檔案，或進入檔案管理、OPDS、Wi-Fi、藍牙與設定。
-
-### 主畫面 SD 卡區
-
-SD 卡區是一個簡化檔案瀏覽器，一頁顯示六個項目。選到資料夾時會在同一區塊載入該資料夾內容，選到支援格式檔案時會直接開啟。子資料夾內會顯示 `[..]` 回上一層。
+- 資料夾以 `[資料夾名]` 顯示。
+- 子資料夾會顯示 `[..]` 回上一層。
+- 左/右在格狀項目間切換。
+- 確認或返回：資料夾會進入該資料夾，檔案會開啟閱讀器。
 
 ### 檔案管理
 
-檔案管理是完整 SD 卡瀏覽頁，可開啟書籍、圖片與資料夾，也可長按確認叫出操作列。操作列包含取消、刪除、複製、剪下、貼上，適合整理 SD 卡檔案。
+完整 SD 卡瀏覽頁，標題顯示目前資料夾。支援格式同主畫面，會隱藏 `.` 開頭項目、`System Volume Information` 與 `fonts`。
+
+- 上/下：移動清單選取。
+- 確認短按：進入資料夾或開啟檔案。
+- 確認長按約 700ms：顯示上方操作列。
+- 操作列顯示時左/右：在 `取消`、`刪除`、`複製`、`剪下`、`貼上` 間切換，一次顯示三個。
+- 操作列顯示時確認：執行目前操作。
+- 返回：關閉操作列；沒有操作列時回上一層；根目錄時回主畫面。
+- 程式內有搜尋流程，但目前畫面沒有獨立搜尋按鈕或操作列入口。
 
 ### EPUB 閱讀
 
-EPUB 閱讀頁負責顯示 EPUB 內容、保存進度、處理翻頁、顯示狀態列與閱讀背景。EPUB 支援章節目錄、百分比跳轉、KOReader 同步、排版衝突提示、書本 CSS 排版與閱讀設定排版。
+- 左或 PageBack：上一頁。
+- 右或 PageForward：下一頁。
+- 確認短按：開啟 EPUB 閱讀選單。
+- 確認長按約 1 秒：進入閱讀設定狀態。
+- 返回：回到來源畫面。
+- 若 `長按跳章節` 開啟，長按翻頁鍵會跳上一章/下一章。
+- 若 `短按電源鍵` 設為 `翻頁`，電源短按會下一頁。
+
+若書籍內嵌排版與目前閱讀排版衝突，會出現排版選擇畫面：
+
+- 左/右：切換 `使用書本排版` / `使用閱讀設定`。
+- 確認：套用選擇。
+- 返回：使用閱讀設定。
+
+EPUB 閱讀選單項目：
+
+- `進入章節目錄`
+- `閱讀方向`
+- `直達進度 %`
+- `返回主頁`
+- `進度同步(koreader)`
+- `清理快取`
+
+選單按鈕：
+
+- 上/左：上一項。
+- 下/右：下一項。
+- 確認：選擇；在 `閱讀方向` 上會循環切換方向。
+- 返回：套用暫存閱讀方向並回閱讀頁。
+
+### EPUB 章節目錄
+
+- 上/左：上一項；按住或長按後放開可翻到上一頁清單。
+- 下/右：下一項；按住或長按後放開可翻到下一頁清單。
+- 確認：跳到選取章節。
+- 返回：回 EPUB 閱讀頁。
+
+### EPUB 百分比跳轉
+
+- 左/右：以 1% 調整。
+- 上/下：以 10% 調整。
+- 確認：跳到選定進度。
+- 返回：取消。
 
 ### TXT / Markdown 閱讀
 
-TXT / Markdown 閱讀頁負責文字檔閱讀、章節選單、進度保存與快取式排版。閱讀設定變更後需要重新建立快取，才能套用新的字距、行距、直橫排與縮排設定。
+- 左或 PageBack：上一頁；頁首再往前會切到上一章最後一頁。
+- 右或 PageForward：下一頁；章末再往後會切到下一章第一頁。
+- 確認：開啟 TXT 章節目錄。
+- 返回：回到來源畫面。
+- 支援 `長按跳章節` 與 `短按電源鍵 = 翻頁`。
 
-### XTC 閱讀
+TXT 章節目錄：
 
-XTC 閱讀頁支援 XTC / XTCH 格式閱讀、翻頁、章節或頁面選擇與進度保存。此格式目前可用，但建議優先使用 EPUB 或 TXT。
+- 頂部有 `【向前100章】` 與 `【向後100章】`。
+- 上/左、下/右在特殊項與章節間移動。
+- 確認特殊項會快速跳 100 章範圍；確認章節會跳入該章。
+- 返回：回閱讀頁。
+
+### XTC / XTCH 閱讀
+
+- 左或 PageBack：上一頁。
+- 右或 PageForward：下一頁。
+- 確認：開啟 XTC 章節目錄。
+- 返回：回到來源畫面。
+- 若 `長按跳章節` 開啟，長按翻頁會一次跳 10 頁。
+
+XTC 章節目錄：
+
+- 上/左：上一項或上一頁清單。
+- 下/右：下一項或下一頁清單。
+- 確認：跳到選取章節頁。
+- 返回：回閱讀頁。
 
 ### 圖片閱讀
 
-圖片閱讀頁可檢視 PNG、JPG、JPEG、BMP，同資料夾內可前後切換圖片。圖片選單可將目前圖片設為閱讀背景、自定義睡眠屏、透明桌布，也可旋轉 180 度或左右翻轉。
+- 左/上：上一張。
+- 右/下：下一張。
+- 確認：開啟圖片操作選單。
+- 返回：回到來源畫面。
 
-### EPUB 閱讀選單
+圖片操作選單：
 
-EPUB 閱讀選單提供閱讀中的主要操作入口，可進入章節目錄、百分比跳轉、閱讀方向、KOReader 同步與其他閱讀相關功能。
+- `設為閱讀背景`
+- `設為自定義睡眠屏`
+- `設為透明桌布`
+- `旋轉180度`
+- `左右翻轉`
 
-### EPUB 章節選單
+選單中左/上為上一項，右/下為下一項，確認套用，返回關閉。
 
-章節選單顯示 EPUB 目錄，可選擇章節並跳轉到指定位置。
+### 設定
 
-### 百分比跳轉
+設定頁只顯示裝置端分類：`顯示設定`、`閱讀設定`、`按鈕設定`、`系統設定`。
 
-百分比跳轉頁用來調整閱讀百分比，確認後會跳到對應的書籍進度。
+- 上/下：移動設定項。
+- 選到分類列時左/右：切換分類。
+- 選到開關、列舉或數值設定時左/右：切換或調整值。
+- 選到動作項時右：進入子頁或執行動作。
+- 確認或返回：儲存設定、必要時清除 TXT 分頁快取，回主畫面。
 
-### 設定頁
+顯示設定：
 
-設定頁分為 Display、Reader、Controls、System 等分類，可調整顯示、閱讀、按鍵、睡眠、快取、字型、藍牙、KOReader 與 OTA 等設定。
+- 休眠屏、休眠屏封面模式、休眠屏封面濾鏡、狀態列、隱藏電池百分比、重新整理頻率、UI 主題、抗陽光褪色。
+
+閱讀設定：
+
+- 字型、字號、行間距、首行縮排、字間距、上下左右邊距、閱讀背景、劃線、對齊方式、文字排版、是否使用書籍內嵌樣式、連字元、閱讀方向、額外段間距、抗鋸齒。
+
+按鈕設定：
+
+- `Remap Front Buttons`
+- 側邊按鈕設定（僅閱讀）
+- 長按跳章節
+- 短按電源鍵
+
+系統設定：
+
+- 休眠時間
+- `bluetooth`
+- `KOReader Sync`
+- `OPDS Browser`
+- `Clear Cache`
+- `Check for updates`
+- `Set Custom Font Family`
+- `Language`
 
 ### 按鈕重新映射
 
-按鈕重新映射頁可重新指定底部四顆實體按鈕的角色，依序設定返回、確認、左、右，也可快速恢復預設或取消。
+畫面會依序要求替 `Back`、`Confirm`、`Left`、`Right` 指定底部實體按鈕。
+
+- 底部任一鍵：指定目前角色，指定完四個角色後儲存並離開。
+- 側邊上：恢復預設底部按鈕配置並離開。
+- 側邊下：取消，不儲存並離開。
 
 ### 藍牙設定
 
-藍牙設定頁可開關藍牙、掃描 HID 裝置、連線、斷線與重新掃描。主要用於鍵盤或翻頁器。
+主選單項目為啟用/禁用藍牙與裝置清單。
+
+- 主選單上/下：移動項目。
+- 主選單確認：切換藍牙或進入裝置清單。
+- 主選單返回：離開。
+- 裝置清單上/下：選擇裝置、`Refresh` 或 `Disconnect`。
+- 裝置清單左或返回：回主選單。
+- 裝置清單右：重新掃描。
+- 裝置清單確認：連線、刷新或斷線。
+
+### Wi-Fi 功能
+
+入口畫面標題為 `wifi功能設定`，提供三個模式：
+
+- `加入網路`
+- `連線到 Calibre`
+- `建立熱點`
+
+按鈕：
+
+- 上/左：上一項。
+- 下/右：下一項。
+- 確認：選擇。
+- 返回：取消回主畫面。
+
+Wi-Fi 網路選擇：
+
+- 顯示附近 SSID、訊號、加密標記 `*`、已儲存密碼標記 `+` 與裝置 MAC。
+- 上/左、下/右：移動清單。
+- 確認：連線或重新掃描。
+- 返回：取消。
+- 加密網路會開啟虛擬鍵盤輸入密碼。
+- 連線成功且使用新密碼時會詢問是否儲存密碼：左/右切換 Yes/No，確認套用，返回略過。
+- 已儲存密碼連線失敗時可選擇 `Cancel` 或 `Forget network`。
+
+Web 檔案傳輸頁：
+
+- 加入現有 Wi-Fi 後顯示 SSID、IP、`http://<ip>/` 與 `http://crosspoint.local/`。
+- 建立熱點後顯示熱點名稱、熱點密碼或 QR Code、裝置網址與網址 QR Code。
+- 返回：停止 Web server 並回主畫面。
+
+Calibre 連線頁：
+
+- 先選 Wi-Fi，成功後顯示 `Connect to Calibre`、網路資訊、Calibre 操作提示與傳輸狀態。
+- 返回：停止 server 並離開。
 
 ### OPDS 瀏覽器
 
-OPDS 瀏覽器可連線 OPDS 書庫，瀏覽 feed、進入子目錄、切換頁面與下載書籍。Wi-Fi 未連線時會引導進入 Wi-Fi 流程。
+- 進入前會檢查 Wi-Fi，未連線時會開啟 Wi-Fi 選擇頁。
+- 載入/檢查 Wi-Fi/錯誤狀態中，返回會取消或上一層。
+- 錯誤狀態中確認會重試。
+- 瀏覽狀態中上或 PageBack：上一項。
+- 下或 PageForward：下一項。
+- 左/右：切換 OPDS feed 上一頁/下一頁。
+- 確認：進入目錄或下載書籍。
+- 返回：上一層 feed；沒有上一層時離開。
 
-### OPDS / Calibre 設定
+### OPDS 設定
 
-OPDS / Calibre 設定頁可設定 Server URL、帳號與密碼，用於 OPDS 書庫與 Calibre 相關連線。
+設定頁動作 `OPDS Browser` 會開啟 OPDS 設定頁。
 
-### Wi-Fi / 傳輸功能
+項目：
 
-Wi-Fi / 傳輸頁可加入既有 Wi-Fi、建立熱點、啟動 Web server 傳書，並顯示連線與傳輸狀態。
+- `OPDS Server URL`
+- `Username`
+- `Password`
 
-### 網路模式選擇
+按鈕：
 
-網路模式選擇頁用來選擇加入 Wi-Fi、連線 Calibre 或建立熱點。
+- 上/左：上一項。
+- 下/右：下一項。
+- 確認：編輯目前項目。
+- 返回：離開。
 
-### Wi-Fi 選擇
+### KOReader 設定、認證與同步
 
-Wi-Fi 選擇頁會掃描附近網路、顯示網路清單、輸入密碼、儲存或忘記 Wi-Fi 密碼，並回報連線結果。
+設定頁動作 `KOReader Sync` 會開啟設定頁。
 
-### Calibre 連線
+設定項目：
 
-Calibre 連線頁負責啟動 Calibre 相關傳輸流程，顯示連線、上傳與同步狀態。
+- `Username`
+- `Password`
+- `Sync Server URL`
+- `Document Matching`：`Filename` 或 `Binary`
+- `Authenticate`
+
+按鈕：
+
+- 上/左：上一項。
+- 下/右：下一項。
+- 確認：編輯或執行。
+- 返回：離開。
+
+KOReader 認證結果畫面中，返回或確認都會離開。
+
+閱讀中進入 KOReader 同步後：
+
+- 沒有憑據、同步失敗、上傳完成：返回離開。
+- 找不到遠端進度：確認上傳本機進度，返回取消。
+- 找到遠端進度：上/左、下/右在 `Apply remote progress`、`Upload local progress`、`Cancel` 間切換；確認執行；返回取消。
+
+### 虛擬鍵盤與 QR 輸入
+
+虛擬鍵盤用於 Wi-Fi 密碼、OPDS、KOReader 等文字輸入。
+
+- 上/下/左/右：移動游標。
+- 確認：輸入字元或執行 `shift`、空白、退格、`OK`、`QR`。
+- 返回：取消輸入。
+- 選 `QR` 會啟動瀏覽器文字輸入頁；QR 畫面中返回可回鍵盤。
 
 ### 清除快取
 
-清除快取頁會顯示警告，確認後清除 `.crosspoint` 中的快取資料，並顯示清除結果。
+- 初始警告畫面確認：清除 `/.crosspoint` 快取。
+- 初始警告畫面返回：取消。
+- 完成或失敗畫面返回：離開。
 
 ### OTA 更新
 
-OTA 更新頁可檢查韌體版本、下載更新、安裝更新，成功後會重開機。
+- 進入後先選 Wi-Fi 並檢查更新。
+- 有新版本時確認開始更新，返回取消。
+- 沒有更新或失敗時返回離開。
+- 更新完成後裝置會重啟。
 
 ### 字型選擇
 
-字型選擇頁會掃描 SD 卡中的自訂字型，選擇後套用到閱讀設定。
+自訂字型從 SD 卡 `/fonts` 讀取 `.epdfont`。
 
-### KOReader 同步
+- 上/左：上一項。
+- 下/右：下一項。
+- 確認：套用選取字型並離開。
+- 返回：取消。
 
-KOReader 同步頁可取得遠端閱讀進度、比較本機與遠端進度、套用遠端進度或上傳本機進度。
+若畫面顯示 `No fonts found in /fonts`，代表 SD 卡 `/fonts` 沒有可辨識的 `.epdfont`。韌體目前直接讀 `.epdfont`，不直接讀 OTF/TTF。
 
-## 主畫面
+建議檔名：
 
-主畫面分成三個主要區域：
+- `Family.epdffont`
+- `Family-12.epdffont`
+- `Family-14.epdffont`
+- `Family-16.epdffont`
+- `Family-18.epdffont`
 
-- 最近閱讀：顯示最近閱讀書籍，保留最多十本，可左右選擇並開啟。
-- SD 卡區：直接瀏覽 SD 卡資料夾與檔案，一頁顯示六項，選到資料夾會在同區載入內容，選到檔案會開啟。
-- 功能區：依序包含檔案管理、OPDS、Wi-Fi 功能、藍牙、設定等功能。
+閱讀字級預設對應：
 
-狀態列會顯示電量與閱讀狀態相關資訊。
+- 小：12
+- 中：14
+- 大：16
+- 特大：18
 
-## 閱讀功能
+若使用工具轉出不同實際大小，例如 `-s 37`，但希望韌體在特定閱讀字級載入，檔名或設定中的自訂大小必須與韌體查找的大小一致。
 
-### EPUB
+## 直排與標點轉換
 
-EPUB 閱讀支援：
+EPUB 與 TXT 直排會透過 `GfxRenderer::drawVerticalText()` 處理，不只是把整段 framebuffer 旋轉。
 
-- 章節目錄
-- 百分比跳轉
-- 閱讀方向與螢幕方向
-- KOReader 同步
-- 書籍 CSS 排版與閱讀設定排版選擇
-- 直排 / 橫排衝突提示
-- 閱讀背景
-- 劃線設定
-- 進度儲存
+流程：
 
-如果 EPUB 內宣告的排版方向與閱讀設定不同，會出現提示，讓使用者選擇使用「書本排版」或「閱讀設定排版」。
+1. UTF-8 解碼成 Unicode code point。
+2. 直排模式時查表轉成 Unicode Vertical Forms / CJK Compatibility Forms。
+3. 若自訂字型有對應 FE glyph，使用字型 glyph。
+4. 若字型缺 FE glyph，對常見括號、引號、省略號、破折號等符號使用韌體 fallback 繪製或置中。
 
-### TXT / Markdown
+目前韌體會處理的常見輸入：
 
-TXT / Markdown 支援：
+- 半形：`,` `.` `!` `?` `:` `;` `(` `)` `[` `]` `{` `}` `|`
+- 中文標點：`，` `、` `。` `：` `；` `！` `？`
+- 引號：`「」『』“”‘’`
+- 括號：`（）〔〕【】《》〈〉｛｝［］`
+- 其他：`…` `—` `｜` `‖`
 
-- 章節選單
-- 進度儲存
-- 快取式排版
-- 直排閱讀
-- 閱讀設定套用
+建議自訂字型包含：
 
-閱讀設定改變後，請清除快取或重新建立快取，避免舊快取沿用舊排版。
+- `U+FE10~U+FE1F`
+- `U+FE30~U+FE4F`
 
-### XTC / XTCH
+若字型包含這些 glyph，韌體會優先使用字型裡設計好的直排 glyph；若缺字，才使用 fallback。
 
-目前支援 `xtc` 與 `xtch`。XTC 可閱讀並儲存進度，但建議優先使用 EPUB 或 TXT。
+## OTF/TTF 轉 `.epdffont`
 
-## 閱讀背景與劃線
+轉換工具位於：
 
-閱讀背景使用 SD 卡中的快取檔：
+- `tools/otf2epdffont/`
+- Windows 可同步放在 `D:\python\otf2epdffont`
 
-- 一般背景：`/.crosspoint/wallpaper_bg.pxc`
+安裝：
 
-目前直排不會自動產生或套用直排專用背景，會使用同一份一般背景。
+```bat
+cd /d D:\python\otf2epdffont
+py -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-「劃線」是閱讀設定中的輔助線，不是背景圖片。橫排時會畫水平虛線，直排時會畫垂直虛線。
+轉換範例：
 
-## 檔案管理
+```bat
+python otf2epdffont.py D:\fonts\MyFont.otf -s 18 -o MyFont-18.epdffont
+```
 
-檔案管理頁支援：
+預設 `--preset common` 會包含：
 
-- 瀏覽 SD 卡資料夾
-- 開啟支援格式檔案
-- 長按確認顯示操作列
-- 操作列項目：取消、刪除、複製、剪下、貼上
-- 搜尋檔案
+- 英文、數字、常用符號
+- 常用中文字固定集合
+- CJK 標點 `U+3000~U+303F`
+- 全形/半形 `U+FF00~U+FFEF`
+- 直排符號 `U+FE10~U+FE1F`、`U+FE30~U+FE4F`
+- 基本中文漢字區 `U+4E00~U+9FFF`
+- CJK Extension A `U+3400~U+4DBF`
 
-操作列平常隱藏，只有長按確認才顯示。操作列顯示時可用左右切換操作，確認執行，取消隱藏操作列。
+更多參數見 [tools/otf2epdffont/README.md](tools/otf2epdffont/README.md)。
 
-## 圖片功能
+## Web 介面
 
-圖片閱讀支援 PNG、JPG、JPEG、BMP。
+Web server 由裝置端 `wifi功能` 啟動。瀏覽器首頁路由：
 
-圖片選單功能：
+- `/`：Home
+- `/files`：File Manager
+- `/settings`：Settings
 
-- 設為閱讀背景
-- 設為自定義睡眠屏
-- 設為透明桌布
-- 旋轉 180 度
-- 左右翻轉
+主要 API：
 
-設為閱讀背景後會產生 `/.crosspoint/wallpaper_bg.pxc`。
+- `GET /api/status`
+- `GET /api/files?path=/...&offset=0&limit=50`
+- `GET /download?path=/...`
+- `POST /upload?path=/...`
+- `POST /mkdir`
+- `POST /rename`
+- `POST /move`
+- `POST /delete`
+- `GET /api/settings`
+- `POST /api/settings`
 
-## Wi-Fi、Web Server 與 OPDS
+檔案管理頁功能：
 
-韌體支援：
+- 上傳檔案：優先使用 WebSocket，失敗時回退 HTTP 上傳。
+- 多檔上傳、進度顯示、失敗清單、單檔重試與全部重試。
+- 新建資料夾。
+- 檔案下載。
+- 檔案重新命名。
+- 檔案移動到指定資料夾。
+- 檔案刪除。
+- 空資料夾刪除；非空資料夾會被拒絕。
+- 隱藏或保護系統項目，避免操作 `/.crosspoint`、`/System Volume Information`、`/fonts` 等受保護內容。
 
-- 加入既有 Wi-Fi
-- 建立熱點
-- 啟動 Web server 傳書
-- OPDS 書庫瀏覽與下載
-- Calibre / OPDS 帳號設定
+Web 設定頁功能：
 
-相關文件：
+- 顯示所有 `SettingsLists.h` 中有 key 的設定。
+- 裝置 UI 不顯示的 `KOReader Sync` 與 `OPDS Browser` 分類可在 Web 設定頁編輯。
+- `Save Settings` 會以 JSON 寫回設定。
 
-- [docs/webserver.md](docs/webserver.md)
-- [docs/webserver-endpoints.md](docs/webserver-endpoints.md)
+文字輸入頁：
 
-## 藍牙
+- QR 輸入模式會開啟 `CrossPoint Text Input`。
+- 在瀏覽器輸入文字後按 `Send to Device`，文字會送回裝置虛擬鍵盤。
 
-藍牙功能主要支援 HID 裝置，例如鍵盤或翻頁器。可在藍牙設定頁掃描、連線與斷線裝置。
+## 支援檔案與資料夾
 
-不同品牌翻頁器相容性不同，若裝置使用私有加密協議，可能無法配對或無法正常映射。
+支援開啟：
 
-## 自訂字型
+- 書籍：`.epub`
+- 文字：`.txt`、`.md`
+- XTC：`.xtc`、`.xtch`
+- 圖片：`.png`、`.jpg`、`.jpeg`、`.bmp`
 
-可使用自訂字型工具產生韌體可讀的字型檔，放入 SD 卡字型資料夾後，在設定頁選擇。
+常用資料夾：
 
-字型建議使用中英文、數字命名，避免特殊符號造成路徑問題。
+- `/.crosspoint`：設定、快取、閱讀進度、封面縮圖等資料。
+- `/fonts`：自訂 `.epdfont` 字型。
 
-## 快取
+## 建置
 
-韌體會在 SD 卡 `.crosspoint` 資料夾產生閱讀、封面、背景與排版快取。若遇到以下情況，建議清除快取：
+需求：
 
-- 閱讀設定改變後排版未更新
-- TXT / EPUB 顯示仍沿用舊字距、行距或直橫排
-- 封面或背景快取異常
-- 書籍開啟後出現不符合預期的舊內容
+- PlatformIO
+- ESP32-C3 / XTEink X4
 
-設定頁提供清除快取功能。
-
-## 刷機
-
-準備：
-
-- XTEink X4
-- Type-C 資料線
-- 電腦
-- 韌體 `.bin`
-
-步驟：
-
-1. 下載 Release 中的韌體 bin。
-2. 開啟刷機頁面：https://xteink.dve.al/
-3. 首次刷機建議先在 `full flash controls` 中備份官方韌體。
-4. 在 `OTA fast flash controls` 選擇 bin，執行 `flash firmware from file`。
-5. 依網頁提示操作裝置按鍵進入刷寫流程。
-
-## 開發建置
-
-本專案使用 PlatformIO。
+常用指令：
 
 ```bash
 pio run
+pio run -t upload
+pio device monitor
 ```
 
-常用環境：
+環境：
 
-- `default`：開發版，版本字串含 `-allocate`
-- `gh_release`：release 版
-- `gh_release_rc`：release candidate
-- `slim`：精簡版，關閉 serial log
+- `default`：開發版，版本字尾 `-allocate`，序列輸出開啟。
+- `gh_release`：正式版。
+- `gh_release_rc`：Release candidate。
+- `slim`：字尾 `-slim`，關閉序列輸出以節省空間。
 
-目前目標板：
+建置前會執行：
 
-- ESP32-C3
-- 16MB flash
-- Arduino framework
+- `scripts/build_html.py`：把 Web HTML 產生成 C++ header。
+- `scripts/gen_i18n.py`：產生語言相關資料。
 
-主要設定見 [platformio.ini](platformio.ini)。
+## 相關文件
 
-## 專案文件
-
-- [docs/screen-function-list.md](docs/screen-function-list.md)：各畫面與功能清單
-- [docs/button-mapping.md](docs/button-mapping.md)：各畫面按鈕功能
-- [docs/file-formats.md](docs/file-formats.md)：快取與檔案格式
-- [docs/troubleshooting.md](docs/troubleshooting.md)：疑難排解
-- [docs/webserver.md](docs/webserver.md)：Web server 使用說明
+- [docs/webserver.md](docs/webserver.md)
+- [docs/webserver-endpoints.md](docs/webserver-endpoints.md)
+- [docs/file-formats.md](docs/file-formats.md)
+- [docs/troubleshooting.md](docs/troubleshooting.md)
 
 ## 致謝
 
 本專案基於以下開源專案與成果修改：
 
-- 參考改版專案：[crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
-- 自選字型功能參考：[ruby-builds/crosspoint-reader custom-fonts 分支](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
-- 字型制作工具：[ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYFDroid/crosspointcn-fontcreator)
-- 藍芽功能參考：[thedrunkpenguin/crosspoint-reader-ble](https://github.com/thedrunkpenguin/crosspoint-reader-ble)
-- 鍵盤 QR 輸入：[QR_input PR](https://github.com/crosspoint-reader/crosspoint-reader/pull/839)
-- crosspoint-chinesetype：https://github.com/icannotttt/crosspoint-chinesetype
-
-## 授權
-
-本專案依 AGPL-3.0 授權。若修改、分享或再發布，請遵守授權條款並保留來源與修改說明。
+- [crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader)
+- [ruby-builds/crosspoint-reader custom-fonts 分支](https://github.com/ruby-builds/crosspoint-reader/tree/feature/custom-fonts)
+- [ZYFDroid/crosspointcn-fontcreator](https://github.com/ZYFDroid/crosspointcn-fontcreator)
+- [thedrunkpenguin/crosspoint-reader-ble](https://github.com/thedrunkpenguin/crosspoint-reader-ble)
+- [QR_input PR](https://github.com/crosspoint-reader/crosspoint-reader/pull/839)
+- [crosspoint-chinesetype](https://github.com/icannotttt/crosspoint-chinesetype)

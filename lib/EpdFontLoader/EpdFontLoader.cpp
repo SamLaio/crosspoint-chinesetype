@@ -12,6 +12,34 @@
 
 std::vector<int> EpdFontLoader::loadedCustomIds;
 
+namespace {
+int resolveCustomFontSize() {
+  if (SETTINGS.customFontSize != 0) {
+    return SETTINGS.customFontSize;
+  }
+
+  switch (SETTINGS.fontSize) {
+    case CrossPointSettings::SMALL:
+      return 12;
+    case CrossPointSettings::MEDIUM:
+    default:
+      return 14;
+    case CrossPointSettings::LARGE:
+      return 16;
+    case CrossPointSettings::EXTRA_LARGE:
+      return 18;
+  }
+  return 14;
+}
+
+int makeCustomFontId(const char* familyName, const int size) {
+  std::string key = std::string(familyName) + "-" + std::to_string(size);
+  uint32_t hash = 5381;
+  for (char c : key) hash = ((hash << 5) + hash) + c;
+  return static_cast<int>(hash);
+}
+}  // namespace
+
 void EpdFontLoader::loadFontsFromSd(GfxRenderer& renderer) {
   loadedCustomIds.clear();
 
@@ -21,40 +49,14 @@ void EpdFontLoader::loadFontsFromSd(GfxRenderer& renderer) {
       Serial.printf("Loading custom font: %s size %d\n", SETTINGS.customFontFamily, SETTINGS.fontSize);
       Serial.flush();
 
-      // Map enum size to point size roughly (or use customFontSize if non-zero)
-      int size = 12;  // default
-      // Map generic sizes (Small, Medium, Large, XL) to likely point sizes if not specified
-      // Assume standard sizes: 12, 14, 16, 18
-      switch (SETTINGS.fontSize) {
-        case CrossPointSettings::SMALL:
-          size = 12;
-          break;
-        case CrossPointSettings::MEDIUM:
-          size = 14;
-          break;
-        case CrossPointSettings::LARGE:
-          size = 16;
-          break;
-        case CrossPointSettings::EXTRA_LARGE:
-          size = 18;
-          break;
-      }
+      const int size = resolveCustomFontSize();
 
       EpdFontFamily* family = FontManager::getInstance().getCustomFontFamily(SETTINGS.customFontFamily, size);
       if (family) {
-        // IDs are usually static consts. For custom font, we need a dynamic ID or reserved ID.
-        // In main.cpp or somewhere, a range might be reserved or we replace an existing one?
-        // The stash code in main.cpp step 120 showed:
-        // "Calculate hash ID manually... int id = (int)hash;"
-        // "renderer.insertFont(id, *msgFont);"
+        const int id = makeCustomFontId(SETTINGS.customFontFamily, size);
 
-        std::string key = std::string(SETTINGS.customFontFamily) + "-" + std::to_string(size);
-        uint32_t hash = 5381;
-        for (char c : key) hash = ((hash << 5) + hash) + c;
-        int id = (int)hash;
-
-        Serial.printf("[FontLoader] Inserting custom font '%s' with ID %d (key: %s)\n", SETTINGS.customFontFamily, id,
-                      key.c_str());
+        Serial.printf("[FontLoader] Inserting custom font '%s' size %d with ID %d\n", SETTINGS.customFontFamily, size,
+                      id);
         renderer.insertFont(id, *family);
         loadedCustomIds.push_back(id);
       } else {
@@ -67,11 +69,7 @@ void EpdFontLoader::loadFontsFromSd(GfxRenderer& renderer) {
 int EpdFontLoader::getBestFontId(const char* familyName, int size) {
   if (!familyName || strlen(familyName) == 0) return -1;
 
-  // For now, just return the deterministic hash.
-  std::string key = std::string(familyName) + "-" + std::to_string(size);
-  uint32_t hash = 5381;
-  for (char c : key) hash = ((hash << 5) + hash) + c;
-  int id = (int)hash;
+  const int id = makeCustomFontId(familyName, size);
 
   // Verify if the font was actually loaded
   bool found = false;

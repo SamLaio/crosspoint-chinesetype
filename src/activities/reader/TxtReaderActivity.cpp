@@ -759,13 +759,13 @@ void TxtReaderActivity::renderPage() {
         if (y + lineHeight > maxY) {
           break;
         }
-        const int charWidth = renderer.getTextWidth(cachedFontId, ch.c_str());
+        const int charWidth = renderer.getVerticalTextWidth(cachedFontId, ch.c_str());
         int drawX = x + (columnWidth - charWidth) / 2;
         drawX = std::max(minX, std::min(drawX, maxX - charWidth));
         if (drawX < minX || drawX + charWidth > maxX) {
           break;
         }
-        renderer.drawText(cachedFontId, drawX, y, ch.c_str());
+        renderer.drawVerticalText(cachedFontId, drawX, y, ch.c_str());
         y += lineHeight;
         i += charLen;
       }
