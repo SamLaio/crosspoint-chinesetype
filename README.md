@@ -2,13 +2,13 @@
 
 XTEink X4 電子紙閱讀器韌體，基於 CrossPoint Reader 修改，重點放在中文閱讀、SD 卡檔案瀏覽、EPUB/TXT/XTC 閱讀、圖片背景、Wi-Fi 傳書、Calibre 無線傳書、OPDS、藍牙 HID 翻頁、自訂 `.epdfont` 字型與 EPUB/TXT 直排標點處理。
 
-目前 README 依照 2026-05-09 的程式碼重新掃描整理。
+目前 README 依照 2026-05-10 的程式碼重新掃描整理。
 
 目前版本：
 
-- 開發版：`zhTW_V2.1-allocate`
-- Release：`zhTW_V2.1`
-- Slim：`zhTW_V2.1-slim`
+- 開發版：`zhTW_V2.2-allocate`
+- Release：`zhTW_V2.2`
+- Slim：`zhTW_V2.2-slim`
 
 > 本專案僅支援 XTEink X4。刷機有風險，請自行備份官方韌體並自行承擔刷機後果。
 
@@ -22,7 +22,7 @@ XTEink X4 電子紙閱讀器韌體，基於 CrossPoint Reader 修改，重點放
 - 圖片閱讀支援同資料夾前後切換、設為閱讀背景、自定義睡眠屏、透明桌布、旋轉 180 度、左右翻轉。
 - SD 卡檔案管理支援開啟、刪除、複製、剪下、貼上。
 - Wi-Fi 功能支援加入網路、建立 X4 熱點、Web 檔案管理、Calibre 無線傳書。
-- OPDS 瀏覽器可瀏覽 feed、進入目錄、翻 feed 頁與下載書籍。
+- OPDS 瀏覽器可瀏覽 feed、進入目錄、翻 feed 頁與下載書籍，支援 HTTP Basic Auth 與常見 OPDS 相對/絕對連結。
 - Web 介面提供狀態、檔案管理、上傳、新建資料夾、下載、重新命名、移動、刪除與設定編輯。
 - 支援藍牙 HID 裝置、底部四鍵重新映射、自訂 `.epdfont` 字型、OTF/TTF 轉 `.epdffont` 工具、OTA 更新與清除快取。
 - EPUB/TXT 直排會處理常見 CJK 標點、半形標點、括號、引號、省略號與破折號的直排替換或 fallback 繪製。
@@ -274,6 +274,13 @@ Calibre 連線頁：
 - 確認：進入目錄或下載書籍。
 - 返回：上一層 feed；沒有上一層時離開。
 
+連線與下載：
+
+- OPDS feed 會送出 Atom/XML `Accept` header，並支援 Basic Auth。
+- feed 連結支援完整 URL、host 絕對路徑、query-only href 與相對路徑；相對路徑會以目前 feed URL 補成完整 URL。
+- 支援 chunked OPDS feed。
+- 可下載 `.epub`、`.pdf`、`.txt`、`.cbz`、`.zip`；下載檔會以 `書名 - 作者.副檔名` 或 `書名.副檔名` 存到 SD 卡根目錄。
+
 ### OPDS 設定
 
 設定頁動作 `OPDS Browser` 會開啟 OPDS 設定頁。
@@ -485,6 +492,8 @@ Web 設定頁功能：
 
 - `/.crosspoint`：設定、快取、閱讀進度、封面縮圖等資料。
 - `/fonts`：自訂 `.epdfont` 字型。
+
+OPDS 可下載但不一定可直接閱讀的格式：`.pdf`、`.cbz`、`.zip`。這些檔案會保留在 SD 卡根目錄，可透過 Web 檔案管理或 SD 卡取出。
 
 ## 建置
 
