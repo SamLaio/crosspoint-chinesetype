@@ -25,4 +25,10 @@ std::string extractHost(const std::string& url);
  */
 std::string buildUrl(const std::string& serverUrl, const std::string& path);
 
+/**
+ * Resolve href against the URL of the current feed.
+ * Supports full URLs, host-absolute paths, query-only hrefs, and relative paths.
+ */
+std::string resolveUrl(const std::string& baseUrl, const std::string& href);
+
 }  // namespace UrlUtils

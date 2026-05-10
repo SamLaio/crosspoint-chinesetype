@@ -6,6 +6,9 @@
 #include <OpdsStream.h>
 #include <WiFi.h>
 
+#include <algorithm>
+#include <cctype>
+
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "activities/network/WifiSelectionActivity.h"
@@ -18,6 +21,77 @@
 
 namespace {
 constexpr int PAGE_ITEMS = 23;
+constexpr const char* OPDS_ACCEPT_HEADER =
+    "application/atom+xml;profile=opds-catalog, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.1";
+
+std::string toLowerAscii(std::string value) {
+  std::transform(value.begin(), value.end(), value.begin(),
+                 [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return value;
+}
+
+std::string extensionFromPath(std::string path) {
+  const size_t queryPos = path.find('?');
+  if (queryPos != std::string::npos) {
+    path.erase(queryPos);
+  }
+  const size_t fragmentPos = path.find('#');
+  if (fragmentPos != std::string::npos) {
+    path.erase(fragmentPos);
+  }
+
+  const size_t slashPos = path.find_last_of('/');
+  const std::string filename = slashPos == std::string::npos ? path : path.substr(slashPos + 1);
+  const size_t dotPos = filename.find_last_of('.');
+  if (dotPos == std::string::npos || dotPos == filename.size() - 1) {
+    return "";
+  }
+
+  const std::string extension = toLowerAscii(filename.substr(dotPos));
+  if (extension == ".epub" || extension == ".txt" || extension == ".md" || extension == ".pdf" ||
+      extension == ".cbz" || extension == ".zip" || extension == ".xtc" || extension == ".xtch") {
+    return extension;
+  }
+  return "";
+}
+
+void stripKnownBookExtension(std::string& baseName) {
+  for (const char* extension : {".epub", ".pdf", ".txt", ".md", ".zip", ".cbz", ".xtc", ".xtch"}) {
+    if (StringUtils::checkFileExtension(baseName, extension)) {
+      baseName.resize(baseName.size() - strlen(extension));
+      return;
+    }
+  }
+}
+
+std::string downloadExtensionForEntry(const OpdsEntry& book) {
+  const std::string mimeType = toLowerAscii(book.mimeType);
+  if (mimeType.find("application/pdf") != std::string::npos) {
+    return ".pdf";
+  }
+  if (mimeType.find("application/epub") != std::string::npos) {
+    return ".epub";
+  }
+  if (mimeType.find("application/vnd.comicbook+zip") != std::string::npos ||
+      mimeType.find("application/x-cbz") != std::string::npos) {
+    return ".cbz";
+  }
+  if (mimeType.find("application/zip") != std::string::npos) {
+    return ".zip";
+  }
+  if (mimeType.find("text/plain") != std::string::npos) {
+    return ".txt";
+  }
+
+  std::string extension = extensionFromPath(book.href);
+  if (!extension.empty()) {
+    return extension;
+  }
+
+  extension = extensionFromPath(book.title);
+  return extension.empty() ? ".epub" : extension;
+}
+
 }  // namespace
 
 void OpdsBookBrowserActivity::taskTrampoline(void* param) {
@@ -39,9 +113,10 @@ void OpdsBookBrowserActivity::onEnter() {
   errorMessage.clear();
   statusMessage = getChineseName("Checking WiFi...");
   updateRequired = true;
+  pendingFeedFetch = false;
 
   xTaskCreate(&OpdsBookBrowserActivity::taskTrampoline, "OpdsBookBrowserTask",
-              4096,               // Stack size (larger for HTTP operations)
+              8192,               // Stack size (larger for HTTP and OPDS parsing)
               this,               // Parameters
               1,                  // Priority
               &displayTaskHandle  // Task handle
@@ -72,6 +147,12 @@ void OpdsBookBrowserActivity::loop() {
   // Handle WiFi selection subactivity
   if (state == BrowserState::WIFI_SELECTION) {
     ActivityWithSubactivity::loop();
+    return;
+  }
+
+  if (pendingFeedFetch) {
+    pendingFeedFetch = false;
+    fetchFeed(currentPath);
     return;
   }
 
@@ -274,27 +355,24 @@ void OpdsBookBrowserActivity::fetchFeed(const std::string& path) {
   Serial.printf("[%lu] [OPDS] Fetching: %s\n", millis(), url.c_str());
 
   OpdsParser parser;
-
+  bool feedLoaded = false;
   {
     OpdsParserStream stream{parser};
-    if (!HttpDownloader::fetchUrl(url, stream)) {
-      state = BrowserState::ERROR;
-      errorMessage = getChineseName("Failed to fetch feed");
-      updateRequired = true;
-      return;
-    }
+    feedLoaded = HttpDownloader::fetchUrl(url, stream, OPDS_ACCEPT_HEADER);
   }
 
-  if (!parser) {
+  if (!feedLoaded || !parser) {
     state = BrowserState::ERROR;
-    errorMessage = getChineseName("Failed to parse feed");
+    errorMessage = feedLoaded ? getChineseName("Failed to parse feed") : getChineseName("Failed to fetch feed");
     updateRequired = true;
     return;
   }
 
+  const std::string nextHref = parser.getNextHref();
+  const std::string previousHref = parser.getPreviousHref();
   entries = std::move(parser).getEntries();
-  nextPagePath = parser.getNextHref();
-  previousPagePath = parser.getPreviousHref();
+  nextPagePath = nextHref.empty() ? "" : UrlUtils::resolveUrl(url, nextHref);
+  previousPagePath = previousHref.empty() ? "" : UrlUtils::resolveUrl(url, previousHref);
   Serial.printf("[%lu] [OPDS] Found %d entries\n", millis(), entries.size());
   selectorIndex = 0;
 
@@ -327,7 +405,11 @@ void OpdsBookBrowserActivity::navigateToFeed(const std::string& path, const bool
 }
 
 void OpdsBookBrowserActivity::navigateToEntry(const OpdsEntry& entry) {
-  navigateToFeed(entry.href, true);
+  const std::string baseUrl = UrlUtils::buildUrl(SETTINGS.opdsServerUrl, currentPath);
+  const std::string targetUrl = UrlUtils::resolveUrl(baseUrl, entry.href);
+  Serial.printf("[%lu] [OPDS] Navigate entry: base=%s href=%s target=%s\n", millis(), baseUrl.c_str(),
+                entry.href.c_str(), targetUrl.c_str());
+  navigateToFeed(targetUrl, true);
 }
 
 void OpdsBookBrowserActivity::navigateBack() {
@@ -335,7 +417,6 @@ void OpdsBookBrowserActivity::navigateBack() {
     // At root, go home
     onGoHome();
   } else {
-    // Go back to previous catalog
     currentPath = navigationHistory.back();
     navigationHistory.pop_back();
 
@@ -357,14 +438,17 @@ void OpdsBookBrowserActivity::downloadBook(const OpdsEntry& book) {
   updateRequired = true;
 
   // Build full download URL
-  std::string downloadUrl = UrlUtils::buildUrl(SETTINGS.opdsServerUrl, book.href);
+  const std::string baseUrl = UrlUtils::buildUrl(SETTINGS.opdsServerUrl, currentPath);
+  std::string downloadUrl = UrlUtils::resolveUrl(baseUrl, book.href);
 
   // Create sanitized filename: "Title - Author.epub" or just "Title.epub" if no author
   std::string baseName = book.title;
+  const std::string extension = downloadExtensionForEntry(book);
+  stripKnownBookExtension(baseName);
   if (!book.author.empty()) {
     baseName += " - " + book.author;
   }
-  std::string filename = "/" + StringUtils::sanitizeFilename(baseName,200) + ".epub";
+  std::string filename = "/" + StringUtils::sanitizeFilename(baseName, 200) + extension;
 
   Serial.printf("[%lu] [OPDS] Downloading: %s -> %s\n", millis(), downloadUrl.c_str(), filename.c_str());
 
@@ -421,8 +505,8 @@ void OpdsBookBrowserActivity::onWifiSelectionComplete(const bool connected) {
     Serial.printf("[%lu] [OPDS] WiFi connected via selection, fetching feed\n", millis());
     state = BrowserState::LOADING;
     statusMessage = getChineseName("Loading...");
+    pendingFeedFetch = true;
     updateRequired = true;
-    fetchFeed(currentPath);
   } else {
     Serial.printf("[%lu] [OPDS] WiFi selection cancelled/failed\n", millis());
     // Force disconnect to ensure clean state for next retry

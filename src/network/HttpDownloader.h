@@ -1,5 +1,6 @@
 #pragma once
 #include <SDCardManager.h>
+#include <Stream.h>
 
 #include <functional>
 #include <string>
@@ -25,9 +26,9 @@ class HttpDownloader {
    * @param outContent The fetched content (output)
    * @return true if fetch succeeded, false on error
    */
-  static bool fetchUrl(const std::string& url, std::string& outContent);
+  static bool fetchUrl(const std::string& url, std::string& outContent, const char* acceptHeader = nullptr);
 
-  static bool fetchUrl(const std::string& url, Stream& stream);
+  static bool fetchUrl(const std::string& url, Stream& stream, const char* acceptHeader = nullptr);
 
   /**
    * Download a file to the SD card.

@@ -144,6 +144,13 @@ void SettingsActivity::loop() {
     return;
   }
 
+  if (ignoreInputUntilClear) {
+    if (!isInputClear()) {
+      return;
+    }
+    ignoreInputUntilClear = false;
+  }
+
   if (mappedInput.wasPressed(MappedInputManager::Button::Back) ||
       mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
     SETTINGS.saveToFile();
@@ -192,6 +199,27 @@ void SettingsActivity::loop() {
   }
 }
 
+bool SettingsActivity::isInputClear() const {
+  return !mappedInput.isPressed(MappedInputManager::Button::Back) &&
+         !mappedInput.isPressed(MappedInputManager::Button::Confirm) &&
+         !mappedInput.isPressed(MappedInputManager::Button::Left) &&
+         !mappedInput.isPressed(MappedInputManager::Button::Right) &&
+         !mappedInput.isPressed(MappedInputManager::Button::Up) &&
+         !mappedInput.isPressed(MappedInputManager::Button::Down) &&
+         !mappedInput.wasPressed(MappedInputManager::Button::Back) &&
+         !mappedInput.wasPressed(MappedInputManager::Button::Confirm) &&
+         !mappedInput.wasPressed(MappedInputManager::Button::Left) &&
+         !mappedInput.wasPressed(MappedInputManager::Button::Right) &&
+         !mappedInput.wasPressed(MappedInputManager::Button::Up) &&
+         !mappedInput.wasPressed(MappedInputManager::Button::Down) &&
+         !mappedInput.wasReleased(MappedInputManager::Button::Back) &&
+         !mappedInput.wasReleased(MappedInputManager::Button::Confirm) &&
+         !mappedInput.wasReleased(MappedInputManager::Button::Left) &&
+         !mappedInput.wasReleased(MappedInputManager::Button::Right) &&
+         !mappedInput.wasReleased(MappedInputManager::Button::Up) &&
+         !mappedInput.wasReleased(MappedInputManager::Button::Down);
+}
+
 void SettingsActivity::adjustCurrentSetting(int direction) {
   int selectedSetting = selectedSettingIndex - 1;
   if (selectedSetting < 0 || selectedSetting >= settingsCount) {
@@ -232,6 +260,7 @@ void SettingsActivity::adjustCurrentSetting(int direction) {
       exitActivity();
       enterNewActivity(new ButtonRemapActivity(renderer, mappedInput, [this] {
         exitActivity();
+        ignoreInputUntilClear = true;
         updateRequired = true;
       }));
       xSemaphoreGive(renderingMutex);

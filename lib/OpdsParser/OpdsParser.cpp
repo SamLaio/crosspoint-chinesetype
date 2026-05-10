@@ -67,11 +67,21 @@ size_t OpdsParser::write(const uint8_t* xmlData, const size_t length) {
 }
 
 void OpdsParser::flush() {
+  if (!parser || errorOccured) {
+    return;
+  }
+
   if (XML_Parse(parser, nullptr, 0, XML_TRUE) != XML_STATUS_OK) {
     errorOccured = true;
+    Serial.printf("[%lu] [OPDS] Final parse error at line %lu: %s\n", millis(), XML_GetCurrentLineNumber(parser),
+                  XML_ErrorString(XML_GetErrorCode(parser)));
     XML_ParserFree(parser);
     parser = nullptr;
+    return;
   }
+
+  XML_ParserFree(parser);
+  parser = nullptr;
 }
 
 bool OpdsParser::error() const { return errorOccured; }
@@ -101,25 +111,56 @@ std::vector<OpdsEntry> OpdsParser::getBooks() const {
 
 const char* OpdsParser::findAttribute(const XML_Char** atts, const char* name) {
   for (int i = 0; atts[i]; i += 2) {
-    if (strcmp(atts[i], name) == 0) {
+    const char* attrName = atts[i];
+    const char* localName = strrchr(attrName, ':');
+    localName = localName ? localName + 1 : attrName;
+    if (strcmp(attrName, name) == 0 || strcmp(localName, name) == 0) {
       return atts[i + 1];
     }
   }
   return nullptr;
 }
 
+namespace {
+bool isElement(const XML_Char* actualName, const char* expectedName) {
+  const char* localName = strrchr(actualName, ':');
+  localName = localName ? localName + 1 : actualName;
+  return strcmp(actualName, expectedName) == 0 || strcmp(localName, expectedName) == 0;
+}
+
+bool containsToken(const char* value, const char* token) {
+  return value && strstr(value, token) != nullptr;
+}
+
+bool isBookAcquisitionLink(const char* rel, const char* type) {
+  if (!containsToken(rel, "acquisition")) {
+    return false;
+  }
+  return !type || containsToken(type, "application/epub") || containsToken(type, "application/octet-stream") ||
+         containsToken(type, "application/pdf") || containsToken(type, "application/zip") ||
+         containsToken(type, "application/x-cbz") || containsToken(type, "application/vnd.comicbook+zip") ||
+         containsToken(type, "application/x-mobipocket-ebook") || containsToken(type, "text/plain");
+}
+
+bool isNavigationLink(const char* rel, const char* type) {
+  return containsToken(rel, "subsection") || containsToken(rel, "start") || containsToken(rel, "index") ||
+         containsToken(type, "application/atom+xml") || containsToken(type, "application/atom") ||
+         containsToken(type, "application/opds-catalog");
+}
+}  // namespace
+
 void XMLCALL OpdsParser::startElement(void* userData, const XML_Char* name, const XML_Char** atts) {
   auto* self = static_cast<OpdsParser*>(userData);
 
   // Check for entry element (with or without namespace prefix)
-  if (strcmp(name, "entry") == 0 || strstr(name, ":entry") != nullptr) {
+  if (isElement(name, "entry")) {
     self->inEntry = true;
     self->currentEntry = OpdsEntry{};
     return;
   }
 
   if (!self->inEntry) {
-    if (strcmp(name, "link") == 0 || strstr(name, ":link") != nullptr) {
+    if (isElement(name, "link")) {
       const char* rel = findAttribute(atts, "rel");
       const char* href = findAttribute(atts, "href");
       if (rel && href) {
@@ -134,51 +175,49 @@ void XMLCALL OpdsParser::startElement(void* userData, const XML_Char* name, cons
   }
 
   // Check for title element
-  if (strcmp(name, "title") == 0 || strstr(name, ":title") != nullptr) {
+  if (isElement(name, "title")) {
     self->inTitle = true;
     self->currentText.clear();
     return;
   }
 
   // Check for author element
-  if (strcmp(name, "author") == 0 || strstr(name, ":author") != nullptr) {
+  if (isElement(name, "author")) {
     self->inAuthor = true;
     return;
   }
 
   // Check for author name element
-  if (self->inAuthor && (strcmp(name, "name") == 0 || strstr(name, ":name") != nullptr)) {
+  if (self->inAuthor && isElement(name, "name")) {
     self->inAuthorName = true;
     self->currentText.clear();
     return;
   }
 
   // Check for id element
-  if (strcmp(name, "id") == 0 || strstr(name, ":id") != nullptr) {
+  if (isElement(name, "id")) {
     self->inId = true;
     self->currentText.clear();
     return;
   }
 
   // Check for link element
-  if (strcmp(name, "link") == 0 || strstr(name, ":link") != nullptr) {
+  if (isElement(name, "link")) {
     const char* rel = findAttribute(atts, "rel");
     const char* type = findAttribute(atts, "type");
     const char* href = findAttribute(atts, "href");
 
     if (href) {
-      // Check for acquisition link with epub type (this is a downloadable book)
-      if (rel && type && strstr(rel, "opds-spec.org/acquisition") != nullptr &&
-          strcmp(type, "application/epub+zip") == 0) {
+      if (isBookAcquisitionLink(rel, type)) {
         self->currentEntry.type = OpdsEntryType::BOOK;
         self->currentEntry.href = href;
+        self->currentEntry.mimeType = type ? type : "";
       }
-      // Check for navigation link (subsection or no rel specified with atom+xml type)
-      else if (type && strstr(type, "application/atom+xml") != nullptr) {
-        // Only set navigation link if we don't already have an epub link
+      else if (isNavigationLink(rel, type)) {
         if (self->currentEntry.type != OpdsEntryType::BOOK) {
           self->currentEntry.type = OpdsEntryType::NAVIGATION;
           self->currentEntry.href = href;
+          self->currentEntry.mimeType = type ? type : "";
         }
       }
     }
@@ -189,7 +228,7 @@ void XMLCALL OpdsParser::endElement(void* userData, const XML_Char* name) {
   auto* self = static_cast<OpdsParser*>(userData);
 
   // Check for entry end
-  if (strcmp(name, "entry") == 0 || strstr(name, ":entry") != nullptr) {
+  if (isElement(name, "entry")) {
     // Only add entry if it has required fields (title and href)
     if (!self->currentEntry.title.empty() && !self->currentEntry.href.empty()) {
       self->entries.push_back(self->currentEntry);
@@ -202,7 +241,7 @@ void XMLCALL OpdsParser::endElement(void* userData, const XML_Char* name) {
   if (!self->inEntry) return;
 
   // Check for title end
-  if (strcmp(name, "title") == 0 || strstr(name, ":title") != nullptr) {
+  if (isElement(name, "title")) {
     if (self->inTitle) {
       self->currentEntry.title = self->currentText;
     }
@@ -211,13 +250,13 @@ void XMLCALL OpdsParser::endElement(void* userData, const XML_Char* name) {
   }
 
   // Check for author end
-  if (strcmp(name, "author") == 0 || strstr(name, ":author") != nullptr) {
+  if (isElement(name, "author")) {
     self->inAuthor = false;
     return;
   }
 
   // Check for author name end
-  if (self->inAuthor && (strcmp(name, "name") == 0 || strstr(name, ":name") != nullptr)) {
+  if (self->inAuthor && isElement(name, "name")) {
     if (self->inAuthorName) {
       self->currentEntry.author = self->currentText;
     }
@@ -226,7 +265,7 @@ void XMLCALL OpdsParser::endElement(void* userData, const XML_Char* name) {
   }
 
   // Check for id end
-  if (strcmp(name, "id") == 0 || strstr(name, ":id") != nullptr) {
+  if (isElement(name, "id")) {
     if (self->inId) {
       self->currentEntry.id = self->currentText;
     }

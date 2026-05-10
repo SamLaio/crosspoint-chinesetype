@@ -38,6 +38,7 @@ class OpdsBookBrowserActivity final : public ActivityWithSubactivity {
   TaskHandle_t displayTaskHandle = nullptr;
   SemaphoreHandle_t renderingMutex = nullptr;
   bool updateRequired = false;
+  bool pendingFeedFetch = false;
 
   BrowserState state = BrowserState::LOADING;
   std::vector<OpdsEntry> entries;

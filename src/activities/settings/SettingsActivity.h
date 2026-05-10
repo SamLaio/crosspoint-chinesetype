@@ -157,6 +157,7 @@ class SettingsActivity final : public ActivityWithSubactivity {
   TaskHandle_t displayTaskHandle = nullptr;
   SemaphoreHandle_t renderingMutex = nullptr;
   bool updateRequired = false;
+  bool ignoreInputUntilClear = false;
   int selectedCategoryIndex = 0;  // Currently selected category
   int selectedSettingIndex = 0;
   int settingsCount = 0;
@@ -179,6 +180,7 @@ class SettingsActivity final : public ActivityWithSubactivity {
   void render() const;
   void enterCategory(int categoryIndex);
   void adjustCurrentSetting(int direction);
+  bool isInputClear() const;
   ReaderSettingsSnapshot captureReaderSettings() const;
   bool readerSettingsChanged() const;
   void clearTxtCachesIfReaderSettingsChanged();
