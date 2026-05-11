@@ -6,9 +6,9 @@ XTEink X4 電子紙閱讀器韌體，基於 CrossPoint Reader 修改，重點放
 
 目前版本：
 
-- 開發版：`zhTW_V2.2-allocate`
-- Release：`zhTW_V2.2`
-- Slim：`zhTW_V2.2-slim`
+- 開發版：`zhTW_V2.3-allocate`
+- Release：`zhTW_V2.3`
+- Slim：`zhTW_V2.3-slim`
 
 > 本專案僅支援 XTEink X4。刷機有風險，請自行備份官方韌體並自行承擔刷機後果。
 

@@ -5,8 +5,50 @@
 #include <SDCardManager.h>
 
 #include <algorithm>
+#include <cctype>
 
 #include "CustomEpdFont.h"
+
+namespace {
+bool isAsciiDigits(const String& value) {
+  if (value.length() == 0) return false;
+  for (size_t i = 0; i < value.length(); i++) {
+    if (!std::isdigit(static_cast<unsigned char>(value[i]))) return false;
+  }
+  return true;
+}
+
+bool isKnownStyle(const String& value) {
+  return value == "Regular" || value == "Bold" || value == "Italic" || value == "BoldItalic";
+}
+
+String stripTrailingToken(const String& baseName, const char separator) {
+  const int separatorIndex = baseName.lastIndexOf(separator);
+  if (separatorIndex <= 0 || separatorIndex >= (int)baseName.length() - 1) return baseName;
+
+  const String suffix = baseName.substring(separatorIndex + 1);
+  if (isAsciiDigits(suffix) || isKnownStyle(suffix)) {
+    return baseName.substring(0, separatorIndex);
+  }
+
+  return baseName;
+}
+
+String fontFamilyFromFileName(const String& fileName) {
+  String baseName = fileName;
+  if (baseName.endsWith(".epdfont")) {
+    baseName = baseName.substring(0, baseName.length() - 8);
+  }
+
+  // Only strip conventional trailing style/size tokens. Family names may
+  // legitimately contain '-' or '_' (for example 金萱那提-四分糖.epdfont).
+  String family = stripTrailingToken(baseName, '-');
+  family = stripTrailingToken(family, '_');
+  family = stripTrailingToken(family, '-');
+  family = stripTrailingToken(family, '_');
+  return family;
+}
+}  // namespace
 
 FontManager& FontManager::getInstance() {
   static FontManager instance;
@@ -56,19 +98,10 @@ void FontManager::scanFonts() {
 
       String name = String(filename);
       if (name.endsWith(".epdfont")) {
-        // Expected format: Family-Style-Size.epdfont or Family_Size.epdfont
-        // Or just Family.epdfont (V1 single file)
-
-        String family;
-        int separator = name.indexOf('-');
-        if (separator < 0) separator = name.indexOf('_');
-
-        if (separator > 0) {
-          family = name.substring(0, separator);
-        } else {
-          // No separator, take the whole name (minus .epdfont)
-          family = name.substring(0, name.length() - 8);
-        }
+        // Expected formats include Family.epdfont, Family-18.epdfont,
+        // Family_18.epdfont, and Family-Regular-18.epdfont. Keep separators
+        // that are part of the family name.
+        String family = fontFamilyFromFileName(name);
 
         if (family.length() > 0) {
           if (std::find(availableFamilies.begin(), availableFamilies.end(), family.c_str()) ==

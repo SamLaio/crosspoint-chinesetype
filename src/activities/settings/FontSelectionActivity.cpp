@@ -3,6 +3,8 @@
 #include <EpdFontLoader.h>
 #include <HardwareSerial.h>
 
+#include <algorithm>
+
 #include "../../CrossPointSettings.h"
 #include "../../fontIds.h"
 #include "../../managers/FontManager.h"
@@ -17,7 +19,10 @@ FontSelectionActivity::~FontSelectionActivity() {}
 void FontSelectionActivity::onEnter() {
   Serial.println("[FSA] onEnter start");
   Activity::onEnter();
+  selectedIndex = 0;
+  scrollOffset = 0;
   Serial.println("[FSA] Getting available families...");
+  FontManager::getInstance().scanFonts();
   fontFamilies = FontManager::getInstance().getAvailableFamilies();
   Serial.printf("[FSA] Got %d families\n", fontFamilies.size());
 
@@ -51,6 +56,10 @@ void FontSelectionActivity::loop() {
     return;
   }
 
+  if (fontFamilies.empty()) {
+    return;
+  }
+
   if (mappedInput.wasPressed(MappedInputManager::Button::Up) ||
       mappedInput.wasPressed(MappedInputManager::Button::Left)) {
     selectedIndex = (selectedIndex > 0) ? (selectedIndex - 1) : ((int)fontFamilies.size() - 1);
@@ -67,6 +76,12 @@ void FontSelectionActivity::loop() {
   }
 
   if (update) {
+    if (selectedIndex < scrollOffset) {
+      scrollOffset = selectedIndex;
+    } else if (selectedIndex >= scrollOffset + itemsPerPage) {
+      scrollOffset = selectedIndex - itemsPerPage + 1;
+    }
+    scrollOffset = std::max(0, std::min(scrollOffset, (int)fontFamilies.size() - itemsPerPage));
     render();
   }
 }
@@ -95,7 +110,8 @@ void FontSelectionActivity::render() const {
     return;
   }
 
-  for (int i = 0; i < (int)fontFamilies.size(); i++) {
+  const int visibleCount = std::min(itemsPerPage, (int)fontFamilies.size() - scrollOffset);
+  for (int i = 0; i < visibleCount; i++) {
     int idx = scrollOffset + i;
 
     // Draw selection box
