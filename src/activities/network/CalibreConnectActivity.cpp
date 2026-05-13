@@ -235,8 +235,8 @@ void CalibreConnectActivity::renderServerRunning() const {
   if (ssidInfo.length() > 28) {
     ssidInfo.replace(25, ssidInfo.length() - 25, "...");
   }
-  renderer.drawCenteredText(NOTOSANS_12_FONT_ID, y, ssidInfo.c_str());
-  renderer.drawCenteredText(NOTOSANS_12_FONT_ID, y + LINE_SPACING,
+  renderer.drawCenteredText(UI_10_FONT_ID, y, ssidInfo.c_str());
+  renderer.drawCenteredText(UI_10_FONT_ID, y + LINE_SPACING,
                             (std::string(getChineseName("IP: ")) + connectedIP).c_str());
 
   y += LINE_SPACING * 2 + SECTION_SPACING;
@@ -258,7 +258,7 @@ void CalibreConnectActivity::renderServerRunning() const {
         label.replace(31, label.length() - 31, "...");
       }
     }
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, y, label.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, y, label.c_str());
     constexpr int barWidth = 300;
     constexpr int barHeight = 16;
     constexpr int barX = (480 - barWidth) / 2;
@@ -271,7 +271,7 @@ void CalibreConnectActivity::renderServerRunning() const {
     if (msg.length() > 36) {
       msg.replace(33, msg.length() - 33, "...");
     }
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, y, msg.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, y, msg.c_str());
   }
 
   const auto labels = mappedInput.mapLabels(getChineseName("« Back"), "", "", "");

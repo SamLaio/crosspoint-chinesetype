@@ -538,7 +538,7 @@ void WifiSelectionActivity::renderNetworkList() const {
   } else {
     // Calculate how many networks we can display
     constexpr int startY = 60;
-    const int lineHeight = renderer.getLineHeight(NOTOSANS_12_FONT_ID);
+    const int lineHeight = renderer.getLineHeight(UI_10_FONT_ID);
     const int maxVisibleNetworks = (pageHeight - startY - 40) / lineHeight;
 
     // Calculate scroll offset to keep selected item visible
@@ -563,11 +563,11 @@ void WifiSelectionActivity::renderNetworkList() const {
       if (displayName.length() > 33) {
         displayName.replace(30, displayName.length() - 30, "...");
       }
-      renderer.drawText(NOTOSANS_12_FONT_ID, 20, networkY, displayName.c_str());
+      renderer.drawText(UI_10_FONT_ID, 20, networkY, displayName.c_str());
 
       // Draw signal strength indicator
       std::string signalStr = getSignalStrengthIndicator(network.rssi);
-      renderer.drawText(NOTOSANS_12_FONT_ID, pageWidth - 90, networkY, signalStr.c_str());
+      renderer.drawText(UI_10_FONT_ID, pageWidth - 90, networkY, signalStr.c_str());
 
       // Draw saved indicator (checkmark) for networks with saved passwords
       if (network.hasSavedPassword) {
@@ -595,7 +595,7 @@ void WifiSelectionActivity::renderNetworkList() const {
   }
 
   // Show MAC address above the network count and legend
-  renderer.drawText(NOTOSANS_12_FONT_ID, 20, pageHeight - 105, cachedMacAddress.c_str());
+  renderer.drawText(UI_10_FONT_ID, 20, pageHeight - 105, cachedMacAddress.c_str());
 
   // Draw help text
   renderer.drawText(SMALL_FONT_ID, 20, pageHeight - 75, getChineseName("Encrypted and saved hint"));
@@ -617,7 +617,7 @@ void WifiSelectionActivity::renderConnecting() const {
     if (ssidInfo.length() > 25) {
       ssidInfo.replace(22, ssidInfo.length() - 22, "...");
     }
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, top, ssidInfo.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, top, ssidInfo.c_str());
   }
 }
 
@@ -632,10 +632,10 @@ void WifiSelectionActivity::renderConnected() const {
   if (ssidInfo.length() > 28) {
     ssidInfo.replace(25, ssidInfo.length() - 25, "...");
   }
-  renderer.drawCenteredText(NOTOSANS_12_FONT_ID, top + 10, ssidInfo.c_str());
+  renderer.drawCenteredText(UI_10_FONT_ID, top + 10, ssidInfo.c_str());
 
   const std::string ipInfo = std::string(getChineseName("IP Address: ")) + connectedIP;
-  renderer.drawCenteredText(NOTOSANS_12_FONT_ID, top + 40, ipInfo.c_str());
+  renderer.drawCenteredText(UI_10_FONT_ID, top + 40, ipInfo.c_str());
 
   // Use centralized button hints
   const auto labels = mappedInput.mapLabels("", getChineseName("Continue"), "", "");
@@ -654,7 +654,7 @@ void WifiSelectionActivity::renderSavePrompt() const {
   if (ssidInfo.length() > 28) {
     ssidInfo.replace(25, ssidInfo.length() - 25, "...");
   }
-  renderer.drawCenteredText(NOTOSANS_12_FONT_ID, top, ssidInfo.c_str());
+  renderer.drawCenteredText(UI_10_FONT_ID, top, ssidInfo.c_str());
 
   renderer.drawCenteredText(UI_10_FONT_ID, top + 40, getChineseName("Save password for next time?"));
 
@@ -692,7 +692,7 @@ void WifiSelectionActivity::renderConnectionFailed() const {
   const auto top = (pageHeight - height * 2) / 2;
 
   renderer.drawCenteredText(UI_12_FONT_ID, top - 20, getChineseName("Connection failed"), true, EpdFontFamily::BOLD);
-  renderer.drawCenteredText(NOTOSANS_12_FONT_ID, top + 20, connectionError.c_str());
+  renderer.drawCenteredText(UI_10_FONT_ID, top + 20, connectionError.c_str());
 
   // Use centralized button hints
   const auto labels = mappedInput.mapLabels(getChineseName("« Back"), getChineseName("Continue"), "", "");
@@ -711,7 +711,7 @@ void WifiSelectionActivity::renderForgetPrompt() const {
   if (ssidInfo.length() > 28) {
     ssidInfo.replace(25, ssidInfo.length() - 25, "...");
   }
-  renderer.drawCenteredText(NOTOSANS_12_FONT_ID, top, ssidInfo.c_str());
+  renderer.drawCenteredText(UI_10_FONT_ID, top, ssidInfo.c_str());
 
   renderer.drawCenteredText(UI_10_FONT_ID, top + 40, getChineseName("Forget network prompt"));
 

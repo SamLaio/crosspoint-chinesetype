@@ -194,8 +194,8 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
     if (rowSubtitle != nullptr) {
       // Draw subtitle
       std::string subtitleText = rowSubtitle(i);
-      auto subtitle = renderer.truncatedText(NOTOSANS_12_FONT_ID, subtitleText.c_str(), textWidth);
-      renderer.drawText(NOTOSANS_12_FONT_ID, rect.x + BaseMetrics::values.contentSidePadding, itemY + 30, subtitle.c_str(),
+      auto subtitle = renderer.truncatedText(UI_10_FONT_ID, subtitleText.c_str(), textWidth);
+      renderer.drawText(UI_10_FONT_ID, rect.x + BaseMetrics::values.contentSidePadding, itemY + 30, subtitle.c_str(),
                         i != selectedIndex);
     }
 
@@ -475,21 +475,21 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
       // Calculate the max text width for the box
       int maxTextWidth = 0;
       for (const auto& line : lines) {
-        const int lineWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, line.c_str());
+        const int lineWidth = renderer.getTextWidth(UI_10_FONT_ID, line.c_str());
         if (lineWidth > maxTextWidth) {
           maxTextWidth = lineWidth;
         }
       }
       if (!lastBookAuthor.empty()) {
         std::string trimmedAuthor = lastBookAuthor;
-        while (renderer.getTextWidth(NOTOSANS_12_FONT_ID, trimmedAuthor.c_str()) > maxLineWidth && !trimmedAuthor.empty()) {
+        while (renderer.getTextWidth(UI_10_FONT_ID, trimmedAuthor.c_str()) > maxLineWidth && !trimmedAuthor.empty()) {
           utf8RemoveLastChar(trimmedAuthor);
         }
-        if (renderer.getTextWidth(NOTOSANS_12_FONT_ID, trimmedAuthor.c_str()) <
-            renderer.getTextWidth(NOTOSANS_12_FONT_ID, lastBookAuthor.c_str())) {
+        if (renderer.getTextWidth(UI_10_FONT_ID, trimmedAuthor.c_str()) <
+            renderer.getTextWidth(UI_10_FONT_ID, lastBookAuthor.c_str())) {
           trimmedAuthor.append("...");
         }
-        const int authorWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, trimmedAuthor.c_str());
+        const int authorWidth = renderer.getTextWidth(UI_10_FONT_ID, trimmedAuthor.c_str());
         if (authorWidth > maxTextWidth) {
           maxTextWidth = authorWidth;
         }
@@ -507,28 +507,28 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
     }
 
     for (const auto& line : lines) {
-      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, titleYStart, line.c_str(), !bookSelected);
-      titleYStart += renderer.getLineHeight(NOTOSANS_12_FONT_ID);
+      renderer.drawCenteredText(UI_10_FONT_ID, titleYStart, line.c_str(), !bookSelected);
+      titleYStart += renderer.getLineHeight(UI_10_FONT_ID);
     }
 
     if (!lastBookAuthor.empty()) {
-      titleYStart += renderer.getLineHeight(NOTOSANS_12_FONT_ID) / 2;
+      titleYStart += renderer.getLineHeight(UI_10_FONT_ID) / 2;
       std::string trimmedAuthor = lastBookAuthor;
       // Trim author if too long (UTF-8 safe)
       bool wasTrimmed = false;
-      while (renderer.getTextWidth(NOTOSANS_12_FONT_ID, trimmedAuthor.c_str()) > maxLineWidth && !trimmedAuthor.empty()) {
+      while (renderer.getTextWidth(UI_10_FONT_ID, trimmedAuthor.c_str()) > maxLineWidth && !trimmedAuthor.empty()) {
         utf8RemoveLastChar(trimmedAuthor);
         wasTrimmed = true;
       }
       if (wasTrimmed && !trimmedAuthor.empty()) {
         // Make room for ellipsis
-        while (renderer.getTextWidth(NOTOSANS_12_FONT_ID, (trimmedAuthor + "...").c_str()) > maxLineWidth &&
+        while (renderer.getTextWidth(UI_10_FONT_ID, (trimmedAuthor + "...").c_str()) > maxLineWidth &&
                !trimmedAuthor.empty()) {
           utf8RemoveLastChar(trimmedAuthor);
         }
         trimmedAuthor.append("...");
       }
-      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, titleYStart, trimmedAuthor.c_str(), !bookSelected);
+      renderer.drawCenteredText(UI_10_FONT_ID, titleYStart, trimmedAuthor.c_str(), !bookSelected);
     }
 
     // "Continue Reading" label at the bottom

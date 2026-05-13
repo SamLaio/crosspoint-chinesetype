@@ -409,7 +409,7 @@ void CrossPointWebServerActivity::renderServerRunning() const {
     renderer.drawCenteredText(UI_10_FONT_ID, startY, getChineseName("Hotspot Mode"), true, EpdFontFamily::BOLD);
 
     std::string ssidInfo = std::string(getChineseName("Network: ")) + connectedSSID;
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, startY + LINE_SPACING, ssidInfo.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, startY + LINE_SPACING, ssidInfo.c_str());
 
     renderer.drawCenteredText(SMALL_FONT_ID, startY + LINE_SPACING * 2,
                               getChineseName("Connect your device to this WiFi network"));
@@ -425,11 +425,11 @@ void CrossPointWebServerActivity::renderServerRunning() const {
     startY += QRCodeHelper::qrSize() - 4 * QRCodeHelper::DEFAULT_PX + 3 * LINE_SPACING;
     // Show primary URL (hostname)
     std::string hostnameUrl = std::string("http://") + AP_HOSTNAME + ".local/";
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, startY + LINE_SPACING * 3, hostnameUrl.c_str(), true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_10_FONT_ID, startY + LINE_SPACING * 3, hostnameUrl.c_str(), true, EpdFontFamily::BOLD);
 
     // Show IP address as fallback
     std::string ipUrl = "or http://" + connectedIP + "/";
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, startY + LINE_SPACING * 4, ipUrl.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, startY + LINE_SPACING * 4, ipUrl.c_str());
     renderer.drawCenteredText(SMALL_FONT_ID, startY + LINE_SPACING * 5,
                               getChineseName("Open this URL in your browser"));
 
@@ -446,18 +446,18 @@ void CrossPointWebServerActivity::renderServerRunning() const {
     if (ssidInfo.length() > 28) {
       ssidInfo.replace(25, ssidInfo.length() - 25, "...");
     }
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, startY, ssidInfo.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, startY, ssidInfo.c_str());
 
     std::string ipInfo = std::string(getChineseName("IP Address: ")) + connectedIP;
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, startY + LINE_SPACING, ipInfo.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, startY + LINE_SPACING, ipInfo.c_str());
 
     // Show web server URL prominently
     std::string webInfo = "http://" + connectedIP + "/";
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, startY + LINE_SPACING * 2, webInfo.c_str(), true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_10_FONT_ID, startY + LINE_SPACING * 2, webInfo.c_str(), true, EpdFontFamily::BOLD);
 
     // Also show hostname URL
     std::string hostnameUrl = std::string("or http://") + AP_HOSTNAME + ".local/";
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, startY + LINE_SPACING * 3, hostnameUrl.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, startY + LINE_SPACING * 3, hostnameUrl.c_str());
 
     renderer.drawCenteredText(SMALL_FONT_ID, startY + LINE_SPACING * 4,
                               getChineseName("Open this URL in your browser"));

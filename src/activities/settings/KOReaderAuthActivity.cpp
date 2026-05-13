@@ -128,7 +128,7 @@ void KOReaderAuthActivity::render() {
   renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("KOReader Auth"), true, EpdFontFamily::BOLD);
 
   if (state == AUTHENTICATING) {
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, 300, statusMessage.c_str(), true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_10_FONT_ID, 300, statusMessage.c_str(), true, EpdFontFamily::BOLD);
     renderer.displayBuffer();
     return;
   }
@@ -145,7 +145,7 @@ void KOReaderAuthActivity::render() {
 
   if (state == FAILED) {
     renderer.drawCenteredText(UI_10_FONT_ID, 280, getChineseName("Authentication Failed"), true, EpdFontFamily::BOLD);
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, 320, errorMessage.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, 320, errorMessage.c_str());
 
     const auto labels = mappedInput.mapLabels(getChineseName("Back"), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);

@@ -187,7 +187,7 @@ void KOReaderSettingsActivity::render() {
     const int settingY = 60 + i * 30;
     const bool isSelected = (i == selectedIndex);
 
-    renderer.drawText(UI_10_FONT_ID, 20, settingY, menuNames[i], !isSelected);
+    renderer.drawText(UI_10_FONT_ID, 20, settingY, getChineseName(menuNames[i]), !isSelected);
 
     // Draw status for each item
     const char* status = "";
@@ -198,7 +198,7 @@ void KOReaderSettingsActivity::render() {
     } else if (i == 2) {
       status = KOREADER_STORE.getServerUrl().empty() ? getChineseName("Default status") : getChineseName("Custom status");
     } else if (i == 3) {
-      status = KOREADER_STORE.getMatchMethod() == DocumentMatchMethod::FILENAME ? "[Filename]" : "[Binary]";
+      status = KOREADER_STORE.getMatchMethod() == DocumentMatchMethod::FILENAME ? getChineseName("[Filename]") : getChineseName("[Binary]");
     } else if (i == 4) {
       status = KOREADER_STORE.hasCredentials() ? "" : getChineseName("Set credentials first");
     }

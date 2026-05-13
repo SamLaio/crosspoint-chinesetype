@@ -1184,19 +1184,19 @@ void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const in
     } else {
       const auto tocItem = epub->getTocItem(tocIndex);
       title = tocItem.title;
-      titleWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, title.c_str());
+      titleWidth = renderer.getTextWidth(UI_10_FONT_ID, title.c_str());
       if (titleWidth > availableTitleSpace) {
         // Not enough space to center on the screen, center it within the remaining space instead
         availableTitleSpace = rendererableScreenWidth - titleMarginLeft - titleMarginRight;
         titleMarginLeftAdjusted = titleMarginLeft;
       }
       if (titleWidth > availableTitleSpace) {
-        title = renderer.truncatedText(NOTOSANS_12_FONT_ID, title.c_str(), availableTitleSpace);
-        titleWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, title.c_str());
+        title = renderer.truncatedText(UI_10_FONT_ID, title.c_str(), availableTitleSpace);
+        titleWidth = renderer.getTextWidth(UI_10_FONT_ID, title.c_str());
       }
     }
 
-    renderer.drawText(NOTOSANS_12_FONT_ID,
+    renderer.drawText(UI_10_FONT_ID,
                       titleMarginLeftAdjusted + orientedMarginLeft + (availableTitleSpace - titleWidth) / 2, textY,
                       title.c_str());
   }

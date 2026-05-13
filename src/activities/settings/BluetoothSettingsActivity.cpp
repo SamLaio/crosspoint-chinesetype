@@ -325,8 +325,8 @@ void BluetoothSettingsActivity::renderMainMenu() {
 
   // Error message if any
   if (!lastError.empty()) {
-    const auto errorLine = renderer.truncatedText(NOTOSANS_12_FONT_ID, lastError.c_str(), pageWidth - sidePadding * 2);
-    renderer.drawText(NOTOSANS_12_FONT_ID, sidePadding, 75, errorLine.c_str());
+    const auto errorLine = renderer.truncatedText(UI_10_FONT_ID, lastError.c_str(), pageWidth - sidePadding * 2);
+    renderer.drawText(UI_10_FONT_ID, sidePadding, 75, errorLine.c_str());
   }
 
   // Menu items
@@ -435,12 +435,12 @@ void BluetoothSettingsActivity::renderDeviceList() {
     std::string signalStr = getSignalStrengthIndicator(device.rssi);
     char rssiStr[32];
     snprintf(rssiStr, sizeof(rssiStr), "%s (%d dBm)", signalStr.c_str(), device.rssi);
-    const int rssiWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, rssiStr);
+    const int rssiWidth = renderer.getTextWidth(UI_10_FONT_ID, rssiStr);
     const int rssiX = std::max(textX, contentRight - rssiWidth);
     const int nameMaxWidth = std::max(40, rssiX - textX - 8);
-    auto clippedDevice = renderer.truncatedText(NOTOSANS_12_FONT_ID, deviceStr, nameMaxWidth);
-    renderer.drawText(NOTOSANS_12_FONT_ID, textX, deviceY, clippedDevice.c_str());
-    renderer.drawText(NOTOSANS_12_FONT_ID, rssiX, deviceY + 2, rssiStr);
+    auto clippedDevice = renderer.truncatedText(UI_10_FONT_ID, deviceStr, nameMaxWidth);
+    renderer.drawText(UI_10_FONT_ID, textX, deviceY, clippedDevice.c_str());
+    renderer.drawText(UI_10_FONT_ID, rssiX, deviceY + 2, rssiStr);
   }
 
   // Action buttons

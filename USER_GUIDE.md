@@ -30,7 +30,7 @@ Home shows recent books and entry points for the main tools:
 - Bluetooth keyboard / media key settings.
 - Reader and system settings.
 
-Book titles, OPDS titles, Wi-Fi names, filenames, chapter names, and other external text use the full NotoSans 12 font so Chinese, English, and mixed metadata can display more reliably.
+Book titles, OPDS titles, Wi-Fi names, filenames, chapter names, and other external text use the 10px Ubuntu UI font subset. That subset is generated from common Traditional/Simplified Chinese characters, fixed interface strings, and common symbols.
 
 ## Supported Files
 
@@ -103,7 +103,7 @@ For Calibre wireless transfer:
 
 ## Bluetooth HID
 
-Bluetooth settings can scan and connect to supported Bluetooth HID devices. Use this for external page-turn keys, keyboards, or remote controls that present standard HID input. Device names and status messages are rendered with the full NotoSans UI font.
+Bluetooth settings can scan and connect to supported Bluetooth HID devices. Use this for external page-turn keys, keyboards, or remote controls that present standard HID input. Device names and status messages are rendered with the 10px common-character UI font.
 
 ## KOReader Sync
 
@@ -111,7 +111,7 @@ KOReader Sync can be configured from Settings. It is intended to exchange readin
 
 ## Fonts
 
-Built-in reader font choices include Bookerly, NotoSans, and OpenDyslexic ids. In this build, the compiled full CJK reader font is NotoSans, and UI fixed labels use a smaller subset font generated from the LanguageMapper strings during build.
+Built-in reader font choices include Bookerly, NotoSans, and OpenDyslexic ids. In this build, the compiled full CJK reader font is NotoSans, while UI labels and external metadata use a 10px subset font generated during build.
 
 Custom `.epdfont` files can be placed in:
 
@@ -123,7 +123,7 @@ After adding fonts, open Settings and select the custom font family for reading 
 
 ## UI Font Subset
 
-The build regenerates the UI font subset automatically from `LanguageMapper`. This keeps fixed interface labels small while preserving Traditional Chinese, Simplified Chinese, and English UI strings. Text that comes from outside the firmware, such as book names, filenames, OPDS metadata, Wi-Fi SSIDs, URLs, usernames, chapter names, and progress messages, uses the full NotoSans UI font instead of the subset font.
+The build regenerates the UI/external text font subset automatically from common Traditional/Simplified Chinese characters, common symbols, and `LanguageMapper`. Text that comes from outside the firmware, such as book names, filenames, OPDS metadata, Wi-Fi SSIDs, URLs, usernames, chapter names, and progress messages, uses this 10px common-character subset. Rare characters outside the subset may still need the full reader font path.
 
 ## Sleep Screen
 

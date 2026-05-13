@@ -935,17 +935,17 @@ void TxtReaderActivity::renderStatusBar(const int orientedMarginRight, const int
     int availableTitleSpace = rendererableScreenWidth - 2 * titleMarginLeftAdjusted;
 
     std::string title = txt->getChapterTitleByIndex(chapternum);
-    int titleWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, title.c_str());
+    int titleWidth = renderer.getTextWidth(UI_10_FONT_ID, title.c_str());
     if (titleWidth > availableTitleSpace) {
       availableTitleSpace = rendererableScreenWidth - titleMarginLeft - titleMarginRight;
       titleMarginLeftAdjusted = titleMarginLeft;
     }
     if (titleWidth > availableTitleSpace) {
-      title = renderer.truncatedText(NOTOSANS_12_FONT_ID, title.c_str(), availableTitleSpace);
-      titleWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, title.c_str());
+      title = renderer.truncatedText(UI_10_FONT_ID, title.c_str(), availableTitleSpace);
+      titleWidth = renderer.getTextWidth(UI_10_FONT_ID, title.c_str());
     }
 
-    renderer.drawText(NOTOSANS_12_FONT_ID,
+    renderer.drawText(UI_10_FONT_ID,
                       titleMarginLeftAdjusted + orientedMarginLeft + (availableTitleSpace - titleWidth) / 2, textY,
                       title.c_str());
   }

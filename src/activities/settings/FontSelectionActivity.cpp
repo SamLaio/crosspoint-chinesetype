@@ -119,10 +119,10 @@ void FontSelectionActivity::render() const {
     if (idx == selectedIndex) {
       Serial.printf("[FSA] Drawing selected: %s at %d\n", fontFamilies[idx].c_str(), y);
       renderer.fillRect(0, y - 2, 480, 30);
-      renderer.drawText(NOTOSANS_12_FONT_ID, 20, y, fontFamilies[idx].c_str(), false);  // false = white (on black box)
+      renderer.drawText(UI_10_FONT_ID, 20, y, fontFamilies[idx].c_str(), false);  // false = white (on black box)
     } else {
       Serial.printf("[FSA] Drawing: %s at %d\n", fontFamilies[idx].c_str(), y);
-      renderer.drawText(NOTOSANS_12_FONT_ID, 20, y, fontFamilies[idx].c_str(), true);  // true = black (on white bg)
+      renderer.drawText(UI_10_FONT_ID, 20, y, fontFamilies[idx].c_str(), true);  // true = black (on white bg)
     }
 
     // Mark current active font

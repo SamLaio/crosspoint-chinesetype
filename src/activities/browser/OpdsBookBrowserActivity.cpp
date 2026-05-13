@@ -262,7 +262,7 @@ void OpdsBookBrowserActivity::render() const {
   renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("OPDS Browser"), true, EpdFontFamily::BOLD);
 
   if (state == BrowserState::CHECK_WIFI) {
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, pageHeight / 2, statusMessage.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, statusMessage.c_str());
     const auto labels = mappedInput.mapLabels(getChineseName("« Back"), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
@@ -270,7 +270,7 @@ void OpdsBookBrowserActivity::render() const {
   }
 
   if (state == BrowserState::LOADING) {
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, pageHeight / 2, statusMessage.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, statusMessage.c_str());
     const auto labels = mappedInput.mapLabels(getChineseName("« Back"), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
@@ -279,7 +279,7 @@ void OpdsBookBrowserActivity::render() const {
 
   if (state == BrowserState::ERROR) {
     renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 20, getChineseName("Error:"));
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, pageHeight / 2 + 10, errorMessage.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 10, errorMessage.c_str());
     const auto labels = mappedInput.mapLabels(getChineseName("« Back"), getChineseName("Retry"), "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
@@ -288,7 +288,7 @@ void OpdsBookBrowserActivity::render() const {
 
   if (state == BrowserState::DOWNLOADING) {
     renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 40, getChineseName("Downloading..."));
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, pageHeight / 2 - 10, statusMessage.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 10, statusMessage.c_str());
     if (downloadTotal > 0) {
       const int barWidth = pageWidth - 100;
       constexpr int barHeight = 20;
@@ -335,8 +335,8 @@ void OpdsBookBrowserActivity::render() const {
       }
     }
 
-    auto item = renderer.truncatedText(NOTOSANS_12_FONT_ID, displayText.c_str(), renderer.getScreenWidth() - 40);
-    renderer.drawText(NOTOSANS_12_FONT_ID, 20, 60 + (i % PAGE_ITEMS) * 30, item.c_str(),
+    auto item = renderer.truncatedText(UI_10_FONT_ID, displayText.c_str(), renderer.getScreenWidth() - 40);
+    renderer.drawText(UI_10_FONT_ID, 20, 60 + (i % PAGE_ITEMS) * 30, item.c_str(),
                       i != static_cast<size_t>(selectorIndex));
   }
 

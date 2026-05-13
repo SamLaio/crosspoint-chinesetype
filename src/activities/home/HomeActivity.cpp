@@ -41,8 +41,8 @@ constexpr int kSectionPadding = 12;
 constexpr int kTileGap = 10;
 constexpr int kFileTopPadding = 14;
 constexpr int kFileBottomPadding = 12;
-constexpr int kRecentBookTitleFontId = NOTOSANS_12_FONT_ID;
-constexpr int kExternalTextFontId = NOTOSANS_12_FONT_ID;
+constexpr int kRecentBookTitleFontId = UI_10_FONT_ID;
+constexpr int kExternalTextFontId = UI_10_FONT_ID;
 constexpr uint32_t kTxtCacheMagic = 0x54585449;
 constexpr uint8_t kTxtCacheVersion = 4;
 

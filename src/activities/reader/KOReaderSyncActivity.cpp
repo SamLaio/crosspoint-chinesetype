@@ -274,7 +274,7 @@ void KOReaderSyncActivity::render() {
   }
 
   if (state == SYNCING || state == UPLOADING) {
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, 300, statusMessage.c_str(), true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_10_FONT_ID, 300, statusMessage.c_str(), true, EpdFontFamily::BOLD);
     renderer.displayBuffer();
     return;
   }
@@ -296,7 +296,7 @@ void KOReaderSyncActivity::render() {
     renderer.drawText(UI_10_FONT_ID, 20, 160, getChineseName("Remote:"), true);
     char remoteChapterStr[128];
     snprintf(remoteChapterStr, sizeof(remoteChapterStr), "  %s", remoteChapter.c_str());
-    renderer.drawText(NOTOSANS_12_FONT_ID, 20, 185, remoteChapterStr);
+    renderer.drawText(UI_10_FONT_ID, 20, 185, remoteChapterStr);
     char remotePageStr[64];
     snprintf(remotePageStr, sizeof(remotePageStr), getChineseName("  Page %d, %.2f%% overall"), remotePosition.pageNumber + 1,
              remoteProgress.percentage * 100);
@@ -305,14 +305,14 @@ void KOReaderSyncActivity::render() {
     if (!remoteProgress.device.empty()) {
       char deviceStr[64];
       snprintf(deviceStr, sizeof(deviceStr), getChineseName("  From: %s"), remoteProgress.device.c_str());
-      renderer.drawText(NOTOSANS_12_FONT_ID, 20, 235, deviceStr);
+      renderer.drawText(UI_10_FONT_ID, 20, 235, deviceStr);
     }
 
     // Local progress - chapter and page
     renderer.drawText(UI_10_FONT_ID, 20, 270, getChineseName("Local:"), true);
     char localChapterStr[128];
     snprintf(localChapterStr, sizeof(localChapterStr), "  %s", localChapter.c_str());
-    renderer.drawText(NOTOSANS_12_FONT_ID, 20, 295, localChapterStr);
+    renderer.drawText(UI_10_FONT_ID, 20, 295, localChapterStr);
     char localPageStr[64];
     snprintf(localPageStr, sizeof(localPageStr), getChineseName("  Page %d/%d, %.2f%% overall"), currentPage + 1, totalPagesInSpine,
              localProgress.percentage * 100);
@@ -367,7 +367,7 @@ void KOReaderSyncActivity::render() {
 
   if (state == SYNC_FAILED) {
     renderer.drawCenteredText(UI_10_FONT_ID, 280, getChineseName("Sync failed"), true, EpdFontFamily::BOLD);
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, 320, statusMessage.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, 320, statusMessage.c_str());
 
     const auto labels = mappedInput.mapLabels(getChineseName("Back"), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);

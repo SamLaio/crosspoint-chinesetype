@@ -260,10 +260,10 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
       //renderer.drawText(UI_10_FONT_ID, 20, drawY, title, i != selectorIndex);
       if (i == selectorIndex) {
         renderer.fillRect(0, drawY, renderer.getScreenWidth(), FIX_LINE_HEIGHT);
-        renderer.drawText(NOTOSANS_12_FONT_ID, 20, drawY, title, 0);
+        renderer.drawText(UI_10_FONT_ID, 20, drawY, title, 0);
       } else {
         //renderer.drawRect(0, drawY, 480, FIX_LINE_HEIGHT);
-        renderer.drawText(NOTOSANS_12_FONT_ID, 20, drawY, title, 1);
+        renderer.drawText(UI_10_FONT_ID, 20, drawY, title, 1);
       }
       //Serial.printf("[%lu] [TRC] 檢視為啥不匹配：i:%d,selectorIndex: %d \n", millis(),i,selectorIndex);
   }

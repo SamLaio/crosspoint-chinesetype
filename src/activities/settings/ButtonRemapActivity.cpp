@@ -133,7 +133,7 @@ void ButtonRemapActivity::render() {
   const auto labelForHardware = [&](uint8_t hardwareIndex) -> const char* {
     for (uint8_t i = 0; i < kRoleCount; i++) {
       if (tempMapping[i] == hardwareIndex) {
-        return getRoleName(i);
+        return getChineseName(getRoleName(i));
       }
     }
     return "-";
@@ -151,18 +151,18 @@ void ButtonRemapActivity::render() {
       renderer.fillRect(0, y - 2, pageWidth - 1, 30);
     }
 
-    const char* roleName = getRoleName(i);
+    const char* roleName = getChineseName(getRoleName(i));
     renderer.drawText(UI_10_FONT_ID, 20, y, roleName, !isSelected);
 
     // Show currently assigned hardware button (or unassigned).
-    const char* assigned = (tempMapping[i] == kUnassigned) ? "Unassigned" : getHardwareName(tempMapping[i]);
+    const char* assigned = (tempMapping[i] == kUnassigned) ? getChineseName("Unassigned") : getChineseName(getHardwareName(tempMapping[i]));
     const auto width = renderer.getTextWidth(UI_10_FONT_ID, assigned);
     renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, y, assigned, !isSelected);
   }
 
   // Temporary warning banner for duplicates.
   if (!errorMessage.empty()) {
-    renderer.drawCenteredText(UI_10_FONT_ID, 210, errorMessage.c_str(), true);
+    renderer.drawCenteredText(UI_10_FONT_ID, 210, getChineseName(errorMessage.c_str()), true);
   }
 
   // Provide side button actions at the bottom of the screen (split across two lines).

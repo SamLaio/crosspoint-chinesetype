@@ -142,8 +142,8 @@ void OtaUpdateActivity::render() {
 
   if (state == WAITING_CONFIRMATION) {
     renderer.drawCenteredText(UI_10_FONT_ID, 200, getChineseName("New update available!"), true, EpdFontFamily::BOLD);
-    renderer.drawText(NOTOSANS_12_FONT_ID, 20, 250, (std::string(getChineseName("Current Version:")) + " " + CROSSPOINT_VERSION).c_str());
-    renderer.drawText(NOTOSANS_12_FONT_ID, 20, 270, (std::string(getChineseName("New Version:")) + " " + updater.getLatestVersion()).c_str());
+    renderer.drawText(UI_10_FONT_ID, 20, 250, (std::string(getChineseName("Current Version:")) + " " + CROSSPOINT_VERSION).c_str());
+    renderer.drawText(UI_10_FONT_ID, 20, 270, (std::string(getChineseName("New Version:")) + " " + updater.getLatestVersion()).c_str());
 
     const auto labels = mappedInput.mapLabels(getChineseName("Cancel"), getChineseName("Update"), "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
@@ -158,7 +158,7 @@ void OtaUpdateActivity::render() {
     renderer.drawCenteredText(UI_10_FONT_ID, 420,
                               (std::to_string(static_cast<int>(updaterProgress * 100)) + "%").c_str());
     renderer.drawCenteredText(
-        NOTOSANS_12_FONT_ID, 440,
+        UI_10_FONT_ID, 440,
         (std::to_string(updater.getProcessedSize()) + " / " + std::to_string(updater.getTotalSize())).c_str());
     renderer.displayBuffer();
     return;

@@ -319,7 +319,7 @@ void KeyboardEntryActivity::render() const {
   renderer.clearScreen();
 
   // Draw title
-  renderer.drawCenteredText(NOTOSANS_12_FONT_ID, startY, title.c_str());
+  renderer.drawCenteredText(UI_10_FONT_ID, startY, title.c_str());
 
   // Draw input field
   const int inputStartY = startY + 22;
@@ -341,14 +341,14 @@ void KeyboardEntryActivity::render() const {
   int lineEndIdx = displayText.length();
   while (true) {
     std::string lineText = displayText.substr(lineStartIdx, lineEndIdx - lineStartIdx);
-    const int textWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, lineText.c_str());
+    const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, lineText.c_str());
     if (textWidth <= pageWidth - 40) {
-      renderer.drawText(NOTOSANS_12_FONT_ID, 20, inputEndY, lineText.c_str());
+      renderer.drawText(UI_10_FONT_ID, 20, inputEndY, lineText.c_str());
       if (lineEndIdx == displayText.length()) {
         break;
       }
 
-      inputEndY += renderer.getLineHeight(NOTOSANS_12_FONT_ID);
+      inputEndY += renderer.getLineHeight(UI_10_FONT_ID);
       lineStartIdx = lineEndIdx;
       lineEndIdx = displayText.length();
     } else {
@@ -481,7 +481,7 @@ void KeyboardEntryActivity::renderQRScreen() const {
       renderer.drawCenteredText(UI_10_FONT_ID, apStartY, getChineseName("Hotspot Mode"), true, EpdFontFamily::BOLD);
 
       std::string ssidInfo = std::string(getChineseName("Network: ")) + webInputServer->getApSSID();
-      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, apStartY + LINE_SPACING, ssidInfo.c_str());
+      renderer.drawCenteredText(UI_10_FONT_ID, apStartY + LINE_SPACING, ssidInfo.c_str());
 
       renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 2, getChineseName("Connect WiFi"));
 
@@ -496,11 +496,11 @@ void KeyboardEntryActivity::renderQRScreen() const {
 
       // URL section
       const std::string url = webInputServer->getUrl();
-      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, apStartY + LINE_SPACING * 3, url.c_str(), true, EpdFontFamily::BOLD);
+      renderer.drawCenteredText(UI_10_FONT_ID, apStartY + LINE_SPACING * 3, url.c_str(), true, EpdFontFamily::BOLD);
 
       // Show IP address as fallback
       std::string ipUrl = "or http://" + webInputServer->getIP() + "/";
-      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, apStartY + LINE_SPACING * 4, ipUrl.c_str());
+      renderer.drawCenteredText(UI_10_FONT_ID, apStartY + LINE_SPACING * 4, ipUrl.c_str());
 
       renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 5, getChineseName("Open this URL in your browser"));
 
@@ -516,15 +516,15 @@ void KeyboardEntryActivity::renderQRScreen() const {
       const std::string ip = webInputServer->getIP();
 
       std::string ipInfo = std::string(getChineseName("IP Address: ")) + ip;
-      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, staStartY, ipInfo.c_str());
+      renderer.drawCenteredText(UI_10_FONT_ID, staStartY, ipInfo.c_str());
 
       // Show web server URL prominently
       std::string webUrl = "http://" + ip + "/";
-      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, staStartY + LINE_SPACING * 2, webUrl.c_str(), true, EpdFontFamily::BOLD);
+      renderer.drawCenteredText(UI_10_FONT_ID, staStartY + LINE_SPACING * 2, webUrl.c_str(), true, EpdFontFamily::BOLD);
 
       // Also show hostname URL using shared constant
       std::string hostnameUrl = std::string("or http://") + NetworkConstants::AP_HOSTNAME + ".local/";
-      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, staStartY + LINE_SPACING * 3, hostnameUrl.c_str());
+      renderer.drawCenteredText(UI_10_FONT_ID, staStartY + LINE_SPACING * 3, hostnameUrl.c_str());
 
       renderer.drawCenteredText(SMALL_FONT_ID, staStartY + LINE_SPACING * 4, getChineseName("Open this URL in your browser"));
 
