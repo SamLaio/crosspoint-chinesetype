@@ -1,533 +1,281 @@
 # CrossPoint ChineseType
 
-XTEink X4 電子紙閱讀器韌體，基於 CrossPoint Reader 修改，重點放在中文閱讀、SD 卡檔案瀏覽、EPUB/TXT/XTC 閱讀、圖片背景、Wi-Fi 傳書、Calibre 無線傳書、OPDS、藍牙 HID 翻頁、自訂 `.epdfont` 字型與 EPUB/TXT 直排標點處理。
-
-目前 README 依照 2026-05-10 的程式碼重新掃描整理。
+XTEink X4 電子紙閱讀器韌體，基於 CrossPoint Reader 修改。這個分支重點放在繁體中文閱讀體驗、SD 卡檔案瀏覽、EPUB/TXT/XTC 閱讀、OPDS 下載、Wi-Fi 傳書、藍牙 HID 翻頁、自訂字型，以及直排中文標點處理。
 
 目前版本：
 
-- 開發版：`zhTW_V2.3-allocate`
-- Release：`zhTW_V2.3`
-- Slim：`zhTW_V2.3-slim`
+| Build | Version |
+| --- | --- |
+| 開發版 `default` | `zhTW_V2.4-allocate` |
+| Release `gh_release` | `zhTW_V2.4` |
+| RC `gh_release_rc` | `zhTW_V2.4-rc+<hash>` |
+| Slim `slim` | `zhTW_V2.4-slim` |
 
-> 本專案僅支援 XTEink X4。刷機有風險，請自行備份官方韌體並自行承擔刷機後果。
+本專案僅支援 XTEink X4。刷機有風險，請先備份原廠韌體與 SD 卡資料。
 
-## 主要功能
+## 功能檢查
 
-- 主畫面顯示最近閱讀、SD 卡快速瀏覽區與功能入口。
-- 支援 EPUB、TXT、Markdown、XTC、XTCH、PNG、JPG、JPEG、BMP。
-- EPUB 支援章節目錄、百分比跳轉、閱讀方向、KOReader 進度同步、快取清理、書籍內嵌樣式與閱讀設定衝突選擇。
-- TXT/Markdown 支援章節目錄、快取式分頁、直排/橫排、行距、字距、邊距與進度保存。
-- XTC/XTCH 支援頁面閱讀、章節跳轉、分批載入與進度保存。
-- 圖片閱讀支援同資料夾前後切換、設為閱讀背景、自定義睡眠屏、透明桌布、旋轉 180 度、左右翻轉。
-- SD 卡檔案管理支援開啟、刪除、複製、剪下、貼上。
-- Wi-Fi 功能支援加入網路、建立 X4 熱點、Web 檔案管理、Calibre 無線傳書。
-- OPDS 瀏覽器可瀏覽 feed、進入目錄、翻 feed 頁與下載書籍，支援 HTTP Basic Auth 與常見 OPDS 相對/絕對連結。
-- Web 介面提供狀態、檔案管理、上傳、新建資料夾、下載、重新命名、移動、刪除與設定編輯。
-- 支援藍牙 HID 裝置、底部四鍵重新映射、自訂 `.epdfont` 字型、OTF/TTF 轉 `.epdffont` 工具、OTA 更新與清除快取。
-- EPUB/TXT 直排會處理常見 CJK 標點、半形標點、括號、引號、省略號與破折號的直排替換或 fallback 繪製。
+以下依照目前程式碼重新檢查整理。
 
-## 實體按鈕
+| 模組 | 狀態 | 說明 |
+| --- | --- | --- |
+| 主畫面 | 可用 | 最近閱讀、SD 卡快速瀏覽、功能入口 |
+| 檔案管理 | 可用 | 開啟、刪除、複製、剪下、貼上；搜尋程式存在，但目前沒有穩定入口顯示在操作列 |
+| EPUB 閱讀 | 可用 | 章節、百分比跳轉、方向、嵌入樣式選擇、KOReader 進度同步、快取清理 |
+| TXT/Markdown 閱讀 | 可用 | 章節切分、快取分頁、直排/橫排、閱讀設定、進度保存 |
+| XTC/XTCH 閱讀 | 可用 | 頁面閱讀、章節清單、進度保存 |
+| 圖片閱讀 | 可用 | PNG/JPG/JPEG/BMP 瀏覽，支援設為背景/睡眠圖、旋轉、翻轉 |
+| Wi-Fi 檔案傳輸 | 可用 | 加入現有 Wi-Fi 或建立 X4 熱點，提供 Web 檔案管理 |
+| Calibre 無線傳書 | 可用 | `wifi功能 > 連線到 Calibre`，搭配 CrossPoint Reader Calibre plugin |
+| OPDS 瀏覽器 | 可用 | Atom/OPDS feed、分頁、目錄、HTTP Basic Auth、相對/絕對連結、書籍下載 |
+| 藍牙 HID | 可用 | 藍牙開關、掃描、連線、斷線，支援外接翻頁裝置 |
+| KOReader Sync | 可用 | EPUB 進度上傳/下載，支援 filename/binary 文件匹配 |
+| OTA 更新 | 可用 | 裝置端檢查更新 |
+| Web 設定 | 可用 | Web API/頁面可修改部分設定、KOReader、OPDS 設定 |
+| QR Code | 程式可用 | Web 傳輸頁會繪製 Wi-Fi/URL QR Code |
 
-裝置有底部四鍵、側邊上/下鍵與電源鍵。程式使用邏輯按鈕名稱描述操作：
+已知限制：
 
-- 底部四鍵預設為：返回、確認、左、右。
-- 底部四鍵可在 `設定 > 按鈕設定 > Remap Front Buttons` 重新指定。
-- 側邊上/下固定作為一般選單的上/下。
-- 閱讀頁的 `PageBack` / `PageForward` 由側邊上/下負責，可在 `側邊按鈕設定（僅閱讀）` 對調。
-- 電源鍵不參與重新映射；閱讀中可把 `短按電源鍵` 設為翻頁。
+- PDF/CBZ/ZIP 可被 OPDS 下載命名，但目前裝置端沒有 PDF/CBZ/ZIP 閱讀器。
+- OPDS 下載是否成功取決於 OPDS server 的 acquisition URL。若 server 回 `HTTP 500`，裝置會顯示 `下載失敗: HTTP 500`。
+- 檔案管理的資料夾複製目前只建立目標資料夾，未遞迴複製資料夾內容。
+- Web/SD 卡管理會隱藏 `.` 開頭項目與部分系統目錄，避免誤動系統資料。
 
-## 裝置端畫面與按鈕
+## 支援格式
 
-### 主畫面
+| 格式 | 開啟方式 | 備註 |
+| --- | --- | --- |
+| `.epub` | EPUB reader | 支援文字、章節、封面、圖片、CSS 部分樣式與快取 |
+| `.txt` | TXT reader | 支援章節快取、直排/橫排與閱讀設定 |
+| `.md` | TXT reader | 目前當作純文字閱讀 |
+| `.xtc` | XTC reader | 1-bit XTC 頁面容器 |
+| `.xtch` | XTC reader | 2-bit grayscale XTCH 頁面容器 |
+| `.png` | Image reader | 圖片瀏覽與背景設定 |
+| `.jpg` / `.jpeg` | Image reader | 圖片瀏覽與背景設定 |
+| `.bmp` | Image reader | 圖片瀏覽與背景設定 |
 
-畫面包含最近閱讀、SD 卡快速瀏覽與功能入口。
+## 主要入口
 
-- 上/下：切換最近閱讀、SD 卡區、功能區。
-- 左/右：在目前區塊切換項目。
-- 確認或返回：開啟目前選到的項目。
-- 最近閱讀中長按確認：顯示 `清除閱讀記錄` 選單。
-- 清除選單中左/右切換 `取消` / `確認`，確認執行，返回關閉。
+主畫面包含三個區塊：
 
-功能入口包含：
+- 最近閱讀：顯示最近開啟的書籍與封面縮圖。
+- SD 卡快速瀏覽：直接瀏覽根目錄與子資料夾中的支援格式。
+- 功能入口：`檔案管理`、`opds`、`wifi功能`、`藍牙`、`設定`。
 
-- `檔案管理`
-- `opds`：只有設定 OPDS Server URL 後才顯示
-- `wifi功能`
-- `藍牙`
-- `設定`
+`opds` 入口只有在已設定 OPDS Server URL 後才會顯示。
 
-### SD 卡快速瀏覽
+## 按鈕
 
-主畫面的 SD 卡區會顯示支援格式與資料夾。
+裝置使用底部四鍵、側邊上/下鍵與電源鍵。
 
-- 資料夾以 `[資料夾名]` 顯示。
-- 子資料夾會顯示 `[..]` 回上一層。
-- 左/右在格狀項目間切換。
-- 確認或返回：資料夾會進入該資料夾，檔案會開啟閱讀器。
+| 邏輯按鈕 | 預設用途 |
+| --- | --- |
+| Back | 返回、退出 |
+| Confirm | 確認、開啟選單 |
+| Left | 左移、上一頁、上一項 |
+| Right | 右移、下一頁、下一項 |
+| Side Up / PageBack | 選單上移或閱讀上一頁 |
+| Side Down / PageForward | 選單下移或閱讀下一頁 |
+| Power | 長按睡眠/喚醒；可設定短按忽略、睡眠或翻頁 |
 
-### 檔案管理
+底部四鍵可在 `設定 > Controls > Remap Front Buttons` 重新映射。側邊上/下在閱讀頁可透過 `側邊按鈕設定（僅閱讀）` 對調。
 
-完整 SD 卡瀏覽頁，標題顯示目前資料夾。支援格式同主畫面，會隱藏 `.` 開頭項目、`System Volume Information` 與 `fonts`。
+## 閱讀功能
 
-- 上/下：移動清單選取。
-- 確認短按：進入資料夾或開啟檔案。
-- 確認長按約 700ms：顯示上方操作列。
-- 操作列顯示時左/右：在 `取消`、`刪除`、`複製`、`剪下`、`貼上` 間切換，一次顯示三個。
-- 操作列顯示時確認：執行目前操作。
-- 返回：關閉操作列；沒有操作列時回上一層；根目錄時回主畫面。
-- 程式內有搜尋流程，但目前畫面沒有獨立搜尋按鈕或操作列入口。
+### EPUB
 
-### EPUB 閱讀
-
-- 左或 PageBack：上一頁。
-- 右或 PageForward：下一頁。
+- 左/PageBack：上一頁。
+- 右/PageForward：下一頁。
 - 確認短按：開啟 EPUB 閱讀選單。
-- 確認長按約 1 秒：進入閱讀設定狀態。
-- 返回：回到來源畫面。
-- 若 `長按跳章節` 開啟，長按翻頁鍵會跳上一章/下一章。
-- 若 `短按電源鍵` 設為 `翻頁`，電源短按會下一頁。
+- 確認長按：約 1 秒進入閱讀設定狀態。
+- 返回：回上一層或主畫面。
 
-若書籍內嵌排版與目前閱讀排版衝突，會出現排版選擇畫面：
+EPUB 閱讀選單包含：
 
-- 左/右：切換 `使用書本排版` / `使用閱讀設定`。
-- 確認：套用選擇。
-- 返回：使用閱讀設定。
+- 章節目錄
+- 閱讀方向
+- 直達進度 %
+- 返回主頁
+- 進度同步 KOReader
+- 清理快取
 
-EPUB 閱讀選單項目：
+若書籍內嵌樣式與目前閱讀設定衝突，會出現選擇畫面，可選擇使用書本排版或閱讀設定。
 
-- `進入章節目錄`
-- `閱讀方向`
-- `直達進度 %`
-- `返回主頁`
-- `進度同步(koreader)`
-- `清理快取`
+### TXT / Markdown
 
-選單按鈕：
+- 左/PageBack：上一頁；章首再往前會切上一章。
+- 右/PageForward：下一頁；章末再往後會切下一章。
+- 確認：章節目錄。
+- 返回：離開閱讀。
 
-- 上/左：上一項。
-- 下/右：下一項。
-- 確認：選擇；在 `閱讀方向` 上會循環切換方向。
-- 返回：套用暫存閱讀方向並回閱讀頁。
+TXT/Markdown 會使用快取分頁。修改字號、邊距、直排等閱讀設定後，程式會清除 TXT 分頁快取。
 
-### EPUB 章節目錄
+### XTC / XTCH
 
-- 上/左：上一項；按住或長按後放開可翻到上一頁清單。
-- 下/右：下一項；按住或長按後放開可翻到下一頁清單。
-- 確認：跳到選取章節。
-- 返回：回 EPUB 閱讀頁。
+- 左/PageBack：上一頁。
+- 右/PageForward：下一頁。
+- 確認：章節/頁面清單。
+- 返回：離開閱讀。
 
-### EPUB 百分比跳轉
+開啟長按跳章節時，XTC 長按翻頁會一次跳多頁。
 
-- 左/右：以 1% 調整。
-- 上/下：以 10% 調整。
-- 確認：跳到選定進度。
-- 返回：取消。
-
-### TXT / Markdown 閱讀
-
-- 左或 PageBack：上一頁；頁首再往前會切到上一章最後一頁。
-- 右或 PageForward：下一頁；章末再往後會切到下一章第一頁。
-- 確認：開啟 TXT 章節目錄。
-- 返回：回到來源畫面。
-- 支援 `長按跳章節` 與 `短按電源鍵 = 翻頁`。
-
-TXT 章節目錄：
-
-- 頂部有 `【向前100章】` 與 `【向後100章】`。
-- 上/左、下/右在特殊項與章節間移動。
-- 確認特殊項會快速跳 100 章範圍；確認章節會跳入該章。
-- 返回：回閱讀頁。
-
-### XTC / XTCH 閱讀
-
-- 左或 PageBack：上一頁。
-- 右或 PageForward：下一頁。
-- 確認：開啟 XTC 章節目錄。
-- 返回：回到來源畫面。
-- 若 `長按跳章節` 開啟，長按翻頁會一次跳 10 頁。
-
-XTC 章節目錄：
-
-- 上/左：上一項或上一頁清單。
-- 下/右：下一項或下一頁清單。
-- 確認：跳到選取章節頁。
-- 返回：回閱讀頁。
-
-### 圖片閱讀
+### 圖片
 
 - 左/上：上一張。
 - 右/下：下一張。
-- 確認：開啟圖片操作選單。
-- 返回：回到來源畫面。
+- 確認：圖片操作選單。
+- 返回：離開圖片閱讀。
 
 圖片操作選單：
 
-- `設為閱讀背景`
-- `設為自定義睡眠屏`
-- `設為透明桌布`
-- `旋轉180度`
-- `左右翻轉`
+- 設為閱讀背景
+- 設為自定義睡眠屏
+- 設為透明桌布
+- 旋轉 180 度
+- 左右翻轉
 
-選單中左/上為上一項，右/下為下一項，確認套用，返回關閉。
+## Wi-Fi 與 Web 傳書
 
-### 設定
+進入 `wifi功能` 後可選：
 
-設定頁只顯示裝置端分類：`顯示設定`、`閱讀設定`、`按鈕設定`、`系統設定`。
+| 模式 | 說明 |
+| --- | --- |
+| 加入網路 | 連上既有 Wi-Fi，啟動 Web 檔案管理 |
+| 連線到 Calibre | 連上 Wi-Fi 後等待 Calibre plugin 傳書 |
+| 建立熱點 | X4 建立 `CrossPoint-Reader` 熱點，手機/電腦連入後傳書 |
 
-- 上/下：移動設定項。
-- 選到分類列時左/右：切換分類。
-- 選到開關、列舉或數值設定時左/右：切換或調整值。
-- 選到動作項時右：進入子頁或執行動作。
-- 確認或返回：儲存設定、必要時清除 TXT 分頁快取，回主畫面。
+Web 介面提供：
 
-顯示設定：
+- 裝置狀態與版本
+- SD 卡檔案列表
+- 上傳與下載
+- 新建資料夾
+- 重新命名
+- 移動
+- 刪除
+- 設定頁與設定 API
+- WebSocket 快速上傳
 
-- 休眠屏、休眠屏封面模式、休眠屏封面濾鏡、狀態列、隱藏電池百分比、重新整理頻率、UI 主題、抗陽光褪色。
+熱點模式預設為開放網路，SSID 為 `CrossPoint-Reader`。Web 地址通常為：
 
-閱讀設定：
+```text
+http://crosspoint.local/
+http://<裝置 IP>/
+```
 
-- 字型、字號、行間距、首行縮排、字間距、上下左右邊距、閱讀背景、劃線、對齊方式、文字排版、是否使用書籍內嵌樣式、連字元、閱讀方向、額外段間距、抗鋸齒。
+## OPDS
 
-按鈕設定：
+設定位置：
 
-- `Remap Front Buttons`
-- 側邊按鈕設定（僅閱讀）
-- 長按跳章節
-- 短按電源鍵
-
-系統設定：
-
-- 休眠時間
-- `bluetooth`
-- `KOReader Sync`
-- `OPDS Browser`
-- `Clear Cache`
-- `Check for updates`
-- `Set Custom Font Family`
-- `Language`
-
-### 按鈕重新映射
-
-畫面會依序要求替 `Back`、`Confirm`、`Left`、`Right` 指定底部實體按鈕。
-
-- 底部任一鍵：指定目前角色，指定完四個角色後儲存並離開。
-- 側邊上：恢復預設底部按鈕配置並離開。
-- 側邊下：取消，不儲存並離開。
-
-### 藍牙設定
-
-主選單項目為啟用/禁用藍牙與裝置清單。
-
-- 主選單上/下：移動項目。
-- 主選單確認：切換藍牙或進入裝置清單。
-- 主選單返回：離開。
-- 裝置清單上/下：選擇裝置、`Refresh` 或 `Disconnect`。
-- 裝置清單左或返回：回主選單。
-- 裝置清單右：重新掃描。
-- 裝置清單確認：連線、刷新或斷線。
-
-### Wi-Fi 功能
-
-入口畫面標題為 `wifi功能設定`，提供三個模式：
-
-- `加入網路`
-- `連線到 Calibre`
-- `建立熱點`
-
-按鈕：
-
-- 上/左：上一項。
-- 下/右：下一項。
-- 確認：選擇。
-- 返回：取消回主畫面。
-
-Wi-Fi 網路選擇：
-
-- 顯示附近 SSID、訊號、加密標記 `*`、已儲存密碼標記 `+` 與裝置 MAC。
-- 上/左、下/右：移動清單。
-- 確認：連線或重新掃描。
-- 返回：取消。
-- 加密網路會開啟虛擬鍵盤輸入密碼。
-- 連線成功且使用新密碼時會詢問是否儲存密碼：左/右切換 Yes/No，確認套用，返回略過。
-- 已儲存密碼連線失敗時可選擇 `Cancel` 或 `Forget network`。
-
-Web 檔案傳輸頁：
-
-- 加入現有 Wi-Fi 後顯示 SSID、IP、`http://<ip>/` 與 `http://crosspoint.local/`。
-- 建立熱點後顯示熱點名稱、熱點密碼或 QR Code、裝置網址與網址 QR Code。
-- 返回：停止 Web server 並回主畫面。
-
-Calibre 連線頁：
-
-- 先選 Wi-Fi，成功後顯示 `Connect to Calibre`、網路資訊、Calibre 操作提示與傳輸狀態。
-- 返回：停止 server 並離開。
-
-### OPDS 瀏覽器
-
-- 進入前會檢查 Wi-Fi，未連線時會開啟 Wi-Fi 選擇頁。
-- 載入/檢查 Wi-Fi/錯誤狀態中，返回會取消或上一層。
-- 錯誤狀態中確認會重試。
-- 瀏覽狀態中上或 PageBack：上一項。
-- 下或 PageForward：下一項。
-- 左/右：切換 OPDS feed 上一頁/下一頁。
-- 確認：進入目錄或下載書籍。
-- 返回：上一層 feed；沒有上一層時離開。
-
-連線與下載：
-
-- OPDS feed 會送出 Atom/XML `Accept` header，並支援 Basic Auth。
-- feed 連結支援完整 URL、host 絕對路徑、query-only href 與相對路徑；相對路徑會以目前 feed URL 補成完整 URL。
-- 支援 chunked OPDS feed。
-- 可下載 `.epub`、`.pdf`、`.txt`、`.cbz`、`.zip`；下載檔會以 `書名 - 作者.副檔名` 或 `書名.副檔名` 存到 SD 卡根目錄。
-
-### OPDS 設定
-
-設定頁動作 `OPDS Browser` 會開啟 OPDS 設定頁。
-
-項目：
-
-- `OPDS Server URL`
-- `Username`
-- `Password`
-
-按鈕：
-
-- 上/左：上一項。
-- 下/右：下一項。
-- 確認：編輯目前項目。
-- 返回：離開。
-
-### KOReader 設定、認證與同步
-
-設定頁動作 `KOReader Sync` 會開啟設定頁。
+```text
+設定 > System > OPDS Browser
+```
 
 設定項目：
 
-- `Username`
-- `Password`
-- `Sync Server URL`
-- `Document Matching`：`Filename` 或 `Binary`
-- `Authenticate`
+- OPDS Server URL
+- Username
+- Password
 
-按鈕：
+Calibre Content Server 請填入 `/opds` 結尾，例如：
 
-- 上/左：上一項。
-- 下/右：下一項。
-- 確認：編輯或執行。
-- 返回：離開。
-
-KOReader 認證結果畫面中，返回或確認都會離開。
-
-閱讀中進入 KOReader 同步後：
-
-- 沒有憑據、同步失敗、上傳完成：返回離開。
-- 找不到遠端進度：確認上傳本機進度，返回取消。
-- 找到遠端進度：上/左、下/右在 `Apply remote progress`、`Upload local progress`、`Cancel` 間切換；確認執行；返回取消。
-
-### 虛擬鍵盤與 QR 輸入
-
-虛擬鍵盤用於 Wi-Fi 密碼、OPDS、KOReader 等文字輸入。
-
-- 上/下/左/右：移動游標。
-- 確認：輸入字元或執行 `shift`、空白、退格、`OK`、`QR`。
-- 返回：取消輸入。
-- 選 `QR` 會啟動瀏覽器文字輸入頁；QR 畫面中返回可回鍵盤。
-
-### 清除快取
-
-- 初始警告畫面確認：清除 `/.crosspoint` 快取。
-- 初始警告畫面返回：取消。
-- 完成或失敗畫面返回：離開。
-
-### OTA 更新
-
-- 進入後先選 Wi-Fi 並檢查更新。
-- 有新版本時確認開始更新，返回取消。
-- 沒有更新或失敗時返回離開。
-- 更新完成後裝置會重啟。
-
-### 字型選擇
-
-自訂字型從 SD 卡 `/fonts` 讀取 `.epdfont`。
-
-- 上/左：上一項。
-- 下/右：下一項。
-- 確認：套用選取字型並離開。
-- 返回：取消。
-
-若畫面顯示 `No fonts found in /fonts`，代表 SD 卡 `/fonts` 沒有可辨識的 `.epdfont`。韌體目前直接讀 `.epdfont`，不直接讀 OTF/TTF。
-
-建議檔名：
-
-- `Family.epdffont`
-- `Family-12.epdffont`
-- `Family-14.epdffont`
-- `Family-16.epdffont`
-- `Family-18.epdffont`
-
-閱讀字級預設對應：
-
-- 小：12
-- 中：14
-- 大：16
-- 特大：18
-
-若使用工具轉出不同實際大小，例如 `-s 37`，但希望韌體在特定閱讀字級載入，檔名或設定中的自訂大小必須與韌體查找的大小一致。
-
-## 直排與標點轉換
-
-EPUB 與 TXT 直排會透過 `GfxRenderer::drawVerticalText()` 處理，不只是把整段 framebuffer 旋轉。
-
-流程：
-
-1. UTF-8 解碼成 Unicode code point。
-2. 直排模式時查表轉成 Unicode Vertical Forms / CJK Compatibility Forms。
-3. 若自訂字型有對應 FE glyph，使用字型 glyph。
-4. 若字型缺 FE glyph，對常見括號、引號、省略號、破折號等符號使用韌體 fallback 繪製或置中。
-
-目前韌體會處理的常見輸入：
-
-- 半形：`,` `.` `!` `?` `:` `;` `(` `)` `[` `]` `{` `}` `|`
-- 中文標點：`，` `、` `。` `：` `；` `！` `？`
-- 引號：`「」『』“”‘’`
-- 括號：`（）〔〕【】《》〈〉｛｝［］`
-- 其他：`…` `—` `｜` `‖`
-
-建議自訂字型包含：
-
-- `U+FE10~U+FE1F`
-- `U+FE30~U+FE4F`
-
-若字型包含這些 glyph，韌體會優先使用字型裡設計好的直排 glyph；若缺字，才使用 fallback。
-
-## OTF/TTF 轉 `.epdffont`
-
-轉換工具位於：
-
-- `tools/otf2epdffont/`
-- Windows 可同步放在 `D:\python\otf2epdffont`
-
-安裝：
-
-```bat
-cd /d D:\python\otf2epdffont
-py -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+```text
+http://192.168.1.10:8080/opds
 ```
 
-轉換範例：
+注意事項：
 
-```bat
-python otf2epdffont.py D:\fonts\MyFont.otf -s 18 -o MyFont-18.epdffont
+- 僅支援 HTTP Basic Auth。若 Calibre 開啟驗證，請確認 server 可用 Basic Auth。
+- OPDS feed 正常不代表書籍下載一定正常；下載依賴 feed 裡的 acquisition URL。
+- 下載成功後會存到 SD 卡根目錄，檔名使用書名與作者整理。
+- 目前裝置能直接閱讀 EPUB/TXT/Markdown/XTC/XTCH/圖片；PDF 等格式即使被下載，也不能直接閱讀。
+
+## 設定
+
+裝置端設定分成四類：
+
+| 分類 | 內容 |
+| --- | --- |
+| Display | 休眠屏、封面模式、狀態列、電池百分比、刷新頻率、UI 主題、抗陽光褪色 |
+| Reader | 字型、字號、行距、首行縮排、字距、邊距、閱讀背景、劃線、對齊、直排/橫排、嵌入樣式、連字、方向、段距、抗鋸齒 |
+| Controls | 底部按鈕重新映射、側邊按鈕設定、長按跳章節、短按電源鍵 |
+| System | 休眠時間、藍牙、KOReader Sync、OPDS Browser、Clear Cache、Check for updates、自訂字型、語言 |
+
+Web 設定頁另提供 KOReader Sync 與 OPDS 的文字欄位設定。
+
+## 自訂字型
+
+韌體支援內建字型與 SD 卡自訂 `.epdfont` 字型。可透過：
+
+```text
+設定 > System > Set Custom Font Family
 ```
 
-預設 `--preset common` 會包含：
+選擇自訂字型。專案也包含 OTF/TTF 轉 `.epdfont` 的工具：
 
-- 英文、數字、常用符號
-- 常用中文字固定集合
-- CJK 標點 `U+3000~U+303F`
-- 全形/半形 `U+FF00~U+FFEF`
-- 直排符號 `U+FE10~U+FE1F`、`U+FE30~U+FE4F`
-- 基本中文漢字區 `U+4E00~U+9FFF`
-- CJK Extension A `U+3400~U+4DBF`
+```text
+tools/otf2epdffont/
+```
 
-更多參數見 [tools/otf2epdffont/README.md](tools/otf2epdffont/README.md)。
+## 睡眠屏與背景
 
-## Web 介面
+可用圖片閱讀器把圖片設成：
 
-Web server 由裝置端 `wifi功能` 啟動。瀏覽器首頁路由：
+- 閱讀背景
+- 自定義睡眠屏
+- 透明桌布
 
-- `/`：Home
-- `/files`：File Manager
-- `/settings`：Settings
-
-主要 API：
-
-- `GET /api/status`
-- `GET /api/files?path=/...&offset=0&limit=50`
-- `GET /download?path=/...`
-- `POST /upload?path=/...`
-- `POST /mkdir`
-- `POST /rename`
-- `POST /move`
-- `POST /delete`
-- `GET /api/settings`
-- `POST /api/settings`
-
-檔案管理頁功能：
-
-- 上傳檔案：優先使用 WebSocket，失敗時回退 HTTP 上傳。
-- 多檔上傳、進度顯示、失敗清單、單檔重試與全部重試。
-- 新建資料夾。
-- 檔案下載。
-- 檔案重新命名。
-- 檔案移動到指定資料夾。
-- 檔案刪除。
-- 空資料夾刪除；非空資料夾會被拒絕。
-- 隱藏或保護系統項目，避免操作 `/.crosspoint`、`/System Volume Information`、`/fonts` 等受保護內容。
-
-Web 設定頁功能：
-
-- 顯示所有 `SettingsLists.h` 中有 key 的設定。
-- 裝置 UI 不顯示的 `KOReader Sync` 與 `OPDS Browser` 分類可在 Web 設定頁編輯。
-- `Save Settings` 會以 JSON 寫回設定。
-
-文字輸入頁：
-
-- QR 輸入模式會開啟 `CrossPoint Text Input`。
-- 在瀏覽器輸入文字後按 `Send to Device`，文字會送回裝置虛擬鍵盤。
-
-## 支援檔案與資料夾
-
-支援開啟：
-
-- 書籍：`.epub`
-- 文字：`.txt`、`.md`
-- XTC：`.xtc`、`.xtch`
-- 圖片：`.png`、`.jpg`、`.jpeg`、`.bmp`
-
-常用資料夾：
-
-- `/.crosspoint`：設定、快取、閱讀進度、封面縮圖等資料。
-- `/fonts`：自訂 `.epdfont` 字型。
-
-OPDS 可下載但不一定可直接閱讀的格式：`.pdf`、`.cbz`、`.zip`。這些檔案會保留在 SD 卡根目錄，可透過 Web 檔案管理或 SD 卡取出。
+睡眠屏設定也支援預設黑、預設白、書籍封面、透明桌布、封面加自定義與空白畫面。
 
 ## 建置
 
-需求：
-
-- PlatformIO
-- ESP32-C3 / XTEink X4
+需要 PlatformIO。
 
 常用指令：
 
 ```bash
 pio run
+pio run -e gh_release
+pio run -e slim
 pio run -t upload
 pio device monitor
 ```
 
-環境：
+目前 `platformio.ini` 預設：
 
-- `default`：開發版，版本字尾 `-allocate`，序列輸出開啟。
-- `gh_release`：正式版。
-- `gh_release_rc`：Release candidate。
-- `slim`：字尾 `-slim`，關閉序列輸出以節省空間。
+- ESP32-C3
+- Arduino framework
+- 16MB flash
+- `partitions.csv`
+- `espressif32 @ 6.12.0`
 
-建置前會執行：
+## 疑難排解
 
-- `scripts/build_html.py`：把 Web HTML 產生成 C++ header。
-- `scripts/gen_i18n.py`：產生語言相關資料。
+### OPDS 可瀏覽但下載失敗
 
-## 相關文件
+先在電腦上直接開啟 feed 裡的 acquisition URL，例如：
 
-- [docs/webserver.md](docs/webserver.md)
-- [docs/webserver-endpoints.md](docs/webserver-endpoints.md)
-- [docs/file-formats.md](docs/file-formats.md)
-- [docs/troubleshooting.md](docs/troubleshooting.md)
+```text
+http://server:port/get/epub/<id>/<library>
+```
+
+若電腦瀏覽器或 `curl` 也回 `HTTP 500`，問題在 OPDS/Calibre server 端，通常是書檔路徑、檔案權限、library 掛載或資料庫記錄問題。
+
+### 卡在開機循環
+
+按 Reset 後，按住設定好的 Back 鍵與 Power 鍵開機，可嘗試回到主畫面。
+
+### 需要 serial log
+
+連接 USB 後使用：
+
+```bash
+pio device monitor
+```
+
+## 來源
+
+本專案基於 CrossPoint Reader，並針對中文閱讀與 XTEink X4 使用情境進行調整。
 
 ## 致謝
 

@@ -30,6 +30,8 @@ class HttpDownloader {
 
   static bool fetchUrl(const std::string& url, Stream& stream, const char* acceptHeader = nullptr);
 
+  static int getLastHttpStatusCode();
+
   /**
    * Download a file to the SD card.
    * @param url The URL to download

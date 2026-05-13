@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
@@ -471,7 +472,14 @@ void OpdsBookBrowserActivity::downloadBook(const OpdsEntry& book) {
     updateRequired = true;
   } else {
     state = BrowserState::ERROR;
-    errorMessage = "下載失敗";
+    const int httpStatus = HttpDownloader::getLastHttpStatusCode();
+    if (result == HttpDownloader::HTTP_ERROR && httpStatus > 0) {
+      char message[32];
+      snprintf(message, sizeof(message), "下載失敗: HTTP %d", httpStatus);
+      errorMessage = message;
+    } else {
+      errorMessage = "下載失敗";
+    }
     updateRequired = true;
   }
 }

@@ -17,6 +17,7 @@
 namespace {
 constexpr unsigned long HTTP_STREAM_IDLE_TIMEOUT_MS = 15000;
 constexpr size_t HTTP_BODY_BUFFER_SIZE = 2048;
+int gLastHttpStatusCode = 0;
 
 bool writeBodyBytes(Stream& outContent, const uint8_t* buffer, const size_t size) {
   const size_t bytesWritten = outContent.write(buffer, size);
@@ -157,6 +158,8 @@ bool streamIdentityBody(HTTPClient& http, WiFiClient& stream, Stream& outContent
 }
 }  // namespace
 
+int HttpDownloader::getLastHttpStatusCode() { return gLastHttpStatusCode; }
+
 bool HttpDownloader::fetchUrl(const std::string& url, Stream& outContent, const char* acceptHeader) {
   // Use WiFiClientSecure for HTTPS, regular WiFiClient for HTTP
   std::unique_ptr<WiFiClient> client;
@@ -192,6 +195,7 @@ bool HttpDownloader::fetchUrl(const std::string& url, Stream& outContent, const 
   }
 
   const int httpCode = http.GET();
+  gLastHttpStatusCode = httpCode;
   if (httpCode != HTTP_CODE_OK) {
     Serial.printf("[%lu] [HTTP] Fetch failed: %d\n", millis(), httpCode);
     http.end();
@@ -267,6 +271,7 @@ HttpDownloader::DownloadError HttpDownloader::downloadToFile(const std::string& 
   }
 
   const int httpCode = http.GET();
+  gLastHttpStatusCode = httpCode;
   if (httpCode != HTTP_CODE_OK) {
     Serial.printf("[%lu] [HTTP] Download failed: %d\n", millis(), httpCode);
     http.end();
