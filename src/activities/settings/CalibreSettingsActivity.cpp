@@ -155,10 +155,10 @@ void CalibreSettingsActivity::render() {
   const auto pageWidth = renderer.getScreenWidth();
 
   // Draw header
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "OPDS 瀏覽器", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("OPDS Browser"), true, EpdFontFamily::BOLD);
 
   // Draw info text about Calibre
-  renderer.drawCenteredText(UI_10_FONT_ID, 40, "配置calibre的OPDS伺服器地址和認證資訊", false);
+  renderer.drawCenteredText(UI_10_FONT_ID, 40, getChineseName("OPDS settings description"), false);
 
   // Draw selection highlight
   renderer.fillRect(0, 70 + selectedIndex * 30 - 2, pageWidth - 1, 30);
@@ -171,13 +171,13 @@ void CalibreSettingsActivity::render() {
     renderer.drawText(UI_10_FONT_ID, 20, settingY, getChineseName(menuNames[i]), !isSelected);
 
     // Draw status for each setting
-    const char* status = "[未配置]";
+    const char* status = getChineseName("Not configured");
     if (i == 0) {
-      status = (strlen(SETTINGS.opdsServerUrl) > 0) ? "[已配置]" : "[未配置]";
+      status = (strlen(SETTINGS.opdsServerUrl) > 0) ? getChineseName("Configured") : getChineseName("Not configured");
     } else if (i == 1) {
-      status = (strlen(SETTINGS.opdsUsername) > 0) ? "[已配置]" : "[未配置]";
+      status = (strlen(SETTINGS.opdsUsername) > 0) ? getChineseName("Configured") : getChineseName("Not configured");
     } else if (i == 2) {
-      status = (strlen(SETTINGS.opdsPassword) > 0) ? "[已配置]" : "[未配置]";
+      status = (strlen(SETTINGS.opdsPassword) > 0) ? getChineseName("Configured") : getChineseName("Not configured");
     }
     const auto width = renderer.getTextWidth(UI_10_FONT_ID, status);
     renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, settingY, status, !isSelected);

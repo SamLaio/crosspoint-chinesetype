@@ -101,11 +101,11 @@ void EpubReaderMenuActivity::renderScreen() {
 
   // Title
   const std::string truncTitle =
-      renderer.truncatedText(UI_12_FONT_ID, title.c_str(), contentWidth - 40, EpdFontFamily::BOLD);
+      renderer.truncatedText(NOTOSANS_12_FONT_ID, title.c_str(), contentWidth - 40, EpdFontFamily::BOLD);
   // Manual centering so we can respect the content gutter.
   const int titleX =
-      contentX + (contentWidth - renderer.getTextWidth(UI_12_FONT_ID, truncTitle.c_str(), EpdFontFamily::BOLD)) / 2;
-  renderer.drawText(UI_12_FONT_ID, titleX, 15 + contentY, truncTitle.c_str(), true, EpdFontFamily::BOLD);
+      contentX + (contentWidth - renderer.getTextWidth(NOTOSANS_12_FONT_ID, truncTitle.c_str(), EpdFontFamily::BOLD)) / 2;
+  renderer.drawText(NOTOSANS_12_FONT_ID, titleX, 15 + contentY, truncTitle.c_str(), true, EpdFontFamily::BOLD);
 
   // Progress summary
   std::string progressLine;
@@ -139,7 +139,8 @@ void EpubReaderMenuActivity::renderScreen() {
   }
 
   // Footer / Hints
-  const auto labels = mappedInput.mapLabels("« 返回", "選擇", "向上", "向下");
+  const auto labels = mappedInput.mapLabels(getChineseName("« Back"), getChineseName("Select"), getChineseName("Up"),
+                                            getChineseName("Down"));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();

@@ -156,15 +156,15 @@ void LyraTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
     int textWidth = contentWidth - LyraMetrics::values.contentSidePadding * 2 - hPaddingInSelection * 2 -
                     (rowValue != nullptr ? 60 : 0);  // TODO truncate according to value width?
     auto itemName = rowTitle(i);
-    auto item = renderer.truncatedText(UI_10_FONT_ID, itemName.c_str(), textWidth);
-    renderer.drawText(UI_10_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding + hPaddingInSelection * 2,
+    auto item = renderer.truncatedText(NOTOSANS_12_FONT_ID, itemName.c_str(), textWidth);
+    renderer.drawText(NOTOSANS_12_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding + hPaddingInSelection * 2,
                       itemY + 6, item.c_str(), true);
 
     if (rowSubtitle != nullptr) {
       // Draw subtitle
       std::string subtitleText = rowSubtitle(i);
-      auto subtitle = renderer.truncatedText(SMALL_FONT_ID, subtitleText.c_str(), textWidth);
-      renderer.drawText(SMALL_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding + hPaddingInSelection * 2,
+      auto subtitle = renderer.truncatedText(NOTOSANS_12_FONT_ID, subtitleText.c_str(), textWidth);
+      renderer.drawText(NOTOSANS_12_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding + hPaddingInSelection * 2,
                         itemY + 30, subtitle.c_str(), true);
     }
 
@@ -293,7 +293,7 @@ void LyraTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
 
       int tileX = LyraMetrics::values.contentSidePadding + tileWidth * i;
       auto title =
-          renderer.truncatedText(UI_10_FONT_ID, recentBooks[i].title.c_str(), tileWidth - 2 * hPaddingInSelection);
+          renderer.truncatedText(NOTOSANS_12_FONT_ID, recentBooks[i].title.c_str(), tileWidth - 2 * hPaddingInSelection);
 
       if (bookSelected) {
         // Draw selection box
@@ -306,7 +306,7 @@ void LyraTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         renderer.fillRoundedRect(tileX, tileY + LyraMetrics::values.homeCoverHeight + hPaddingInSelection, tileWidth,
                                  bookTitleHeight, cornerRadius, false, false, true, true, Color::LightGray);
       }
-      renderer.drawText(UI_10_FONT_ID, tileX + hPaddingInSelection,
+      renderer.drawText(NOTOSANS_12_FONT_ID, tileX + hPaddingInSelection,
                         tileY + tileHeight - bookTitleHeight + hPaddingInSelection + 5, title.c_str(), true);
     }
   }

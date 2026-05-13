@@ -1,6 +1,7 @@
 #include "KeyboardEntryActivity.h"
 
 #include "MappedInputManager.h"
+#include "LanguageMapper.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "network/NetworkConstants.h"
@@ -318,7 +319,7 @@ void KeyboardEntryActivity::render() const {
   renderer.clearScreen();
 
   // Draw title
-  renderer.drawCenteredText(UI_10_FONT_ID, startY, title.c_str());
+  renderer.drawCenteredText(NOTOSANS_12_FONT_ID, startY, title.c_str());
 
   // Draw input field
   const int inputStartY = startY + 22;
@@ -340,14 +341,14 @@ void KeyboardEntryActivity::render() const {
   int lineEndIdx = displayText.length();
   while (true) {
     std::string lineText = displayText.substr(lineStartIdx, lineEndIdx - lineStartIdx);
-    const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, lineText.c_str());
+    const int textWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, lineText.c_str());
     if (textWidth <= pageWidth - 40) {
-      renderer.drawText(UI_10_FONT_ID, 20, inputEndY, lineText.c_str());
+      renderer.drawText(NOTOSANS_12_FONT_ID, 20, inputEndY, lineText.c_str());
       if (lineEndIdx == displayText.length()) {
         break;
       }
 
-      inputEndY += renderer.getLineHeight(UI_10_FONT_ID);
+      inputEndY += renderer.getLineHeight(NOTOSANS_12_FONT_ID);
       lineStartIdx = lineEndIdx;
       lineEndIdx = displayText.length();
     } else {
@@ -426,7 +427,8 @@ void KeyboardEntryActivity::render() const {
 
 
   // Draw help text
-  const auto labels = mappedInput.mapLabels("« Back", "Select", "Left", "Right");
+  const auto labels = mappedInput.mapLabels(getChineseName("« Back"), getChineseName("Select"), getChineseName("Left label"),
+                                            getChineseName("Right label"));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   // Draw side button hints for Up/Down navigation
@@ -469,22 +471,22 @@ void KeyboardEntryActivity::renderQRScreen() const {
   renderer.clearScreen();
 
   // Title - matching File Transfer style
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "輸入文字", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("Text input"), true, EpdFontFamily::BOLD);
 
   if (webInputServer && webInputServer->isRunning()) {
     if (webInputServer->isApMode()) {
       // === AP mode layout (matching File Transfer) ===
       int apStartY = 55;
 
-      renderer.drawCenteredText(UI_10_FONT_ID, apStartY, "Hotspot Mode", true, EpdFontFamily::BOLD);
+      renderer.drawCenteredText(UI_10_FONT_ID, apStartY, getChineseName("Hotspot Mode"), true, EpdFontFamily::BOLD);
 
-      std::string ssidInfo = "Network: " + webInputServer->getApSSID();
-      renderer.drawCenteredText(UI_10_FONT_ID, apStartY + LINE_SPACING, ssidInfo.c_str());
+      std::string ssidInfo = std::string(getChineseName("Network: ")) + webInputServer->getApSSID();
+      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, apStartY + LINE_SPACING, ssidInfo.c_str());
 
-      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 2, "連線wifi:");
+      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 2, getChineseName("Connect WiFi"));
 
       renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 3,
-                                "或掃描二維碼連線wifi.");
+                                getChineseName("Scan QR to connect WiFi"));
 
       // WiFi QR code (same size as File Transfer)
       const std::string wifiQR = webInputServer->getWifiQRString();
@@ -494,15 +496,15 @@ void KeyboardEntryActivity::renderQRScreen() const {
 
       // URL section
       const std::string url = webInputServer->getUrl();
-      renderer.drawCenteredText(UI_10_FONT_ID, apStartY + LINE_SPACING * 3, url.c_str(), true, EpdFontFamily::BOLD);
+      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, apStartY + LINE_SPACING * 3, url.c_str(), true, EpdFontFamily::BOLD);
 
       // Show IP address as fallback
       std::string ipUrl = "or http://" + webInputServer->getIP() + "/";
-      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 4, ipUrl.c_str());
+      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, apStartY + LINE_SPACING * 4, ipUrl.c_str());
 
-      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 5, "在您的瀏覽器中開啟此 URL");
+      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 5, getChineseName("Open this URL in your browser"));
 
-      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 6, "或使用手機掃描二維碼：");
+      renderer.drawCenteredText(SMALL_FONT_ID, apStartY + LINE_SPACING * 6, getChineseName("Or scan QR code with phone"));
 
       // URL QR code (same size as File Transfer)
       QRCodeHelper::drawQRCode(renderer, (pageWidth - QR_TOTAL) / 2, apStartY + LINE_SPACING * 7, url);
@@ -513,31 +515,31 @@ void KeyboardEntryActivity::renderQRScreen() const {
 
       const std::string ip = webInputServer->getIP();
 
-      std::string ipInfo = "IP Address: " + ip;
-      renderer.drawCenteredText(UI_10_FONT_ID, staStartY, ipInfo.c_str());
+      std::string ipInfo = std::string(getChineseName("IP Address: ")) + ip;
+      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, staStartY, ipInfo.c_str());
 
       // Show web server URL prominently
       std::string webUrl = "http://" + ip + "/";
-      renderer.drawCenteredText(UI_10_FONT_ID, staStartY + LINE_SPACING * 2, webUrl.c_str(), true, EpdFontFamily::BOLD);
+      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, staStartY + LINE_SPACING * 2, webUrl.c_str(), true, EpdFontFamily::BOLD);
 
       // Also show hostname URL using shared constant
       std::string hostnameUrl = std::string("or http://") + NetworkConstants::AP_HOSTNAME + ".local/";
-      renderer.drawCenteredText(SMALL_FONT_ID, staStartY + LINE_SPACING * 3, hostnameUrl.c_str());
+      renderer.drawCenteredText(NOTOSANS_12_FONT_ID, staStartY + LINE_SPACING * 3, hostnameUrl.c_str());
 
-      renderer.drawCenteredText(SMALL_FONT_ID, staStartY + LINE_SPACING * 4, "在您的瀏覽器中開啟此 URL");
+      renderer.drawCenteredText(SMALL_FONT_ID, staStartY + LINE_SPACING * 4, getChineseName("Open this URL in your browser"));
 
-      renderer.drawCenteredText(SMALL_FONT_ID, staStartY + LINE_SPACING * 5, "或使用手機掃描二維碼：");
+      renderer.drawCenteredText(SMALL_FONT_ID, staStartY + LINE_SPACING * 5, getChineseName("Or scan QR code with phone"));
 
       // URL QR code (same size as File Transfer)
       QRCodeHelper::drawQRCode(renderer, (pageWidth - QR_TOTAL) / 2, staStartY + LINE_SPACING * 6, webUrl);
     }
   } else {
     const auto pageHeight = renderer.getScreenHeight();
-    renderer.drawCenteredText(UI_12_FONT_ID, pageHeight / 2 - 20, "Starting server...", true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, pageHeight / 2 - 20, getChineseName("Starting server..."), true, EpdFontFamily::BOLD);
   }
 
   // Button hints - matching File Transfer style
-  const auto labels = mappedInput.mapLabels("\xC2\xAB Back", "", "", "");
+  const auto labels = mappedInput.mapLabels(getChineseName("« Back"), "", "", "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();

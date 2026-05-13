@@ -2,6 +2,7 @@
 
 #include <GfxRenderer.h>
 
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -104,7 +105,7 @@ void EpubReaderPercentSelectionActivity::renderScreen() {
   renderer.clearScreen();
 
   // Title and numeric percent value.
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "Go to Position", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("Go to Position"), true, EpdFontFamily::BOLD);
 
   const std::string percentText = std::to_string(percent) + "%";
   renderer.drawCenteredText(UI_12_FONT_ID, 90, percentText.c_str(), true, EpdFontFamily::BOLD);
@@ -129,10 +130,10 @@ void EpubReaderPercentSelectionActivity::renderScreen() {
   renderer.fillRect(knobX, barY - 4, 4, barHeight + 8, true);
 
   // Hint text for step sizes.
-  renderer.drawCenteredText(SMALL_FONT_ID, barY + 30, "Left/Right: 1%  Up/Down: 10%", true);
+  renderer.drawCenteredText(SMALL_FONT_ID, barY + 30, getChineseName("Percent controls hint"), true);
 
   // Button hints follow the current front button layout.
-  const auto labels = mappedInput.mapLabels("« 返回", "選擇", "-", "+");
+  const auto labels = mappedInput.mapLabels(getChineseName("« Back"), getChineseName("Select"), "-", "+");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();

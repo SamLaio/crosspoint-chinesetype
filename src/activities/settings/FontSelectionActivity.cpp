@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "../../CrossPointSettings.h"
+#include "../../LanguageMapper.h"
 #include "../../fontIds.h"
 #include "../../managers/FontManager.h"
 #include "components/UITheme.h"
@@ -99,13 +100,13 @@ void FontSelectionActivity::saveAndExit() {
 void FontSelectionActivity::render() const {
   renderer.clearScreen();
 
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "Select Font", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("Select Font"), true, EpdFontFamily::BOLD);
 
   int y = 50;
 
   if (fontFamilies.empty()) {
-    renderer.drawCenteredText(UI_10_FONT_ID, 120, "No fonts found in /fonts", false);
-    renderer.drawCenteredText(UI_10_FONT_ID, 150, "Add .epdfont files to SD Card", false);
+    renderer.drawCenteredText(UI_10_FONT_ID, 120, getChineseName("No fonts found in /fonts"), false);
+    renderer.drawCenteredText(UI_10_FONT_ID, 150, getChineseName("Add .epdfont files to SD Card"), false);
     renderer.displayBuffer();  // ensure update
     return;
   }
@@ -118,10 +119,10 @@ void FontSelectionActivity::render() const {
     if (idx == selectedIndex) {
       Serial.printf("[FSA] Drawing selected: %s at %d\n", fontFamilies[idx].c_str(), y);
       renderer.fillRect(0, y - 2, 480, 30);
-      renderer.drawText(UI_10_FONT_ID, 20, y, fontFamilies[idx].c_str(), false);  // false = white (on black box)
+      renderer.drawText(NOTOSANS_12_FONT_ID, 20, y, fontFamilies[idx].c_str(), false);  // false = white (on black box)
     } else {
       Serial.printf("[FSA] Drawing: %s at %d\n", fontFamilies[idx].c_str(), y);
-      renderer.drawText(UI_10_FONT_ID, 20, y, fontFamilies[idx].c_str(), true);  // true = black (on white bg)
+      renderer.drawText(NOTOSANS_12_FONT_ID, 20, y, fontFamilies[idx].c_str(), true);  // true = black (on white bg)
     }
 
     // Mark current active font
@@ -133,7 +134,7 @@ void FontSelectionActivity::render() const {
   }
 
   // Draw help text
-  const auto labels = mappedInput.mapLabels("« 返回", "選擇", "", "");
+  const auto labels = mappedInput.mapLabels(getChineseName("« Back"), getChineseName("Select"), "", "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();

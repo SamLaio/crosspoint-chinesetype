@@ -13,6 +13,7 @@
 
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
 #include "XtcReaderChapterSelectionActivity.h"
@@ -182,7 +183,7 @@ void XtcReaderActivity::renderScreen() {
 
   if (currentPage >= xtc->getPageCount()) {
     renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "End of book", true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, getChineseName("End of book"), true, EpdFontFamily::BOLD);
     renderer.displayBuffer();
     return;
   }
@@ -219,7 +220,7 @@ void XtcReaderActivity::renderFullPage() {
     if (!pageBuffer) {
       Serial.printf("[%lu] [XTR] Alloc failed: %lu bytes\n", millis(), slicePageBufferSize);
       renderer.clearScreen();
-      renderer.drawCenteredText(UI_12_FONT_ID, 300, "Memory error", true, EpdFontFamily::BOLD);
+      renderer.drawCenteredText(UI_12_FONT_ID, 300, getChineseName("Memory error"), true, EpdFontFamily::BOLD);
       renderer.displayBuffer();
       return;
     }
@@ -240,7 +241,7 @@ for (int n=0; n<8; n++) {
     if (bytesRead == 0) {
         Serial.printf("[%lu] [XTR] Load slice failed (page=%lu, slice=%d)\n", millis(), renderingPage, n);
         renderer.clearScreen();
-        renderer.drawCenteredText(UI_12_FONT_ID, 300, "Load error", true, EpdFontFamily::BOLD);
+        renderer.drawCenteredText(UI_12_FONT_ID, 300, getChineseName("Load error"), true, EpdFontFamily::BOLD);
         renderer.displayBuffer();
         return;
     }
@@ -264,7 +265,7 @@ if (pagesUntilFullRefresh <= 1) {
         if (bytesRead == 0) {
             Serial.printf("[%lu] [XTR] Load slice failed (page=%lu, slice=%d)\n", millis(), renderingPage, n);
             renderer.clearScreen();
-            renderer.drawCenteredText(UI_12_FONT_ID, 300, "Load error", true, EpdFontFamily::BOLD);
+            renderer.drawCenteredText(UI_12_FONT_ID, 300, getChineseName("Load error"), true, EpdFontFamily::BOLD);
             renderer.displayBuffer();
             return;
         }
@@ -278,7 +279,7 @@ if (pagesUntilFullRefresh <= 1) {
         if (bytesRead == 0) {
             Serial.printf("[%lu] [XTR] Load slice failed (page=%lu, slice=%d)\n", millis(), renderingPage, n);
             renderer.clearScreen();
-            renderer.drawCenteredText(UI_12_FONT_ID, 300, "Load error", true, EpdFontFamily::BOLD);
+            renderer.drawCenteredText(UI_12_FONT_ID, 300, getChineseName("Load error"), true, EpdFontFamily::BOLD);
             renderer.displayBuffer();
             return;
         }
@@ -296,7 +297,7 @@ if (pagesUntilFullRefresh <= 1) {
         if (bytesRead == 0) {
             Serial.printf("[%lu] [XTR] Load slice failed (page=%lu, slice=%d)\n", millis(), renderingPage, n);
             renderer.clearScreen();
-            renderer.drawCenteredText(UI_12_FONT_ID, 300, "Load error", true, EpdFontFamily::BOLD);
+            renderer.drawCenteredText(UI_12_FONT_ID, 300, getChineseName("Load error"), true, EpdFontFamily::BOLD);
             renderer.displayBuffer();
             return;
         }
@@ -313,7 +314,7 @@ else{
         if (bytesRead == 0) {
             Serial.printf("[%lu] [XTR] Load slice failed (page=%lu, slice=%d)\n", millis(), renderingPage, n);
             renderer.clearScreen();
-            renderer.drawCenteredText(UI_12_FONT_ID, 300, "Load error", true, EpdFontFamily::BOLD);
+            renderer.drawCenteredText(UI_12_FONT_ID, 300, getChineseName("Load error"), true, EpdFontFamily::BOLD);
             renderer.displayBuffer();
             return;
         }

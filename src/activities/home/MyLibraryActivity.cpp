@@ -5,6 +5,7 @@
 
 #include <algorithm>
 
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -172,7 +173,7 @@ void MyLibraryActivity::doSearch(const char* keyword) {
   if (searchResults.empty()) {
     // 提示文字適配char陣列
     char emptyHint[128];
-    snprintf(emptyHint, sizeof(emptyHint), "未找到含'%s'的檔案", SEARCH_KEYWORD);
+    snprintf(emptyHint, sizeof(emptyHint), getChineseName("No files matching format"), SEARCH_KEYWORD);
     Serial.printf("[搜尋] %s\n", emptyHint);
   } else {
     Serial.printf("[搜尋] 共找到 %d 個匹配檔案\n", searchResults.size());
@@ -184,7 +185,7 @@ void MyLibraryActivity::executeSearch() {
   exitActivity();
   updateRequired = true;
   enterNewActivity(new KeyboardEntryActivity(
-      renderer, mappedInput, "輸入搜尋關鍵詞", SEARCH_KEYWORD, 10,
+      renderer, mappedInput, getChineseName("Search prompt"), SEARCH_KEYWORD, 10,
       63,     // 最大長度63，與其它地方保持一致
       false,  // 非密碼模式
       [this](const std::string& keyword) {
@@ -573,7 +574,8 @@ void MyLibraryActivity::render() const {
   auto folderName = basepath == "/" ? "SD card" : basepath.substr(basepath.rfind('/') + 1).c_str();
   GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, folderName);
   if (actionMenuVisible) {
-    constexpr const char* topItems[topOptionCount] = {"取消", "刪除", "複製", "剪下", "貼上"};
+    const char* topItems[topOptionCount] = {getChineseName("Cancel"), getChineseName("Delete"), getChineseName("Copy"),
+                                           getChineseName("Cut"), getChineseName("Paste")};
     constexpr int visibleActionItems = 3;
     constexpr int margin = 10;
     constexpr int menuSpacing = 5;
@@ -615,7 +617,7 @@ void MyLibraryActivity::render() const {
       // 先定義提示文字的基礎部分
       char emptyHint[128];
       // 拼接 "未找到含'關鍵詞'的檔案"
-      snprintf(emptyHint, sizeof(emptyHint), "未找到含'%s'的檔案", SEARCH_KEYWORD);
+      snprintf(emptyHint, sizeof(emptyHint), getChineseName("No files matching format"), SEARCH_KEYWORD);
       // 賦值給emptyText
       std::string emptyText = isSearchMode ? emptyHint : "No books found";
       renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, contentTop + 20, emptyText.c_str());
@@ -629,7 +631,7 @@ void MyLibraryActivity::render() const {
           }, nullptr, nullptr, nullptr);
   }
   //側邊繪製，防止有的使用者問
-  GUI.drawSideButtonHints(renderer, "向上", "向下");
+  GUI.drawSideButtonHints(renderer, getChineseName("Up"), getChineseName("Down"));
 
   renderer.displayBuffer();
 }

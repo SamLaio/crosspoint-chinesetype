@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include "CrossPointSettings.h"
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -42,24 +43,24 @@ void BluetoothSettingsActivity::onEnter() {
     if (SETTINGS.bluetoothEnabled && !btMgr->isEnabled()) {
       Serial.printf("BT Restoring Bluetooth from settings (enabled)");
       if (btMgr->enable()) {
-        lastError = "Bluetooth restored";
+        lastError = getChineseName("Bluetooth restored");
       } else {
-        lastError = "Failed to restore BT";
+        lastError = getChineseName("Failed to restore BT");
         SETTINGS.bluetoothEnabled = 0;
         SETTINGS.saveToFile();
       }
     } else if (!SETTINGS.bluetoothEnabled && btMgr->isEnabled()) {
       Serial.printf("BT Disabling Bluetooth per settings (disabled)");
       btMgr->disable();
-      lastError = "Bluetooth disabled per settings";
+      lastError = getChineseName("Bluetooth disabled per settings");
     }
   } catch (const std::exception& e) {
     Serial.printf("BT Failed to get BLE manager: %s", e.what());
-    lastError = "BLE manager error";
+    lastError = getChineseName("BLE manager error");
     btMgr = nullptr;
   } catch (...) {
     Serial.printf("BT Unknown error getting BLE manager");
-    lastError = "Unknown error";
+    lastError = getChineseName("Unknown error");
     btMgr = nullptr;
   }
   
@@ -136,7 +137,7 @@ void BluetoothSettingsActivity::handleMainMenuInput() {
   
   if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
     if (!btMgr) {
-      lastError = "BLE not available";
+      lastError = getChineseName("BLE not available");
       Serial.printf("BT BLE manager not available");
       updateRequired = true;
       return;
@@ -148,27 +149,27 @@ void BluetoothSettingsActivity::handleMainMenuInput() {
         if (btMgr->isEnabled()) {
           Serial.printf("BT Disabling Bluetooth...");
           if (btMgr->disable()) {
-            lastError = "Bluetooth disabled";
+            lastError = getChineseName("Bluetooth disabled");
             SETTINGS.bluetoothEnabled = 0;
             SETTINGS.saveToFile();
           } else {
-            lastError = "Failed to disable";
+            lastError = getChineseName("Failed to disable");
           }
         } else {
           Serial.printf("BT Enabling Bluetooth...");
           if (btMgr->enable()) {
-            lastError = "Bluetooth enabled";
+            lastError = getChineseName("Bluetooth enabled");
             SETTINGS.bluetoothEnabled = 1;
             SETTINGS.saveToFile();
           } else {
-            lastError = btMgr->lastError.empty() ? "Failed to enable" : btMgr->lastError;
+            lastError = btMgr->lastError.empty() ? getChineseName("Failed to enable") : btMgr->lastError;
           }
         }
       } catch (const std::exception& e) {
         lastError = std::string("Error: ") + e.what();
         Serial.printf("BT Toggle error: %s", e.what());
       } catch (...) {
-        lastError = "Unknown toggle error";
+        lastError = getChineseName("Unknown toggle error");
         Serial.printf("BT Unknown error toggling Bluetooth");
       }
       updateRequired = true;
@@ -181,7 +182,7 @@ void BluetoothSettingsActivity::handleMainMenuInput() {
         selectedIndex = 0;
         lastError = "";
       } else {
-        lastError = "Enable BT first";
+        lastError = getChineseName("Enable BT first");
       }
       updateRequired = true;
     }
@@ -231,7 +232,7 @@ void BluetoothSettingsActivity::handleDeviceListInput() {
   if (mappedInput.wasPressed(MappedInputManager::Button::Right)) {
     // Quick rescan
     Serial.printf("BT Quick rescan...");
-    lastError = "Scanning...";
+    lastError = getChineseName("Scanning...");
     btMgr->startScan(10000);
     lastScanTime = millis();
     selectedIndex = 0;
@@ -243,7 +244,7 @@ void BluetoothSettingsActivity::handleDeviceListInput() {
     // Check if "Refresh" is selected
     if (selectedIndex == static_cast<int>(devices.size())) {
       Serial.printf("BT Refreshing scan...");
-      lastError = "Scanning...";
+      lastError = getChineseName("Scanning...");
       btMgr->startScan(10000);
       lastScanTime = millis();
       selectedIndex = 0;
@@ -260,7 +261,7 @@ void BluetoothSettingsActivity::handleDeviceListInput() {
         Serial.printf("BT Disconnecting from %s", addr.c_str());
         btMgr->disconnectFromDevice(addr);
       }
-      lastError = "Disconnected";
+      lastError = getChineseName("Disconnected");
       selectedIndex = 0;
       updateRequired = true;
       return;
@@ -271,15 +272,15 @@ void BluetoothSettingsActivity::handleDeviceListInput() {
       const auto& device = devices[selectedIndex];
       
       Serial.printf("BT Connecting to %s (%s)", device.name.c_str(), device.address.c_str());
-      lastError = "Connecting...";
+      lastError = getChineseName("Connecting...");
       updateRequired = true;
       
       // try up to 3 times to avoid crashing if the peripheral is bad
       if (btMgr->connectToDeviceWithRetries(device.address, 3)) {
-        lastError = std::string("Connected to ") + device.name;
+        lastError = std::string(getChineseName("Connected to ")) + device.name;
         Serial.printf("BT Successfully connected to %s", device.name.c_str());
       } else {
-        lastError = btMgr->lastError.empty() ? "Connection failed" : btMgr->lastError;
+        lastError = btMgr->lastError.empty() ? getChineseName("Connection failed") : btMgr->lastError;
         Serial.printf("BT Failed to connect after retries: %s", lastError.c_str());
       }
       updateRequired = true;
@@ -303,7 +304,7 @@ void BluetoothSettingsActivity::renderMainMenu() {
   renderer.clearScreen();
 
   // Header
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "藍芽設定", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("Bluetooth Settings"), true, EpdFontFamily::BOLD);
 
   // Status line
   std::string statusLine;
@@ -311,29 +312,29 @@ void BluetoothSettingsActivity::renderMainMenu() {
     if (btMgr->isEnabled()) {
       auto connDevices = btMgr->getConnectedDevices();
       char buf[64];
-      snprintf(buf, sizeof(buf), "已啟用 (%zu 個已連線裝置)", connDevices.size());
+      snprintf(buf, sizeof(buf), getChineseName("Bluetooth enabled with devices"), connDevices.size());
       statusLine = buf;
     } else {
-      statusLine = "已禁用";
+      statusLine = getChineseName("Bluetooth disabled");
     }
   } else {
-    statusLine = "藍芽錯誤";
+    statusLine = getChineseName("Bluetooth Error");
   }
   statusLine = renderer.truncatedText(SMALL_FONT_ID, statusLine.c_str(), pageWidth - sidePadding * 2);
   renderer.drawText(SMALL_FONT_ID, sidePadding, 45, statusLine.c_str());
 
   // Error message if any
   if (!lastError.empty()) {
-    const auto errorLine = renderer.truncatedText(UI_10_FONT_ID, lastError.c_str(), pageWidth - sidePadding * 2);
-    renderer.drawText(UI_10_FONT_ID, sidePadding, 75, errorLine.c_str());
+    const auto errorLine = renderer.truncatedText(NOTOSANS_12_FONT_ID, lastError.c_str(), pageWidth - sidePadding * 2);
+    renderer.drawText(NOTOSANS_12_FONT_ID, sidePadding, 75, errorLine.c_str());
   }
 
   // Menu items
   constexpr int startY = 110;
   constexpr int lineHeight = 40;
   const char* items[] = {
-      btMgr && btMgr->isEnabled() ? "禁用藍芽" : "啟用藍芽",
-      "掃描裝置"
+      btMgr && btMgr->isEnabled() ? getChineseName("Disable Bluetooth") : getChineseName("Enable Bluetooth"),
+      getChineseName("Scan devices")
   };
 
   for (int i = 0; i < 2; i++) {
@@ -348,7 +349,8 @@ void BluetoothSettingsActivity::renderMainMenu() {
   }
 
   // Button hints
-  const auto labels = mappedInput.mapLabels("返回", "開啟", "左", "右");
+  const auto labels = mappedInput.mapLabels(getChineseName("Back"), getChineseName("Open"), getChineseName("Left label"),
+                                            getChineseName("Right label"));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
@@ -365,7 +367,7 @@ void BluetoothSettingsActivity::renderDeviceList() {
   renderer.clearScreen();
 
   if (!btMgr) {
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, "藍芽錯誤");
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, getChineseName("Bluetooth Error"));
     renderer.displayBuffer();
     return;
   }
@@ -381,9 +383,9 @@ void BluetoothSettingsActivity::renderDeviceList() {
   const auto& connectedDevices = btMgr->getConnectedDevices();
 
   // Header
-  std::string headerText = "藍芽裝置";
+  std::string headerText = getChineseName("Bluetooth Devices");
   if (btMgr->isScanning()) {
-    headerText += " (掃描中...)";
+    headerText += getChineseName("Bluetooth scanning suffix");
   }
   headerText = renderer.truncatedText(UI_12_FONT_ID, headerText.c_str(), pageWidth - sidePadding * 2,
                                       EpdFontFamily::BOLD);
@@ -392,9 +394,9 @@ void BluetoothSettingsActivity::renderDeviceList() {
   // Device count
   char countStr[32];
   if (btMgr->isScanning()) {
-    snprintf(countStr, sizeof(countStr), "掃描中 - %zu 個裝置", devices.size());
+    snprintf(countStr, sizeof(countStr), getChineseName("Scanning devices count"), devices.size());
   } else {
-    snprintf(countStr, sizeof(countStr), "找到 %zu 個裝置", devices.size());
+    snprintf(countStr, sizeof(countStr), getChineseName("Found devices count"), devices.size());
   }
   auto countLine = renderer.truncatedText(SMALL_FONT_ID, countStr, pageWidth - sidePadding * 2);
   renderer.drawText(SMALL_FONT_ID, sidePadding, 45, countLine.c_str());
@@ -433,12 +435,12 @@ void BluetoothSettingsActivity::renderDeviceList() {
     std::string signalStr = getSignalStrengthIndicator(device.rssi);
     char rssiStr[32];
     snprintf(rssiStr, sizeof(rssiStr), "%s (%d dBm)", signalStr.c_str(), device.rssi);
-    const int rssiWidth = renderer.getTextWidth(SMALL_FONT_ID, rssiStr);
+    const int rssiWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, rssiStr);
     const int rssiX = std::max(textX, contentRight - rssiWidth);
     const int nameMaxWidth = std::max(40, rssiX - textX - 8);
-    auto clippedDevice = renderer.truncatedText(UI_10_FONT_ID, deviceStr, nameMaxWidth);
-    renderer.drawText(UI_10_FONT_ID, textX, deviceY, clippedDevice.c_str());
-    renderer.drawText(SMALL_FONT_ID, rssiX, deviceY + 2, rssiStr);
+    auto clippedDevice = renderer.truncatedText(NOTOSANS_12_FONT_ID, deviceStr, nameMaxWidth);
+    renderer.drawText(NOTOSANS_12_FONT_ID, textX, deviceY, clippedDevice.c_str());
+    renderer.drawText(NOTOSANS_12_FONT_ID, rssiX, deviceY + 2, rssiStr);
   }
 
   // Action buttons
@@ -449,7 +451,7 @@ void BluetoothSettingsActivity::renderDeviceList() {
   if (static_cast<int>(devices.size()) == selectedIndex) {
     renderer.drawText(UI_10_FONT_ID, indicatorX, actionStartY, ">");
   }
-  const auto refreshText = renderer.truncatedText(UI_10_FONT_ID, "< 重新整理掃描 >", contentRight - textX);
+  const auto refreshText = renderer.truncatedText(UI_10_FONT_ID, getChineseName("Refresh scan action"), contentRight - textX);
   renderer.drawText(UI_10_FONT_ID, textX, actionStartY, refreshText.c_str());
   
   // Disconnect button (if any connected)
@@ -458,12 +460,12 @@ void BluetoothSettingsActivity::renderDeviceList() {
     if (actionIndex + 1 == selectedIndex) {
       renderer.drawText(UI_10_FONT_ID, indicatorX, disconnectY, ">");
     }
-    const auto disconnectText = renderer.truncatedText(UI_10_FONT_ID, "< 斷開連線 >", contentRight - textX);
+    const auto disconnectText = renderer.truncatedText(UI_10_FONT_ID, getChineseName("Disconnect action"), contentRight - textX);
     renderer.drawText(UI_10_FONT_ID, textX, disconnectY, disconnectText.c_str());
   }
 
   // Button hints
-  const auto labels = mappedInput.mapLabels("返回", "連線", "重新整理", "");
+  const auto labels = mappedInput.mapLabels(getChineseName("Back"), getChineseName("Connect"), getChineseName("Refresh"), "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();

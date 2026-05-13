@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <esp_task_wdt.h>
 
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "WifiSelectionActivity.h"
 #include "components/UITheme.h"
@@ -211,9 +212,11 @@ void CalibreConnectActivity::render() const {
   renderer.clearScreen();
   const auto pageHeight = renderer.getScreenHeight();
   if (state == CalibreConnectState::SERVER_STARTING) {
-    renderer.drawCenteredText(UI_12_FONT_ID, pageHeight / 2 - 20, "Starting Calibre...", true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, pageHeight / 2 - 20, getChineseName("Starting Calibre..."), true,
+                              EpdFontFamily::BOLD);
   } else if (state == CalibreConnectState::ERROR) {
-    renderer.drawCenteredText(UI_12_FONT_ID, pageHeight / 2 - 20, "Calibre setup failed", true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, pageHeight / 2 - 20, getChineseName("Calibre setup failed"), true,
+                              EpdFontFamily::BOLD);
   }
   renderer.displayBuffer();
 }
@@ -223,38 +226,39 @@ void CalibreConnectActivity::renderServerRunning() const {
   constexpr int SMALL_SPACING = 20;
   constexpr int SECTION_SPACING = 40;
   constexpr int TOP_PADDING = 14;
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "Connect to Calibre", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("Connect to Calibre"), true, EpdFontFamily::BOLD);
 
   int y = 55 + TOP_PADDING;
-  renderer.drawCenteredText(UI_10_FONT_ID, y, "Network", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_10_FONT_ID, y, getChineseName("Network"), true, EpdFontFamily::BOLD);
   y += LINE_SPACING;
-  std::string ssidInfo = "Network: " + connectedSSID;
+  std::string ssidInfo = std::string(getChineseName("Network: ")) + connectedSSID;
   if (ssidInfo.length() > 28) {
     ssidInfo.replace(25, ssidInfo.length() - 25, "...");
   }
-  renderer.drawCenteredText(UI_10_FONT_ID, y, ssidInfo.c_str());
-  renderer.drawCenteredText(UI_10_FONT_ID, y + LINE_SPACING, ("IP: " + connectedIP).c_str());
+  renderer.drawCenteredText(NOTOSANS_12_FONT_ID, y, ssidInfo.c_str());
+  renderer.drawCenteredText(NOTOSANS_12_FONT_ID, y + LINE_SPACING,
+                            (std::string(getChineseName("IP: ")) + connectedIP).c_str());
 
   y += LINE_SPACING * 2 + SECTION_SPACING;
-  renderer.drawCenteredText(UI_10_FONT_ID, y, "Setup", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_10_FONT_ID, y, getChineseName("Setup"), true, EpdFontFamily::BOLD);
   y += LINE_SPACING;
-  renderer.drawCenteredText(SMALL_FONT_ID, y, "1) Install CrossPoint Reader plugin");
-  renderer.drawCenteredText(SMALL_FONT_ID, y + SMALL_SPACING, "2) Be on the same WiFi network");
-  renderer.drawCenteredText(SMALL_FONT_ID, y + SMALL_SPACING * 2, "3) In Calibre: \"Send to device\"");
-  renderer.drawCenteredText(SMALL_FONT_ID, y + SMALL_SPACING * 3, "Keep this screen open while sending");
+  renderer.drawCenteredText(SMALL_FONT_ID, y, getChineseName("Install CrossPoint Reader plugin"));
+  renderer.drawCenteredText(SMALL_FONT_ID, y + SMALL_SPACING, getChineseName("Be on the same WiFi network"));
+  renderer.drawCenteredText(SMALL_FONT_ID, y + SMALL_SPACING * 2, getChineseName("Calibre send to device"));
+  renderer.drawCenteredText(SMALL_FONT_ID, y + SMALL_SPACING * 3, getChineseName("Keep this screen open while sending"));
 
   y += SMALL_SPACING * 3 + SECTION_SPACING;
-  renderer.drawCenteredText(UI_10_FONT_ID, y, "Status", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_10_FONT_ID, y, getChineseName("Status"), true, EpdFontFamily::BOLD);
   y += LINE_SPACING;
   if (lastProgressTotal > 0 && lastProgressReceived <= lastProgressTotal) {
-    std::string label = "Receiving";
+    std::string label = getChineseName("Receiving");
     if (!currentUploadName.empty()) {
       label += ": " + currentUploadName;
       if (label.length() > 34) {
         label.replace(31, label.length() - 31, "...");
       }
     }
-    renderer.drawCenteredText(SMALL_FONT_ID, y, label.c_str());
+    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, y, label.c_str());
     constexpr int barWidth = 300;
     constexpr int barHeight = 16;
     constexpr int barX = (480 - barWidth) / 2;
@@ -263,13 +267,13 @@ void CalibreConnectActivity::renderServerRunning() const {
   }
 
   if (lastCompleteAt > 0 && (millis() - lastCompleteAt) < 6000) {
-    std::string msg = "Received: " + lastCompleteName;
+    std::string msg = std::string(getChineseName("Received:")) + " " + lastCompleteName;
     if (msg.length() > 36) {
       msg.replace(33, msg.length() - 33, "...");
     }
-    renderer.drawCenteredText(SMALL_FONT_ID, y, msg.c_str());
+    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, y, msg.c_str());
   }
 
-  const auto labels = mappedInput.mapLabels("« 返回", "", "", "");
+  const auto labels = mappedInput.mapLabels(getChineseName("« Back"), "", "", "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 }

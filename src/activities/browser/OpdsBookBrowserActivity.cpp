@@ -262,16 +262,16 @@ void OpdsBookBrowserActivity::render() const {
   renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("OPDS Browser"), true, EpdFontFamily::BOLD);
 
   if (state == BrowserState::CHECK_WIFI) {
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, statusMessage.c_str());
-    const auto labels = mappedInput.mapLabels("« 返回", "", "", "");
+    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, pageHeight / 2, statusMessage.c_str());
+    const auto labels = mappedInput.mapLabels(getChineseName("« Back"), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
   }
 
   if (state == BrowserState::LOADING) {
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, statusMessage.c_str());
-    const auto labels = mappedInput.mapLabels("« 返回", "", "", "");
+    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, pageHeight / 2, statusMessage.c_str());
+    const auto labels = mappedInput.mapLabels(getChineseName("« Back"), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
@@ -279,16 +279,16 @@ void OpdsBookBrowserActivity::render() const {
 
   if (state == BrowserState::ERROR) {
     renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 20, getChineseName("Error:"));
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 10, errorMessage.c_str());
-    const auto labels = mappedInput.mapLabels("« 返回", "重試", "", "");
+    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, pageHeight / 2 + 10, errorMessage.c_str());
+    const auto labels = mappedInput.mapLabels(getChineseName("« Back"), getChineseName("Retry"), "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
   }
 
   if (state == BrowserState::DOWNLOADING) {
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 40, "下載中...");
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 10, statusMessage.c_str());
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 40, getChineseName("Downloading..."));
+    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, pageHeight / 2 - 10, statusMessage.c_str());
     if (downloadTotal > 0) {
       const int barWidth = pageWidth - 100;
       constexpr int barHeight = 20;
@@ -306,9 +306,9 @@ void OpdsBookBrowserActivity::render() const {
   if (!entries.empty() && entries[selectorIndex].type == OpdsEntryType::BOOK) {
     confirmLabel = getChineseName("Download");
   }
-  const char* prevLabel = previousPagePath.empty() ? "" : "上一頁";
-  const char* nextLabel = nextPagePath.empty() ? "" : "下一頁";
-  const auto labels = mappedInput.mapLabels("« 返回", confirmLabel, prevLabel, nextLabel);
+  const char* prevLabel = previousPagePath.empty() ? "" : getChineseName("Previous page");
+  const char* nextLabel = nextPagePath.empty() ? "" : getChineseName("Next page");
+  const auto labels = mappedInput.mapLabels(getChineseName("« Back"), confirmLabel, prevLabel, nextLabel);
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   if (entries.empty()) {
@@ -335,8 +335,8 @@ void OpdsBookBrowserActivity::render() const {
       }
     }
 
-    auto item = renderer.truncatedText(UI_10_FONT_ID, displayText.c_str(), renderer.getScreenWidth() - 40);
-    renderer.drawText(UI_10_FONT_ID, 20, 60 + (i % PAGE_ITEMS) * 30, item.c_str(),
+    auto item = renderer.truncatedText(NOTOSANS_12_FONT_ID, displayText.c_str(), renderer.getScreenWidth() - 40);
+    renderer.drawText(NOTOSANS_12_FONT_ID, 20, 60 + (i % PAGE_ITEMS) * 30, item.c_str(),
                       i != static_cast<size_t>(selectorIndex));
   }
 
@@ -475,10 +475,10 @@ void OpdsBookBrowserActivity::downloadBook(const OpdsEntry& book) {
     const int httpStatus = HttpDownloader::getLastHttpStatusCode();
     if (result == HttpDownloader::HTTP_ERROR && httpStatus > 0) {
       char message[32];
-      snprintf(message, sizeof(message), "下載失敗: HTTP %d", httpStatus);
+      snprintf(message, sizeof(message), getChineseName("Download failed: HTTP %d"), httpStatus);
       errorMessage = message;
     } else {
-      errorMessage = "下載失敗";
+      errorMessage = getChineseName("Download failed");
     }
     updateRequired = true;
   }

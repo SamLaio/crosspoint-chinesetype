@@ -10,6 +10,7 @@
 
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
@@ -835,7 +836,7 @@ void TxtReaderActivity::renderScreen() {
 
   if (pageOffsets.empty()) {
     renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Empty file", true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, getChineseName("Empty file"), true, EpdFontFamily::BOLD);
     renderer.displayBuffer();
     return;
   }
@@ -934,17 +935,17 @@ void TxtReaderActivity::renderStatusBar(const int orientedMarginRight, const int
     int availableTitleSpace = rendererableScreenWidth - 2 * titleMarginLeftAdjusted;
 
     std::string title = txt->getChapterTitleByIndex(chapternum);
-    int titleWidth = renderer.getTextWidth(SMALL_FONT_ID, title.c_str());
+    int titleWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, title.c_str());
     if (titleWidth > availableTitleSpace) {
       availableTitleSpace = rendererableScreenWidth - titleMarginLeft - titleMarginRight;
       titleMarginLeftAdjusted = titleMarginLeft;
     }
     if (titleWidth > availableTitleSpace) {
-      title = renderer.truncatedText(SMALL_FONT_ID, title.c_str(), availableTitleSpace);
-      titleWidth = renderer.getTextWidth(SMALL_FONT_ID, title.c_str());
+      title = renderer.truncatedText(NOTOSANS_12_FONT_ID, title.c_str(), availableTitleSpace);
+      titleWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, title.c_str());
     }
 
-    renderer.drawText(SMALL_FONT_ID,
+    renderer.drawText(NOTOSANS_12_FONT_ID,
                       titleMarginLeftAdjusted + orientedMarginLeft + (availableTitleSpace - titleWidth) / 2, textY,
                       title.c_str());
   }

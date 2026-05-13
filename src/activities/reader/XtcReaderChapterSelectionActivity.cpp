@@ -2,6 +2,7 @@
 
 #include <GfxRenderer.h>
 
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "fontIds.h"
 #include "Xtc.h"
@@ -143,7 +144,7 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
   }
 
   const auto pageWidth = renderer.getScreenWidth();
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "目錄", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("Table of contents"), true, EpdFontFamily::BOLD);
 
   const int FIX_LINE_HEIGHT = 29;
   const int BASE_Y = 60;
@@ -163,10 +164,10 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
       int drawY = BASE_Y + localIdx * FIX_LINE_HEIGHT; // 
       if (i == selectorIndex) {
         renderer.fillRect(0, drawY, renderer.getScreenWidth(), FIX_LINE_HEIGHT);
-        renderer.drawText(UI_10_FONT_ID, 20, drawY, title, 0);
+        renderer.drawText(NOTOSANS_12_FONT_ID, 20, drawY, title, 0);
       } else {
         //renderer.drawRect(0, drawY, 480, FIX_LINE_HEIGHT);
-        renderer.drawText(UI_10_FONT_ID, 20, drawY, title, 1);
+        renderer.drawText(NOTOSANS_12_FONT_ID, 20, drawY, title, 1);
       }
 
       //Serial.printf("選中的選項是：%d\n",selectorIndex); // ✅ 補全換行符，日誌整潔

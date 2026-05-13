@@ -13,6 +13,7 @@
 #include "EpubReaderChapterSelectionActivity.h"
 #include "EpubReaderPercentSelectionActivity.h"
 #include "KOReaderCredentialStore.h"
+#include "LanguageMapper.h"
 #include "KOReaderSyncActivity.h"
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
@@ -799,7 +800,7 @@ void EpubReaderActivity::renderScreen() {
   // Show end of book screen
   if (currentSpineIndex == epub->getSpineItemsCount()) {
     renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "End of book", true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, getChineseName("End of book"), true, EpdFontFamily::BOLD);
     renderer.displayBuffer();
     return;
   }
@@ -906,7 +907,7 @@ void EpubReaderActivity::renderScreen() {
 
   if (section->pageCount == 0) {
     Serial.printf("[%lu] [ERS] No pages to render\n", millis());
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Empty chapter", true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, getChineseName("Empty chapter"), true, EpdFontFamily::BOLD);
     renderStatusBar(orientedMarginRight, orientedMarginBottom,orientedMarginTop, orientedMarginLeft);
     renderer.displayBuffer();
     return;
@@ -914,7 +915,7 @@ void EpubReaderActivity::renderScreen() {
 
   if (section->currentPage < 0 || section->currentPage >= section->pageCount) {
     Serial.printf("[%lu] [ERS] Page out of bounds: %d (max %d)\n", millis(), section->currentPage, section->pageCount);
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Out of bounds", true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, getChineseName("Out of bounds"), true, EpdFontFamily::BOLD);
     renderStatusBar(orientedMarginRight, orientedMarginBottom,orientedMarginTop, orientedMarginLeft);
     renderer.displayBuffer();
     return;
@@ -974,10 +975,10 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
       renderer.drawRect(contentX, contentY, contentWidth, contentHeight, 3, true);
     }
 
-    const char* line1 = "進入邊距設定";
-    const char* line2 = "請注意邊框";
-    const char* line3 = "短按加邊距";
-    const char* line4 = "長按減邊距";
+    const char* line1 = getChineseName("Enter margin settings");
+    const char* line2 = getChineseName("Notice border");
+    const char* line3 = getChineseName("Short press increases margin");
+    const char* line4 = getChineseName("Long press decreases margin");
     const int textW1 = renderer.getTextWidth(UI_12_FONT_ID, line1);
     const int textW2 = renderer.getTextWidth(UI_12_FONT_ID, line2);
     const int boxWidth = std::max(textW1, textW2) + 24;
@@ -1067,8 +1068,8 @@ void EpubReaderActivity::renderLayoutConflictPrompt() {
   constexpr int buttonGap = 24;
   const int buttonsX = (screenWidth - (buttonWidth * 2 + buttonGap)) / 2;
 
-  renderer.drawCenteredText(UI_12_FONT_ID, 90, "目前排版與書本排版衝突", true, EpdFontFamily::BOLD);
-  renderer.drawCenteredText(UI_10_FONT_ID, 130, "請選擇要使用哪一種排版");
+  renderer.drawCenteredText(UI_12_FONT_ID, 90, getChineseName("Layout conflict title"), true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_10_FONT_ID, 130, getChineseName("Layout conflict prompt"));
 
   const bool bookSelected = layoutConflictSelection == 0;
   const bool readerSelected = layoutConflictSelection == 1;
@@ -1083,10 +1084,10 @@ void EpubReaderActivity::renderLayoutConflictPrompt() {
     renderer.drawText(UI_10_FONT_ID, textX, buttonY + 13, label, !selected, EpdFontFamily::BOLD);
   };
 
-  drawChoice(buttonsX, "使用書本排版", bookSelected);
-  drawChoice(buttonsX + buttonWidth + buttonGap, "使用閱讀設定", readerSelected);
+  drawChoice(buttonsX, getChineseName("Use book layout"), bookSelected);
+  drawChoice(buttonsX + buttonWidth + buttonGap, getChineseName("Use reader settings"), readerSelected);
 
-  renderer.drawText(UI_10_FONT_ID, contentX, 330, "左右切換，確認選擇，返回使用閱讀設定");
+  renderer.drawText(UI_10_FONT_ID, contentX, 330, getChineseName("Layout conflict controls"));
   renderer.displayBuffer();
 }
 
@@ -1183,19 +1184,19 @@ void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const in
     } else {
       const auto tocItem = epub->getTocItem(tocIndex);
       title = tocItem.title;
-      titleWidth = renderer.getTextWidth(SMALL_FONT_ID, title.c_str());
+      titleWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, title.c_str());
       if (titleWidth > availableTitleSpace) {
         // Not enough space to center on the screen, center it within the remaining space instead
         availableTitleSpace = rendererableScreenWidth - titleMarginLeft - titleMarginRight;
         titleMarginLeftAdjusted = titleMarginLeft;
       }
       if (titleWidth > availableTitleSpace) {
-        title = renderer.truncatedText(SMALL_FONT_ID, title.c_str(), availableTitleSpace);
-        titleWidth = renderer.getTextWidth(SMALL_FONT_ID, title.c_str());
+        title = renderer.truncatedText(NOTOSANS_12_FONT_ID, title.c_str(), availableTitleSpace);
+        titleWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, title.c_str());
       }
     }
 
-    renderer.drawText(SMALL_FONT_ID,
+    renderer.drawText(NOTOSANS_12_FONT_ID,
                       titleMarginLeftAdjusted + orientedMarginLeft + (availableTitleSpace - titleWidth) / 2, textY,
                       title.c_str());
   }
