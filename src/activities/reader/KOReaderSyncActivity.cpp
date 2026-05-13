@@ -267,7 +267,7 @@ void KOReaderSyncActivity::render() {
     renderer.drawCenteredText(UI_10_FONT_ID, 280, getChineseName("No credentials configured"), true, EpdFontFamily::BOLD);
     renderer.drawCenteredText(UI_10_FONT_ID, 320, getChineseName("Set up KOReader account in Settings"));
 
-    const auto labels = mappedInput.mapLabels("返回", "", "", "");
+    const auto labels = mappedInput.mapLabels(getChineseName("Back"), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
@@ -340,7 +340,7 @@ void KOReaderSyncActivity::render() {
     }
     renderer.drawText(UI_10_FONT_ID, 20, optionY + optionHeight * 2, getChineseName("Cancel"), selectedOption != 2);
 
-    const auto labels = mappedInput.mapLabels("", "選擇", "", "");
+    const auto labels = mappedInput.mapLabels("", getChineseName("Select"), "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
@@ -350,7 +350,7 @@ void KOReaderSyncActivity::render() {
     renderer.drawCenteredText(UI_10_FONT_ID, 280, getChineseName("No remote progress found"), true, EpdFontFamily::BOLD);
     renderer.drawCenteredText(UI_10_FONT_ID, 320, getChineseName("Upload current position?"));
 
-    const auto labels = mappedInput.mapLabels("取消", "上傳", "", "");
+    const auto labels = mappedInput.mapLabels(getChineseName("Cancel"), getChineseName("Upload"), "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
@@ -359,7 +359,7 @@ void KOReaderSyncActivity::render() {
   if (state == UPLOAD_COMPLETE) {
     renderer.drawCenteredText(UI_10_FONT_ID, 300, getChineseName("Progress uploaded!"), true, EpdFontFamily::BOLD);
 
-    const auto labels = mappedInput.mapLabels("返回", "", "", "");
+    const auto labels = mappedInput.mapLabels(getChineseName("Back"), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
@@ -369,7 +369,7 @@ void KOReaderSyncActivity::render() {
     renderer.drawCenteredText(UI_10_FONT_ID, 280, getChineseName("Sync failed"), true, EpdFontFamily::BOLD);
     renderer.drawCenteredText(UI_10_FONT_ID, 320, statusMessage.c_str());
 
-    const auto labels = mappedInput.mapLabels("返回", "", "", "");
+    const auto labels = mappedInput.mapLabels(getChineseName("Back"), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;

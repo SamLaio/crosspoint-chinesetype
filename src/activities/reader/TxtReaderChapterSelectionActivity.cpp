@@ -2,6 +2,7 @@
 
 #include <GfxRenderer.h>
 
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "fontIds.h"
 
@@ -192,7 +193,7 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
   }
 
   const auto pageWidth = renderer.getScreenWidth();
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "目  錄", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("Spaced table of contents"), true, EpdFontFamily::BOLD);
 
   size_t chapterOffset = 0;
   if (this->txt != nullptr) {
@@ -206,7 +207,7 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
   const int BASE_Y_CHAPTER = 80;    // 章節列表起始Y（兩個選項佔2行）
 
   // ========== 步驟1：繪製頂部「向前100章」選項 ==========
-  std::string skipBackText = "【向前100章】";
+  std::string skipBackText = getChineseName("Skip back 100 chapters");
   int skipBackY = BASE_Y_SPECIAL;
   if (ITEM_SKIP_100_BACK == selectorIndex) {
   renderer.fillRect(10, skipBackY, 150, FIX_LINE_HEIGHT);
@@ -218,7 +219,7 @@ void TxtReaderChapterSelectionActivity::renderScreen() {
   //renderer.drawText(UI_10_FONT_ID, 20, skipBackY, skipBackText.c_str(), selectorIndex != ITEM_SKIP_100_BACK);
 
   // ========== 步驟2：繪製頂部「向後100章」選項 ==========
-  std::string skipForwardText = "【向後100章】";
+  std::string skipForwardText = getChineseName("Skip forward 100 chapters");
   int skipForwardY = BASE_Y_SPECIAL;
   if (ITEM_SKIP_100_FORWARD == selectorIndex) {
   renderer.fillRect(200, skipBackY, 150, FIX_LINE_HEIGHT);

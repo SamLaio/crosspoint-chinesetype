@@ -4,6 +4,9 @@
 #include <HardwareSerial.h>
 #include <SDCardManager.h>
 
+#include <cstdio>
+
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -57,46 +60,50 @@ void ClearCacheActivity::render() {
   const auto pageHeight = renderer.getScreenHeight();
 
   renderer.clearScreen();
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "清除快取", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("Clear cache title"), true, EpdFontFamily::BOLD);
 
   if (state == WARNING) {
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 60, "這將清除所有快取的書籍資料。", true);
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 30, "所有閱讀進度將丟失！", true,
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 60, getChineseName("Clear cache warning data"), true);
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 30, getChineseName("Clear cache warning progress"), true,
                               EpdFontFamily::BOLD);
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 10, "書籍需要重新索引", true);
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 30, "才能再次開啟。", true);
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 10, getChineseName("Books need reindex"), true);
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 30, getChineseName("Before opening again"), true);
 
-    const auto labels = mappedInput.mapLabels("<< 取消", "清除", "", "");
+    const auto labels = mappedInput.mapLabels(getChineseName("Cancel"), getChineseName("Clear cache title"), "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
   }
 
   if (state == CLEARING) {
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, "快取清除中...", true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, getChineseName("Clearing cache..."), true, EpdFontFamily::BOLD);
     renderer.displayBuffer();
     return;
   }
 
   if (state == SUCCESS) {
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 20, "快取已清除", true, EpdFontFamily::BOLD);
-    String resultText = String(clearedCount) + " 項已清除";
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 20, getChineseName("Cache cleared"), true, EpdFontFamily::BOLD);
+    char clearedText[32];
+    snprintf(clearedText, sizeof(clearedText), getChineseName("Items cleared format"), clearedCount);
+    String resultText = clearedText;
     if (failedCount > 0) {
-      resultText += ", " + String(failedCount) + " 項清除失敗";
+      char failedText[32];
+      snprintf(failedText, sizeof(failedText), getChineseName("Items failed format"), failedCount);
+      resultText += failedText;
     }
     renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 10, resultText.c_str());
 
-    const auto labels = mappedInput.mapLabels("« 返回", "", "", "");
+    const auto labels = mappedInput.mapLabels(getChineseName("« Back"), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;
   }
 
   if (state == FAILED) {
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 20, "快取清除失敗", true, EpdFontFamily::BOLD);
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 10, "請檢查串列埠輸出以獲取詳細資訊");
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 20, getChineseName("Cache clear failed"), true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 10, getChineseName("Check serial for details"));
 
-    const auto labels = mappedInput.mapLabels("« 返回", "", "", "");
+    const auto labels = mappedInput.mapLabels(getChineseName("« Back"), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     renderer.displayBuffer();
     return;

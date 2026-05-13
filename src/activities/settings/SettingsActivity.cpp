@@ -101,7 +101,7 @@ void SettingsActivity::onEnter() {
   systemSettings.push_back(SettingInfo::Action("Check for updates"));
   systemSettings.push_back(SettingInfo::Action("Set Custom Font Family"));
   systemSettings.push_back(SettingInfo::Enum("Language", &CrossPointSettings::uiLanguage,
-                                             {"繁體中文", "简体中文", "English"}));
+                                             {"Traditional Chinese", "Simplified Chinese", "English"}));
 
 
   // Reset selection to first category
@@ -453,7 +453,8 @@ void SettingsActivity::render() const {
                     metrics.versionTextY, CROSSPOINT_VERSION);
 
   // Draw help text
-  const auto labels = mappedInput.mapLabels("返回", "返回", "前項", "後項");
+  const auto labels = mappedInput.mapLabels(getChineseName("Back"), getChineseName("Back"), getChineseName("Previous"),
+                                            getChineseName("Next"));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   // Always use standard refresh for settings screen

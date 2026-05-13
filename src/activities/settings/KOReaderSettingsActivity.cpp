@@ -6,6 +6,7 @@
 
 #include "KOReaderAuthActivity.h"
 #include "KOReaderCredentialStore.h"
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "activities/util/KeyboardEntryActivity.h"
 #include "components/UITheme.h"
@@ -176,7 +177,7 @@ void KOReaderSettingsActivity::render() {
   const auto pageWidth = renderer.getScreenWidth();
 
   // Draw header
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "KOReader 同步", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("KOReader Sync"), true, EpdFontFamily::BOLD);
 
   // Draw selection highlight
   renderer.fillRect(0, 60 + selectedIndex * 30 - 2, pageWidth - 1, 30);
@@ -191,15 +192,15 @@ void KOReaderSettingsActivity::render() {
     // Draw status for each item
     const char* status = "";
     if (i == 0) {
-      status = KOREADER_STORE.getUsername().empty() ? "[未設定]" : "[已設定]";
+      status = KOREADER_STORE.getUsername().empty() ? getChineseName("Not set") : getChineseName("Set");
     } else if (i == 1) {
-      status = KOREADER_STORE.getPassword().empty() ? "[未設定]" : "[已設定]";
+      status = KOREADER_STORE.getPassword().empty() ? getChineseName("Not set") : getChineseName("Set");
     } else if (i == 2) {
-      status = KOREADER_STORE.getServerUrl().empty() ? "[預設]" : "[自定義]";
+      status = KOREADER_STORE.getServerUrl().empty() ? getChineseName("Default status") : getChineseName("Custom status");
     } else if (i == 3) {
       status = KOREADER_STORE.getMatchMethod() == DocumentMatchMethod::FILENAME ? "[Filename]" : "[Binary]";
     } else if (i == 4) {
-      status = KOREADER_STORE.hasCredentials() ? "" : "[請先設定憑據]";
+      status = KOREADER_STORE.hasCredentials() ? "" : getChineseName("Set credentials first");
     }
 
     const auto width = renderer.getTextWidth(UI_10_FONT_ID, status);
@@ -207,7 +208,7 @@ void KOReaderSettingsActivity::render() {
   }
 
   // Draw button hints
-  const auto labels = mappedInput.mapLabels("« 返回", "選擇", "", "");
+  const auto labels = mappedInput.mapLabels(getChineseName("« Back"), getChineseName("Select"), "", "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();

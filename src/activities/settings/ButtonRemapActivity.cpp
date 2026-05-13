@@ -3,6 +3,7 @@
 #include <GfxRenderer.h>
 
 #include "CrossPointSettings.h"
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -138,8 +139,8 @@ void ButtonRemapActivity::render() {
     return "-";
   };
 
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "Remap Front Buttons", true, EpdFontFamily::BOLD);
-  renderer.drawCenteredText(UI_10_FONT_ID, 40, "Press a front button for each role");
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("Remap Front Buttons"), true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_10_FONT_ID, 40, getChineseName("Press a front button for each role"));
 
   for (uint8_t i = 0; i < kRoleCount; i++) {
     const int y = 70 + i * 30;
@@ -165,8 +166,8 @@ void ButtonRemapActivity::render() {
   }
 
   // Provide side button actions at the bottom of the screen (split across two lines).
-  renderer.drawCenteredText(SMALL_FONT_ID, 250, "Side button Up: Reset to default layout", true);
-  renderer.drawCenteredText(SMALL_FONT_ID, 280, "Side button Down: Cancel remapping", true);
+  renderer.drawCenteredText(SMALL_FONT_ID, 250, getChineseName("Side button Up: Reset to default layout"), true);
+  renderer.drawCenteredText(SMALL_FONT_ID, 280, getChineseName("Side button Down: Cancel remapping"), true);
 
   // Live preview of logical labels under front buttons.
   // This mirrors the on-device front button order: Back, Confirm, Left, Right.

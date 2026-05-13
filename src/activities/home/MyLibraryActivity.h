@@ -63,7 +63,7 @@ class MyLibraryActivity final : public ActivityWithSubactivity {
   };
   TopOption topSelectorIndex = TopOption::CANCEL;
   static constexpr int topOptionCount = 5;
-  char SEARCH_KEYWORD[100] = "賽博"; // 搜尋關鍵詞（示例：包含“賽博”的檔案）
+  char SEARCH_KEYWORD[100] = ""; // Search keyword.
 
 
  public:

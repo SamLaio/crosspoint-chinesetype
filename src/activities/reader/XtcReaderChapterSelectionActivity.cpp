@@ -2,6 +2,7 @@
 
 #include <GfxRenderer.h>
 
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "fontIds.h"
 #include "Xtc.h"
@@ -143,7 +144,7 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
   }
 
   const auto pageWidth = renderer.getScreenWidth();
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "目錄", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, getChineseName("Table of contents"), true, EpdFontFamily::BOLD);
 
   const int FIX_LINE_HEIGHT = 29;
   const int BASE_Y = 60;

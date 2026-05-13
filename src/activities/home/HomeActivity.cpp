@@ -19,6 +19,7 @@
 #include "Battery.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
+#include "LanguageMapper.h"
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
@@ -342,13 +343,13 @@ void HomeActivity::loadFilesForPath(const std::string& path) {
 
 void HomeActivity::buildActionItems() {
   actionItems.clear();
-  actionItems.push_back({"檔案管理", onMyLibraryOpen});
+  actionItems.push_back({getChineseName("File manager"), onMyLibraryOpen});
   if (hasOpdsUrl) {
-    actionItems.push_back({"opds", onOpdsBrowserOpen});
+    actionItems.push_back({getChineseName("OPDS Browser"), onOpdsBrowserOpen});
   }
-  actionItems.push_back({"wifi功能", onFileTransferOpen});
-  actionItems.push_back({"藍牙", onBluetoothOpen});
-  actionItems.push_back({"設定", onSettingsOpen});
+  actionItems.push_back({getChineseName("WiFi function"), onFileTransferOpen});
+  actionItems.push_back({getChineseName("bluetooth"), onBluetoothOpen});
+  actionItems.push_back({getChineseName("Settings"), onSettingsOpen});
 }
 
 std::string HomeActivity::getParentPath(const std::string& path) const {
@@ -696,7 +697,7 @@ void HomeActivity::displayTaskLoop() {
 
 void HomeActivity::renderRecentBooks(const Rect& rect) const {
   if (recentBooks.empty()) {
-    renderer.drawText(UI_10_FONT_ID, kSectionPadding, rect.y + 24, "沒有最近閱讀");
+    renderer.drawText(UI_10_FONT_ID, kSectionPadding, rect.y + 24, getChineseName("No recent books"));
     return;
   }
 
@@ -748,7 +749,7 @@ void HomeActivity::renderRecentBooks(const Rect& rect) const {
 
     if (!hasCover) {
       renderer.drawRect(tileX, contentTop, tileWidth, coverHeight);
-      const char* emptyCoverText = "封面";
+      const char* emptyCoverText = getChineseName("Cover");
       const int textX = tileX + (tileWidth - renderer.getTextWidth(UI_10_FONT_ID, emptyCoverText)) / 2;
       renderer.drawText(UI_10_FONT_ID, textX, contentTop + coverHeight / 2 - 8, emptyCoverText);
     }
@@ -771,7 +772,7 @@ void HomeActivity::renderFileEntries(const Rect& rect) const {
   renderer.drawLine(0, rect.y, rect.width, rect.y);
 
   if (fileEntries.empty()) {
-    renderer.drawText(UI_10_FONT_ID, kSectionPadding, rect.y + 28, "SD 卡根目錄沒有可顯示項目");
+    renderer.drawText(UI_10_FONT_ID, kSectionPadding, rect.y + 28, getChineseName("No SD root items"));
     return;
   }
 
@@ -847,9 +848,9 @@ void HomeActivity::renderRecentActionMenu(const Rect& rect) const {
   constexpr int padding = 10;
   const bool cancelSelected = recentActionMenuItem == RecentActionMenuItem::Cancel;
   const bool confirmSelected = recentActionMenuItem == RecentActionMenuItem::Confirm;
-  const char* cancelText = "取消";
-  const char* confirmText = "確認";
-  const char* actionText = "清除閱讀記錄";
+  const char* cancelText = getChineseName("Cancel");
+  const char* confirmText = getChineseName("Confirm");
+  const char* actionText = getChineseName("Clear reading history");
   const int textY = rect.y + (rect.height - renderer.getLineHeight(UI_10_FONT_ID)) / 2;
 
   const int cancelWidth = renderer.getTextWidth(UI_10_FONT_ID, cancelText) + padding * 2;
