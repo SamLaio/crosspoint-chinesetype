@@ -3,6 +3,7 @@
 .idea
 .DS_Store
 .vscode
+.history/
 lib/EpdFont/fontsrc
 *.generated.h
 .vs
