@@ -9,6 +9,8 @@ The generated files are intentionally committed-friendly text artifacts:
 The charset is built from:
 
 - common Traditional/Simplified Chinese characters for external titles/filenames
+- MOE secondary-common Traditional Chinese characters for names and book text
+- punctuation and glyph forms needed for vertical writing
 - fixed interface display strings from LanguageMapper
 - common punctuation and symbols
 """
@@ -30,6 +32,7 @@ REPO_ROOT = Path(env.subst("$PROJECT_DIR")) if env is not None else Path(__file_
 OUTPUT_DIR = REPO_ROOT / "tools" / "font-subset"
 CHARSET_PATH = OUTPUT_DIR / "ui_charset.txt"
 INTERVALS_PATH = OUTPUT_DIR / "ui_charset_intervals.txt"
+MOE_SECONDARY_COMMON_PATH = OUTPUT_DIR / "moe_secondary_common.txt"
 
 SOURCE_FILES = [
     REPO_ROOT / "src" / "LanguageMapper.h",
@@ -47,6 +50,19 @@ COMMON_EXTERNAL_SYMBOLS = (
     "「」『』（）()《》〈〉【】[]〔〕"
     "—–…"
 )
+
+VERTICAL_REQUIRED_CHARS = (
+    ",.!?:;()[]{}|'\""
+    "，、。？！：；「」『』（）〔〕【】《》〈〉｛｝［］｜“”‘’…—‖"
+    "︐︑︒︓︔︕︖︙︱︳︴︵︶︷︸︹︺︻︼︽︾︿﹀﹁﹂﹃﹄﹇﹈"
+)
+
+VERTICAL_REQUIRED_INTERVALS = [
+    (0x3000, 0x303F),  # CJK Symbols and Punctuation
+    (0xFE10, 0xFE1F),  # Vertical Forms
+    (0xFE30, 0xFE4F),  # CJK Compatibility Forms
+    (0xFF00, 0xFFEF),  # Halfwidth and Fullwidth Forms
+]
 
 
 def is_cjk_common_char(ch: str) -> bool:
@@ -79,6 +95,32 @@ def collect_common_external_chars() -> set[str]:
     chars = set(COMMON_EXTERNAL_SYMBOLS)
     chars.update(decode_double_byte_charset("gb2312", range(0xB0, 0xD8), [range(0xA1, 0xFF)]))
     chars.update(decode_double_byte_charset("big5", range(0xA4, 0xC7), [range(0x40, 0x7F), range(0xA1, 0xFF)]))
+    return chars
+
+
+def collect_moe_secondary_common_chars() -> set[str]:
+    """Add MOE secondary-common Traditional Chinese characters.
+
+    The source file mirrors ButTaiwan/cjktables taiwan/standard/edu_standard_2.txt,
+    which is derived from the Ministry of Education secondary-common character table.
+    """
+    chars: set[str] = set()
+    if not MOE_SECONDARY_COMMON_PATH.exists():
+        return chars
+
+    for line in MOE_SECONDARY_COMMON_PATH.read_text(encoding="utf-8").splitlines():
+        if not line or line.startswith("#"):
+            continue
+        ch = line.split("\t", 1)[0]
+        if len(ch) == 1 and ch.isprintable():
+            chars.add(ch)
+    return chars
+
+
+def collect_vertical_required_chars() -> set[str]:
+    chars = set(VERTICAL_REQUIRED_CHARS)
+    for start, end in VERTICAL_REQUIRED_INTERVALS:
+        chars.update(chr(cp) for cp in range(start, end + 1))
     return chars
 
 
@@ -160,6 +202,8 @@ def extract_language_map_display_strings(text: str) -> list[str]:
 def collect_chars() -> set[str]:
     chars = set(SEED_CHARS)
     chars.update(collect_common_external_chars())
+    chars.update(collect_moe_secondary_common_chars())
+    chars.update(collect_vertical_required_chars())
 
     for path in SOURCE_FILES:
         if not path.exists():
