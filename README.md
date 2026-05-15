@@ -8,10 +8,10 @@ XTEink X4 電子紙閱讀器韌體，基於 CrossPoint Reader 修改。這個版
 
 | Build | Version |
 | --- | --- |
-| 開發版 `default` | `zhTW_V2.5.2-allocate` |
-| Release `gh_release` | `zhTW_V2.5.2` |
-| RC `gh_release_rc` | `zhTW_V2.5.2-rc+<hash>` |
-| Slim `slim` | `zhTW_V2.5.2-slim` |
+| 開發版 `default` | `zhTW_V2.5.3-allocate` |
+| Release `gh_release` | `zhTW_V2.5.3` |
+| RC `gh_release_rc` | `zhTW_V2.5.3-rc+<hash>` |
+| Slim `slim` | `zhTW_V2.5.3-slim` |
 
 目前 `gh_release` 編譯結果約為：
 

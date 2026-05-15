@@ -1,6 +1,6 @@
 # CrossPoint ChineseType User Guide
 
-Firmware version: `zhTW_V2.5.2`
+Firmware version: `zhTW_V2.5.3`
 
 CrossPoint ChineseType is firmware for the XTEink X4 e-paper reader. This guide describes the current Traditional Chinese build, including local reading, OPDS downloads, Calibre transfer, Wi-Fi tools, Bluetooth HID, KOReader Sync, and custom fonts.
 
