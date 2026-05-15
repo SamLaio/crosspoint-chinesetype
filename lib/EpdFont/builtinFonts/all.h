@@ -1,7 +1,6 @@
 #pragma once
 
 
-#include <builtinFonts/notosans_18_bold.h>
-#include <builtinFonts/ubuntu_10_bold.h>
+#include <builtinFonts/noto_sans_cjk_18_regular.h>
 
 

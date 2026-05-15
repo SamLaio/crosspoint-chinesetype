@@ -18,6 +18,7 @@
 #include "FontSelectionActivity.h"
 #include "fontIds.h"
 #include "LanguageMapper.h"
+#include "BluetoothKeymapActivity.h"
 #include "BluetoothSettingsActivity.h"
 
 #include "SettingsLists.h"
@@ -95,6 +96,7 @@ void SettingsActivity::onEnter() {
   // Append device-only ACTION items
   controlsSettings.insert(controlsSettings.begin(), SettingInfo::Action("Remap Front Buttons"));
   systemSettings.push_back(SettingInfo::Action("bluetooth"));
+  systemSettings.push_back(SettingInfo::Action("Bluetooth Keymap"));
   systemSettings.push_back(SettingInfo::Action("KOReader Sync"));
   systemSettings.push_back(SettingInfo::Action("OPDS Browser"));
   systemSettings.push_back(SettingInfo::Action("Clear Cache"));
@@ -308,6 +310,14 @@ void SettingsActivity::adjustCurrentSetting(int direction) {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       exitActivity();
       enterNewActivity(new BluetoothSettingsActivity(renderer, mappedInput, [this] {
+        exitActivity();
+        updateRequired = true;
+      }));
+      xSemaphoreGive(renderingMutex);
+    } else if (strcmp(setting.name, "Bluetooth Keymap") == 0) {
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      exitActivity();
+      enterNewActivity(new BluetoothKeymapActivity(renderer, mappedInput, [this] {
         exitActivity();
         updateRequired = true;
       }));

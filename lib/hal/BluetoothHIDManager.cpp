@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <SDCardManager.h>
 #include <Serialization.h>
+#include <algorithm>
 #include <utility>
 #include "../../src/CrossPointSettings.h"
 
@@ -106,6 +107,7 @@ bool BluetoothHIDManager::enable() {
     
     Serial.printf("BT Bluetooth enabled successfully");
     loadState();
+    loadKeyMappings();
     
     // NOTE: background auto‑connect was removed in order to conserve memory
     // and avoid multiple concurrent connection attempts.  callers such as
@@ -565,6 +567,34 @@ void BluetoothHIDManager::setButtonInjector(std::function<void(uint8_t)> injecto
   Serial.printf("BT Button injector registered");
 }
 
+void BluetoothHIDManager::beginKeymapLearning(uint8_t targetButton) {
+  _learningTargetButton = targetButton;
+  _hasLastLearnedMapping = false;
+  Serial.printf("BT Keymap learning started for target button %u", targetButton);
+}
+
+void BluetoothHIDManager::cancelKeymapLearning() {
+  _learningTargetButton = 0xFF;
+  Serial.printf("BT Keymap learning cancelled");
+}
+
+bool BluetoothHIDManager::consumeLastLearnedMapping(BluetoothKeyMapping& mapping) {
+  if (!_hasLastLearnedMapping) {
+    return false;
+  }
+  mapping = _lastLearnedMapping;
+  _hasLastLearnedMapping = false;
+  return true;
+}
+
+void BluetoothHIDManager::clearKeyMappings() {
+  _keyMappings.clear();
+  _hasLastLearnedMapping = false;
+  _learningTargetButton = 0xFF;
+  saveKeyMappings();
+  Serial.printf("BT Key mappings cleared");
+}
+
 bool BluetoothHIDManager::hasRecentActivity() const {
   // Check if any connected device has had activity in the last 4 minutes
   // This prevents power sleep while using BLE controller
@@ -606,6 +636,7 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
   device->lastActivityTime = millis();
 
   uint8_t  keycode = 0x00;
+  uint8_t  keyByteIndex = 0;
   bool    isPressed = false;
 
   if (length < 2) return;
@@ -614,6 +645,7 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
     // 原有裝置邏輯不變
     if (length >= device->profile->reportByteIndex + 1) {
       keycode = pData[device->profile->reportByteIndex];
+      keyByteIndex = device->profile->reportByteIndex;
     }
     if (strcmp(device->profile->name, "IINE Game Brick") == 0) {
       isPressed = (pData[0] & 0x01) != 0;
@@ -625,10 +657,11 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
       uint8_t modifier = pData[0];
       keycode = pData[2];
       if (modifier == 0x01 || keycode == 0x4B) {
-        keycode = 0x4B; isPressed = true;
+        keycode = 0x4B; keyByteIndex = (modifier == 0x01) ? 0 : 2; isPressed = true;
       } else if (modifier == 0x02 || keycode == 0x4E) {
-        keycode = 0x4E; isPressed = true;
+        keycode = 0x4E; keyByteIndex = (modifier == 0x02) ? 0 : 2; isPressed = true;
       } else {
+        keyByteIndex = 2;
         isPressed = (keycode != 0x00);
       }
     }
@@ -638,16 +671,19 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
       
       if (key == 0x01) {
         keycode = 0x4B;
+        keyByteIndex = 0;
         isPressed = true;
         Serial.printf("BT 6鍵翻頁器 [上一頁] 按下\n");
       }
       else if (key == 0x02) {
         keycode = 0x4E;
+        keyByteIndex = 0;
         isPressed = true;
         Serial.printf("BT 6鍵翻頁器 [下一頁] 按下\n");
       }
       else if (pData[2] != 0x00) {
         keycode = pData[2];
+        keyByteIndex = 2;
         isPressed = true;
         Serial.printf("BT 6-byte keyboard key: 0x%02X\n", keycode);
       }
@@ -661,13 +697,16 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
       uint8_t byte4 = pData[4];
       if (byte4 == 0x07 || byte4 == 0x09) {
         keycode = byte4;
+        keyByteIndex = 4;
         isPressed = (pData[0] & 0x01) != 0;
       } else {
         keycode = (length > 2) ? pData[2] : 0;
+        keyByteIndex = (length > 2) ? 2 : 0;
         isPressed = (keycode != 0);
       }
     } else {
       keycode = (length > 2) ? pData[2] : 0;
+      keyByteIndex = (length > 2) ? 2 : 0;
       isPressed = (keycode != 0);
     }
   }
@@ -693,8 +732,15 @@ void BluetoothHIDManager::onHIDNotify(NimBLERemoteCharacteristic* pChar, uint8_t
 
   Serial.printf("BT >>> BUTTON PRESSED: keycode=0x%02X <<<\n", keycode);
 
+  if (g_instance->isKeymapLearning()) {
+    g_instance->learnKeyMapping(device->address, static_cast<uint8_t>(std::min<size_t>(length, 255)), keyByteIndex,
+                                keycode);
+    return;
+  }
+
   if (g_instance->_buttonInjector) {
-    uint8_t btn = g_instance->mapKeycodeToButton(keycode, device->profile);
+    uint8_t btn = g_instance->mapKeycodeToButton(*device, static_cast<uint8_t>(std::min<size_t>(length, 255)),
+                                                 keyByteIndex, keycode);
     if (btn != 0xFF) {
       unsigned long now = millis();
       if (now - device->lastInjectionTime >= 150) {
@@ -743,11 +789,20 @@ uint16_t BluetoothHIDManager::parseHIDReport(uint8_t* data, size_t length) {
 // Map HID keycodes to navigator buttons based on device profile
 // Only maps keycodes that match the current device's profile to prevent
 // unwanted D-pad or other button inputs from triggering page turns
-uint8_t BluetoothHIDManager::mapKeycodeToButton(uint8_t keycode, const DeviceProfiles::DeviceProfile* profile) {
+uint8_t BluetoothHIDManager::mapKeycodeToButton(const ConnectedDevice& device, uint8_t reportLength, uint8_t byteIndex,
+                                                uint8_t keycode) {
   // Log keycode for debugging
   if (keycode != 0x00) {
     Serial.printf("BT mapKeycodeToButton() called with keycode: 0x%02X", keycode);
   }
+
+  if (const auto* custom = findKeyMapping(device.address, reportLength, byteIndex, keycode)) {
+    Serial.printf("BT Matched custom keymap len=%u byte[%u]=0x%02X -> button %u", reportLength, byteIndex, keycode,
+                  custom->targetButton);
+    return custom->targetButton;
+  }
+
+  const auto* profile = device.profile;
   
   // If we have a device profile, ONLY map keycodes specific to that profile
   if (profile) {
@@ -813,6 +868,48 @@ uint8_t BluetoothHIDManager::mapKeycodeToButton(uint8_t keycode, const DevicePro
       Serial.printf("BT Unmapped keycode: 0x%02X (翻頁器未匹配)", keycode);
       return 0xFF;
   }
+}
+
+const BluetoothKeyMapping* BluetoothHIDManager::findKeyMapping(const std::string& address, uint8_t reportLength,
+                                                               uint8_t byteIndex, uint8_t keycode) const {
+  for (const auto& mapping : _keyMappings) {
+    if (mapping.address == address && mapping.reportLength == reportLength && mapping.byteIndex == byteIndex &&
+        mapping.keycode == keycode) {
+      return &mapping;
+    }
+  }
+  return nullptr;
+}
+
+void BluetoothHIDManager::learnKeyMapping(const std::string& address, uint8_t reportLength, uint8_t byteIndex,
+                                          uint8_t keycode) {
+  if (_learningTargetButton == 0xFF || keycode == 0x00) {
+    return;
+  }
+
+  BluetoothKeyMapping mapping;
+  mapping.address = address;
+  mapping.reportLength = reportLength;
+  mapping.byteIndex = byteIndex;
+  mapping.keycode = keycode;
+  mapping.targetButton = _learningTargetButton;
+
+  auto it = std::find_if(_keyMappings.begin(), _keyMappings.end(), [&](const BluetoothKeyMapping& existing) {
+    return existing.address == mapping.address && existing.reportLength == mapping.reportLength &&
+           existing.byteIndex == mapping.byteIndex && existing.keycode == mapping.keycode;
+  });
+  if (it != _keyMappings.end()) {
+    *it = mapping;
+  } else {
+    _keyMappings.push_back(mapping);
+  }
+
+  _lastLearnedMapping = mapping;
+  _hasLastLearnedMapping = true;
+  _learningTargetButton = 0xFF;
+  saveKeyMappings();
+  Serial.printf("BT Learned keymap %s len=%u byte[%u]=0x%02X -> button %u", address.c_str(), reportLength, byteIndex,
+                keycode, mapping.targetButton);
 }
 
 void BluetoothHIDManager::updateActivity() {
@@ -936,4 +1033,66 @@ bool BluetoothHIDManager::loadLastConnectedDevice(std::string& address, std::str
   }
   Serial.printf("BT Loaded last connected device: %s (%s)", name.c_str(), address.c_str());
   return true;
+}
+
+void BluetoothHIDManager::saveKeyMappings() {
+  Serial.printf("BT Saving %u key mappings", static_cast<unsigned>(_keyMappings.size()));
+
+  SdMan.mkdir("/.crosspoint");
+
+  FsFile outputFile;
+  if (!SdMan.openFileForWrite("BT", "/.crosspoint/bluetooth_keymap.bin", outputFile)) {
+    Serial.printf("BT Failed to open bluetooth_keymap.bin for writing");
+    return;
+  }
+
+  uint8_t version = 1;
+  serialization::writePod(outputFile, version);
+  uint8_t count = static_cast<uint8_t>(std::min<size_t>(_keyMappings.size(), 32));
+  serialization::writePod(outputFile, count);
+
+  for (uint8_t i = 0; i < count; i++) {
+    const auto& mapping = _keyMappings[i];
+    serialization::writeString(outputFile, mapping.address);
+    serialization::writePod(outputFile, mapping.reportLength);
+    serialization::writePod(outputFile, mapping.byteIndex);
+    serialization::writePod(outputFile, mapping.keycode);
+    serialization::writePod(outputFile, mapping.targetButton);
+  }
+
+  outputFile.close();
+}
+
+void BluetoothHIDManager::loadKeyMappings() {
+  FsFile inputFile;
+  if (!SdMan.openFileForRead("BT", "/.crosspoint/bluetooth_keymap.bin", inputFile)) {
+    Serial.printf("BT No saved bluetooth keymap found");
+    return;
+  }
+
+  uint8_t version = 0;
+  serialization::readPod(inputFile, version);
+  if (version != 1) {
+    Serial.printf("BT Unknown bluetooth_keymap.bin version: %d", version);
+    inputFile.close();
+    return;
+  }
+
+  uint8_t count = 0;
+  serialization::readPod(inputFile, count);
+  _keyMappings.clear();
+  for (uint8_t i = 0; i < count && i < 32; i++) {
+    BluetoothKeyMapping mapping;
+    serialization::readString(inputFile, mapping.address);
+    serialization::readPod(inputFile, mapping.reportLength);
+    serialization::readPod(inputFile, mapping.byteIndex);
+    serialization::readPod(inputFile, mapping.keycode);
+    serialization::readPod(inputFile, mapping.targetButton);
+    if (!mapping.address.empty() && mapping.keycode != 0x00 && mapping.targetButton != 0xFF) {
+      _keyMappings.push_back(mapping);
+    }
+  }
+
+  inputFile.close();
+  Serial.printf("BT Loaded %u key mappings", static_cast<unsigned>(_keyMappings.size()));
 }

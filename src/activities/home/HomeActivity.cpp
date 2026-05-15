@@ -351,6 +351,7 @@ void HomeActivity::buildActionItems() {
   }
   actionItems.push_back({getChineseName("WiFi function"), onFileTransferOpen});
   actionItems.push_back({getChineseName("bluetooth"), onBluetoothOpen});
+  actionItems.push_back({getChineseName("Bluetooth Keymap"), onBluetoothKeymapOpen});
   actionItems.push_back({getChineseName("Settings"), onSettingsOpen});
 }
 

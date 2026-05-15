@@ -54,6 +54,7 @@ class HomeActivity final : public Activity {
   const std::function<void()> onFileTransferOpen;
   const std::function<void()> onOpdsBrowserOpen;
   const std::function<void()> onBluetoothOpen;
+  const std::function<void()> onBluetoothKeymapOpen;
 
 
   static void taskTrampoline(void* param);
@@ -84,14 +85,16 @@ class HomeActivity final : public Activity {
                         const std::function<void()>& onMyLibraryOpen,
                         const std::function<void()>& onSettingsOpen, const std::function<void()>& onFileTransferOpen,
                         const std::function<void()>& onOpdsBrowserOpen,
-                        const std::function<void()>& onBluetoothOpen)
+                        const std::function<void()>& onBluetoothOpen,
+                        const std::function<void()>& onBluetoothKeymapOpen)
       : Activity("Home", renderer, mappedInput),
         onSelectBook(onSelectBook),
         onMyLibraryOpen(onMyLibraryOpen),
         onSettingsOpen(onSettingsOpen),
         onFileTransferOpen(onFileTransferOpen),
         onOpdsBrowserOpen(onOpdsBrowserOpen),
-        onBluetoothOpen(onBluetoothOpen) {}
+        onBluetoothOpen(onBluetoothOpen),
+        onBluetoothKeymapOpen(onBluetoothKeymapOpen) {}
   void onEnter() override;
   void onExit() override;
   void loop() override;

@@ -1,6 +1,6 @@
 # CrossPoint ChineseType 使用者指南
 
-韌體版本：`zhTW_V2.5.1`
+韌體版本：`zhTW_V2.5.2`
 
 CrossPoint ChineseType 是給 XTEink X4 使用的電子紙閱讀器韌體。本指南以目前的繁體中文版本為準，涵蓋本機閱讀、OPDS 下載、Calibre 傳書、Wi-Fi 工具、藍牙 HID、KOReader Sync，以及自訂字型。
 

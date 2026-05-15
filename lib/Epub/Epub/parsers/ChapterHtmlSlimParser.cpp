@@ -216,8 +216,28 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
 
               Serial.printf("EHP", "Display size: %dx%d (scale %.2f)", displayWidth, displayHeight, scale);
 
-              // Create page for image - only break if image won't fit remaining space
-              if (self->currentPage && !self->currentPage->elements.empty() &&
+              if (self->partWordBufferIndex > 0) {
+                self->flushPartWordBuffer();
+              }
+              if (self->currentTextBlock && !self->currentTextBlock->isEmpty()) {
+                const BlockStyle blockStyle = self->currentTextBlock->getBlockStyle();
+                self->makePages();
+                self->currentTextBlock.reset(
+                    new ParsedText(self->extraParagraphSpacing, self->hyphenationEnabled, self->wordSpacing,
+                                   self->firstlineintented, blockStyle));
+              }
+
+              // In vertical layout, text advances across the page on the X axis while images are rectangular
+              // page objects. Keep image blocks on their own page so later columns cannot overlap them.
+              if (self->verticalLayout && self->currentPage && !self->currentPage->elements.empty()) {
+                self->completePageFn(std::move(self->currentPage));
+                self->currentPage.reset();
+                self->currentPageNextX = 0;
+                self->currentPageNextY = 0;
+              }
+
+              // Create page for image - only break if image won't fit remaining space in horizontal layout
+              if (!self->verticalLayout && self->currentPage && !self->currentPage->elements.empty() &&
                   (self->currentPageNextY + displayHeight > self->viewportHeight)) {
                 self->completePageFn(std::move(self->currentPage));
                 self->currentPage.reset(new Page());
@@ -225,6 +245,7 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
                   Serial.printf("EHP", "Failed to create new page");
                   return;
                 }
+                self->currentPageNextX = 0;
                 self->currentPageNextY = 0;
               } else if (!self->currentPage) {
                 self->currentPage.reset(new Page());
@@ -232,6 +253,7 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
                   Serial.printf("EHP", "Failed to create initial page");
                   return;
                 }
+                self->currentPageNextX = 0;
                 self->currentPageNextY = 0;
               }
 
@@ -248,7 +270,14 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
                 return;
               }
               self->currentPage->elements.push_back(pageImage);
-              self->currentPageNextY += displayHeight;
+              if (self->verticalLayout) {
+                self->completePageFn(std::move(self->currentPage));
+                self->currentPage.reset();
+                self->currentPageNextX = 0;
+                self->currentPageNextY = 0;
+              } else {
+                self->currentPageNextY += displayHeight;
+              }
 
               self->depth += 1;
               return;
@@ -835,13 +864,15 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
   XML_ParserFree(parser);
   file.close();
 
-  // Process last page if there is still text
-  if (currentTextBlock) {
+  // Process last page if there is still text or queued page content.
+  if (currentTextBlock && !currentTextBlock->isEmpty()) {
     makePages();
-    completePageFn(std::move(currentPage));
-    currentPage.reset();
-    currentTextBlock.reset();
   }
+  if (currentPage && !currentPage->elements.empty()) {
+    completePageFn(std::move(currentPage));
+  }
+  currentPage.reset();
+  currentTextBlock.reset();
 
   return true;
 }
@@ -852,6 +883,7 @@ void ChapterHtmlSlimParser::addLineToPage(std::shared_ptr<TextBlock> line) {
   if (currentPageNextY + lineHeight > viewportHeight) {
     completePageFn(std::move(currentPage));
     currentPage.reset(new Page());
+    currentPageNextX = 0;
     currentPageNextY = 0;
   }
 
@@ -872,6 +904,7 @@ void ChapterHtmlSlimParser::addVerticalColumnToPage(std::shared_ptr<TextBlock> c
     completePageFn(std::move(currentPage));
     currentPage.reset(new Page());
     currentPageNextX = 0;
+    currentPageNextY = 0;
   }
 
   const int xOffset = viewportWidth - currentPageNextX - (columnWidth / 2);

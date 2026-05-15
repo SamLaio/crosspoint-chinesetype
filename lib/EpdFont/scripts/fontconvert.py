@@ -15,6 +15,8 @@ parser.add_argument("size", type=int, help="font size to use.")
 parser.add_argument("fontstack", action="store", nargs='+', help="list of font files, ordered by descending priority.")
 parser.add_argument("--2bit", dest="is2Bit", action="store_true", help="generate 2-bit greyscale bitmap instead of 1-bit black and white.")
 parser.add_argument("--additional-intervals", dest="additional_intervals", action="append", help="Additional code point intervals to export as min,max. This argument can be repeated.")
+parser.add_argument("--all-codepoints", dest="all_codepoints", action="store_true", help="export every code point available in the font stack instead of the built-in filtered intervals.")
+parser.add_argument("--charset-file", dest="charset_file", help="UTF-8 text file containing the exact characters to export. Lines starting with # are ignored.")
 args = parser.parse_args()
 
 GlyphProps = namedtuple("GlyphProps", ["width", "height", "advance_x", "left", "top", "data_length", "data_offset", "code_point"])
@@ -110,6 +112,40 @@ add_ints = []
 if args.additional_intervals:
     add_ints = [tuple([int(n, base=0) for n in i.split(",")]) for i in args.additional_intervals]
 
+def codepoints_to_intervals(codepoints):
+    if not codepoints:
+        return []
+    ordered = sorted(codepoints)
+    out = []
+    start = prev = ordered[0]
+    for cp in ordered[1:]:
+        if cp == prev + 1:
+            prev = cp
+            continue
+        out.append((start, prev))
+        start = prev = cp
+    out.append((start, prev))
+    return out
+
+def collect_font_stack_codepoints():
+    codepoints = set()
+    for face in font_stack:
+        charcode, glyph_index = face.get_first_char()
+        while glyph_index:
+            codepoints.add(charcode)
+            charcode, glyph_index = face.get_next_char(charcode, glyph_index)
+    return codepoints
+
+def collect_charset_file_codepoints(path):
+    codepoints = set()
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#"):
+                continue
+            for ch in line.rstrip("\n\r"):
+                codepoints.add(ord(ch))
+    return codepoints
+
 def norm_floor(val):
     return int(math.floor(val / (1 << 6)))
 
@@ -118,7 +154,15 @@ def norm_ceil(val):
 
 def chunks(l, n):
     for i in range(0, len(l), n):
-        yield l[i:i + n]
+      yield l[i:i + n]
+
+def glyph_comment(code_point):
+    if code_point == 92:
+        return "<backslash>"
+    ch = chr(code_point)
+    if ch.isprintable() and ch not in "\r\n\t":
+        return ch
+    return f"U+{code_point:04X}"
 
 def load_glyph(code_point):
     face_index = 0
@@ -132,7 +176,14 @@ def load_glyph(code_point):
     print(f"code point {code_point} ({hex(code_point)}) not found in font stack!", file=sys.stderr)
     return None
 
-unmerged_intervals = sorted(intervals + add_ints)
+if args.all_codepoints:
+    unmerged_intervals = codepoints_to_intervals(collect_font_stack_codepoints())
+elif args.charset_file:
+    charset_codepoints = collect_charset_file_codepoints(args.charset_file)
+    charset_codepoints.add(0xFFFD)
+    unmerged_intervals = codepoints_to_intervals(charset_codepoints)
+else:
+    unmerged_intervals = sorted(intervals + add_ints)
 intervals = []
 unvalidated_intervals = []
 for i_start, i_end in unmerged_intervals:
@@ -288,7 +339,7 @@ print ("};\n");
 
 print(f"static const EpdGlyph {font_name}Glyphs[] = {{")
 for i, g in enumerate(glyph_props):
-    print ("    { " + ", ".join([f"{a}" for a in list(g[:-1])]),"},", f"// {chr(g.code_point) if g.code_point != 92 else '<backslash>'}")
+    print ("    { " + ", ".join([f"{a}" for a in list(g[:-1])]),"},", f"// {glyph_comment(g.code_point)}")
 print ("};\n");
 
 print(f"static const EpdUnicodeInterval {font_name}Intervals[] = {{")

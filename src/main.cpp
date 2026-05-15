@@ -24,6 +24,7 @@
 #include "activities/network/CrossPointWebServerActivity.h"
 #include "activities/reader/ReaderActivity.h"
 #include "activities/settings/BluetoothSettingsActivity.h"
+#include "activities/settings/BluetoothKeymapActivity.h"
 #include "activities/settings/SettingsActivity.h"
 #include "activities/util/FullScreenMessageActivity.h"
 #include "components/UITheme.h"
@@ -40,92 +41,92 @@ GfxRenderer renderer(display);
 Activity* currentActivity;
 
 // Fonts
-EpdFont bookerly14RegularFont(&notosans_18_bold);
-EpdFont bookerly14BoldFont(&notosans_18_bold);
-EpdFont bookerly14ItalicFont(&notosans_18_bold);
-EpdFont bookerly14BoldItalicFont(&notosans_18_bold);
+EpdFont bookerly14RegularFont(&noto_sans_cjk_18_regular);
+EpdFont bookerly14BoldFont(&noto_sans_cjk_18_regular);
+EpdFont bookerly14ItalicFont(&noto_sans_cjk_18_regular);
+EpdFont bookerly14BoldItalicFont(&noto_sans_cjk_18_regular);
 EpdFontFamily bookerly14FontFamily(&bookerly14RegularFont, &bookerly14BoldFont, &bookerly14ItalicFont,
                                    &bookerly14BoldItalicFont);
 #ifndef OMIT_FONTS
-EpdFont bookerly12RegularFont(&notosans_18_bold);
-EpdFont bookerly12BoldFont(&notosans_18_bold);
-EpdFont bookerly12ItalicFont(&notosans_18_bold);
-EpdFont bookerly12BoldItalicFont(&notosans_18_bold);
+EpdFont bookerly12RegularFont(&noto_sans_cjk_18_regular);
+EpdFont bookerly12BoldFont(&noto_sans_cjk_18_regular);
+EpdFont bookerly12ItalicFont(&noto_sans_cjk_18_regular);
+EpdFont bookerly12BoldItalicFont(&noto_sans_cjk_18_regular);
 EpdFontFamily bookerly12FontFamily(&bookerly12RegularFont, &bookerly12BoldFont, &bookerly12ItalicFont,
                                    &bookerly12BoldItalicFont);
-EpdFont bookerly16RegularFont(&notosans_18_bold);
-EpdFont bookerly16BoldFont(&notosans_18_bold);
-EpdFont bookerly16ItalicFont(&notosans_18_bold);
-EpdFont bookerly16BoldItalicFont(&notosans_18_bold);
+EpdFont bookerly16RegularFont(&noto_sans_cjk_18_regular);
+EpdFont bookerly16BoldFont(&noto_sans_cjk_18_regular);
+EpdFont bookerly16ItalicFont(&noto_sans_cjk_18_regular);
+EpdFont bookerly16BoldItalicFont(&noto_sans_cjk_18_regular);
 EpdFontFamily bookerly16FontFamily(&bookerly16RegularFont, &bookerly16BoldFont, &bookerly16ItalicFont,
                                    &bookerly16BoldItalicFont);
-EpdFont bookerly18RegularFont(&notosans_18_bold);
-EpdFont bookerly18BoldFont(&notosans_18_bold);
-EpdFont bookerly18ItalicFont(&notosans_18_bold);
-EpdFont bookerly18BoldItalicFont(&notosans_18_bold);
+EpdFont bookerly18RegularFont(&noto_sans_cjk_18_regular);
+EpdFont bookerly18BoldFont(&noto_sans_cjk_18_regular);
+EpdFont bookerly18ItalicFont(&noto_sans_cjk_18_regular);
+EpdFont bookerly18BoldItalicFont(&noto_sans_cjk_18_regular);
 EpdFontFamily bookerly18FontFamily(&bookerly18RegularFont, &bookerly18BoldFont, &bookerly18ItalicFont,
                                    &bookerly18BoldItalicFont);
 
-EpdFont notosans12RegularFont(&notosans_18_bold);
-EpdFont notosans12BoldFont(&notosans_18_bold);
-EpdFont notosans12ItalicFont(&notosans_18_bold);
-EpdFont notosans12BoldItalicFont(&notosans_18_bold);
+EpdFont notosans12RegularFont(&noto_sans_cjk_18_regular);
+EpdFont notosans12BoldFont(&noto_sans_cjk_18_regular);
+EpdFont notosans12ItalicFont(&noto_sans_cjk_18_regular);
+EpdFont notosans12BoldItalicFont(&noto_sans_cjk_18_regular);
 EpdFontFamily notosans12FontFamily(&notosans12RegularFont, &notosans12BoldFont, &notosans12ItalicFont,
                                    &notosans12BoldItalicFont);
-EpdFont notosans14RegularFont(&notosans_18_bold);
-EpdFont notosans14BoldFont(&notosans_18_bold);
-EpdFont notosans14ItalicFont(&notosans_18_bold);
-EpdFont notosans14BoldItalicFont(&notosans_18_bold);
+EpdFont notosans14RegularFont(&noto_sans_cjk_18_regular);
+EpdFont notosans14BoldFont(&noto_sans_cjk_18_regular);
+EpdFont notosans14ItalicFont(&noto_sans_cjk_18_regular);
+EpdFont notosans14BoldItalicFont(&noto_sans_cjk_18_regular);
 EpdFontFamily notosans14FontFamily(&notosans14RegularFont, &notosans14BoldFont, &notosans14ItalicFont,
                                    &notosans14BoldItalicFont);
-EpdFont notosans16RegularFont(&notosans_18_bold);
-EpdFont notosans16BoldFont(&notosans_18_bold);
-EpdFont notosans16ItalicFont(&notosans_18_bold);
-EpdFont notosans16BoldItalicFont(&notosans_18_bold);
+EpdFont notosans16RegularFont(&noto_sans_cjk_18_regular);
+EpdFont notosans16BoldFont(&noto_sans_cjk_18_regular);
+EpdFont notosans16ItalicFont(&noto_sans_cjk_18_regular);
+EpdFont notosans16BoldItalicFont(&noto_sans_cjk_18_regular);
 EpdFontFamily notosans16FontFamily(&notosans16RegularFont, &notosans16BoldFont, &notosans16ItalicFont,
                                    &notosans16BoldItalicFont);
-EpdFont notosans18RegularFont(&notosans_18_bold);
-EpdFont notosans18BoldFont(&notosans_18_bold);
-EpdFont notosans18ItalicFont(&notosans_18_bold);
-EpdFont notosans18BoldItalicFont(&notosans_18_bold);
+EpdFont notosans18RegularFont(&noto_sans_cjk_18_regular);
+EpdFont notosans18BoldFont(&noto_sans_cjk_18_regular);
+EpdFont notosans18ItalicFont(&noto_sans_cjk_18_regular);
+EpdFont notosans18BoldItalicFont(&noto_sans_cjk_18_regular);
 EpdFontFamily notosans18FontFamily(&notosans18RegularFont, &notosans18BoldFont, &notosans18ItalicFont,
                                    &notosans18BoldItalicFont);
 
-EpdFont opendyslexic8RegularFont(&notosans_18_bold);
-EpdFont opendyslexic8BoldFont(&notosans_18_bold);
-EpdFont opendyslexic8ItalicFont(&notosans_18_bold);
-EpdFont opendyslexic8BoldItalicFont(&notosans_18_bold);
+EpdFont opendyslexic8RegularFont(&noto_sans_cjk_18_regular);
+EpdFont opendyslexic8BoldFont(&noto_sans_cjk_18_regular);
+EpdFont opendyslexic8ItalicFont(&noto_sans_cjk_18_regular);
+EpdFont opendyslexic8BoldItalicFont(&noto_sans_cjk_18_regular);
 EpdFontFamily opendyslexic8FontFamily(&opendyslexic8RegularFont, &opendyslexic8BoldFont, &opendyslexic8ItalicFont,
                                       &opendyslexic8BoldItalicFont);
-EpdFont opendyslexic10RegularFont(&notosans_18_bold);
-EpdFont opendyslexic10BoldFont(&notosans_18_bold);
-EpdFont opendyslexic10ItalicFont(&notosans_18_bold);
-EpdFont opendyslexic10BoldItalicFont(&notosans_18_bold);
+EpdFont opendyslexic10RegularFont(&noto_sans_cjk_18_regular);
+EpdFont opendyslexic10BoldFont(&noto_sans_cjk_18_regular);
+EpdFont opendyslexic10ItalicFont(&noto_sans_cjk_18_regular);
+EpdFont opendyslexic10BoldItalicFont(&noto_sans_cjk_18_regular);
 EpdFontFamily opendyslexic10FontFamily(&opendyslexic10RegularFont, &opendyslexic10BoldFont, &opendyslexic10ItalicFont,
                                        &opendyslexic10BoldItalicFont);
-EpdFont opendyslexic12RegularFont(&notosans_18_bold);
-EpdFont opendyslexic12BoldFont(&notosans_18_bold);
-EpdFont opendyslexic12ItalicFont(&notosans_18_bold);
-EpdFont opendyslexic12BoldItalicFont(&notosans_18_bold);
+EpdFont opendyslexic12RegularFont(&noto_sans_cjk_18_regular);
+EpdFont opendyslexic12BoldFont(&noto_sans_cjk_18_regular);
+EpdFont opendyslexic12ItalicFont(&noto_sans_cjk_18_regular);
+EpdFont opendyslexic12BoldItalicFont(&noto_sans_cjk_18_regular);
 EpdFontFamily opendyslexic12FontFamily(&opendyslexic12RegularFont, &opendyslexic12BoldFont, &opendyslexic12ItalicFont,
                                        &opendyslexic12BoldItalicFont);
-EpdFont opendyslexic14RegularFont(&notosans_18_bold);
-EpdFont opendyslexic14BoldFont(&notosans_18_bold);
-EpdFont opendyslexic14ItalicFont(&notosans_18_bold);
-EpdFont opendyslexic14BoldItalicFont(&notosans_18_bold);
+EpdFont opendyslexic14RegularFont(&noto_sans_cjk_18_regular);
+EpdFont opendyslexic14BoldFont(&noto_sans_cjk_18_regular);
+EpdFont opendyslexic14ItalicFont(&noto_sans_cjk_18_regular);
+EpdFont opendyslexic14BoldItalicFont(&noto_sans_cjk_18_regular);
 EpdFontFamily opendyslexic14FontFamily(&opendyslexic14RegularFont, &opendyslexic14BoldFont, &opendyslexic14ItalicFont,
                                        &opendyslexic14BoldItalicFont);
 #endif  // OMIT_FONTS
 
-EpdFont smallFont(&ubuntu_10_bold);
+EpdFont smallFont(&noto_sans_cjk_18_regular);
 EpdFontFamily smallFontFamily(&smallFont);
 
-EpdFont ui10RegularFont(&ubuntu_10_bold);
-EpdFont ui10BoldFont(&ubuntu_10_bold);
+EpdFont ui10RegularFont(&noto_sans_cjk_18_regular);
+EpdFont ui10BoldFont(&noto_sans_cjk_18_regular);
 EpdFontFamily ui10FontFamily(&ui10RegularFont, &ui10BoldFont);
 
-EpdFont ui12RegularFont(&ubuntu_10_bold);
-EpdFont ui12BoldFont(&ubuntu_10_bold);
+EpdFont ui12RegularFont(&noto_sans_cjk_18_regular);
+EpdFont ui12BoldFont(&noto_sans_cjk_18_regular);
 EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 
 
@@ -287,10 +288,15 @@ void onGoToBluetooth() {
   enterNewActivity(new BluetoothSettingsActivity(renderer, mappedInputManager, onGoHome));
 }
 
+void onGoToBluetoothKeymap() {
+  exitActivity();
+  enterNewActivity(new BluetoothKeymapActivity(renderer, mappedInputManager, onGoHome));
+}
+
 void onGoHome() {
   exitActivity();
   enterNewActivity(new HomeActivity(renderer, mappedInputManager, onGoToReader, onGoToMyLibrary, onGoToSettings,
-                                    onGoToFileTransfer, onGoToBrowser, onGoToBluetooth));
+                                    onGoToFileTransfer, onGoToBrowser, onGoToBluetooth, onGoToBluetoothKeymap));
 }
 
 void setupDisplayAndFonts() {

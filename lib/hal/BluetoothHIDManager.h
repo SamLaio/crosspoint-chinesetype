@@ -34,6 +34,14 @@ struct ConnectedDevice {
   const DeviceProfiles::DeviceProfile* profile = nullptr;  // Device-specific HID profile
 };
 
+struct BluetoothKeyMapping {
+  std::string address;
+  uint8_t reportLength = 0;
+  uint8_t byteIndex = 0;
+  uint8_t keycode = 0;
+  uint8_t targetButton = 0xFF;
+};
+
 class BluetoothHIDManager {
 public:
   // Singleton access
@@ -66,6 +74,12 @@ public:
   void processInputEvents();
   void setInputCallback(std::function<void(uint16_t keycode)> callback);
   void setButtonInjector(std::function<void(uint8_t buttonIndex)> injector);
+  void beginKeymapLearning(uint8_t targetButton);
+  void cancelKeymapLearning();
+  bool isKeymapLearning() const { return _learningTargetButton != 0xFF; }
+  bool consumeLastLearnedMapping(BluetoothKeyMapping& mapping);
+  std::vector<BluetoothKeyMapping> getKeyMappings() const { return _keyMappings; }
+  void clearKeyMappings();
   void updateActivity();  // Call periodically to check inactivity timeout
   void checkAutoReconnect();  // Auto-reconnect to previously connected devices if disconnected
   
@@ -78,6 +92,8 @@ public:
   void loadState();
   void saveLastConnectedDevice(const std::string& address, const std::string& name);
   bool loadLastConnectedDevice(std::string& address, std::string& name);
+  void saveKeyMappings();
+  void loadKeyMappings();
 
   std::string lastError;
   //防止崩潰，讓外部可讀取資訊
@@ -98,15 +114,22 @@ private:
   void cleanup();
   uint16_t parseHIDReport(uint8_t* data, size_t length);
   ConnectedDevice* findConnectedDevice(const std::string& address);
-  uint8_t mapKeycodeToButton(uint8_t keycode, const DeviceProfiles::DeviceProfile* profile);
+  uint8_t mapKeycodeToButton(const ConnectedDevice& device, uint8_t reportLength, uint8_t byteIndex, uint8_t keycode);
+  const BluetoothKeyMapping* findKeyMapping(const std::string& address, uint8_t reportLength, uint8_t byteIndex,
+                                            uint8_t keycode) const;
+  void learnKeyMapping(const std::string& address, uint8_t reportLength, uint8_t byteIndex, uint8_t keycode);
 
   bool _enabled = false;
   bool _scanning = false;
   unsigned long _scanEndTime = 0;
   std::vector<BluetoothDevice> _discoveredDevices;
   std::vector<ConnectedDevice> _connectedDevices;
+  std::vector<BluetoothKeyMapping> _keyMappings;
   std::function<void(uint16_t)> _inputCallback;
   std::function<void(uint8_t)> _buttonInjector;
+  uint8_t _learningTargetButton = 0xFF;
+  bool _hasLastLearnedMapping = false;
+  BluetoothKeyMapping _lastLearnedMapping;
   
   // Inactivity timeout (milliseconds)
   static constexpr unsigned long INACTIVITY_TIMEOUT_MS = 120000;  // 2 minutes
