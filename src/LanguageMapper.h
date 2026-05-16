@@ -445,6 +445,9 @@ static const LanguageMapEntry LANGUAGE_MAP[] = {
     {"Layout conflict prompt", "請選擇要使用哪一種排版", "请选择要使用哪一种排版", "Choose which layout to use"},
     {"Use book layout", "使用書本排版", "使用书本排版", "Use book layout"},
     {"Use reader settings", "使用閱讀設定", "使用阅读设置", "Use reader settings"},
+    {"Layout setting", "版面設定", "版面设置", "Layout setting"},
+    {"Book layout", "書本排版", "书本排版", "Book layout"},
+    {"Reader settings layout", "閱讀設定", "阅读设置", "Reader settings"},
     {"Layout conflict controls", "左右切換，確認選擇，返回使用閱讀設定", "左右切换，确认选择，返回使用阅读设置", "Left/Right to switch, Confirm to choose"},
 
     {"Image actions", "圖片操作", "图片操作", "Image actions"},
@@ -556,6 +559,7 @@ static const char* getChineseName(const char* englishName) {
     if (strcmp(englishName, "Book's Embedded Style") == 0) return "書籍嵌入樣式";
     if (strcmp(englishName, "Hyphenation") == 0) return "自動連字元";
     if (strcmp(englishName, "Reading Orientation") == 0) return "閱讀方向";
+    if (strcmp(englishName, "Layout setting") == 0) return "版面設定";
     if (strcmp(englishName, "Extra Paragraph Spacing") == 0) return "段落額外間距";
     if (strcmp(englishName, "Text Anti-Aliasing") == 0) return "文字抗鋸齒";
 
@@ -653,6 +657,8 @@ static const char* getChineseName(const char* englishName) {
     if (strcmp(englishName, "Center") == 0) return "居中";
     if (strcmp(englishName, "Right") == 0) return "右對齊";
     if (strcmp(englishName, "Book's Style") == 0) return "書籍原有樣式";
+    if (strcmp(englishName, "Book layout") == 0) return "書本排版";
+    if (strcmp(englishName, "Reader settings layout") == 0) return "閱讀設定";
     // 閱讀方向
     if (strcmp(englishName, "Portrait") == 0) return "預設方向";
     if (strcmp(englishName, "Landscape CW") == 0) return "按鈕在左邊";

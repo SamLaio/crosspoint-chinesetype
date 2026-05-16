@@ -42,6 +42,7 @@ class EpubReaderActivity final : public ActivityWithSubactivity {
   bool skipNextButtonCheck = false;     // Skip button processing for one frame after subactivity exit
   bool pendingMarginRelayout = false;   // Defer heavy section relayout until margin-setting is confirmed
   bool useBookEmbeddedStyle = true;      // Per-open EPUB style choice after resolving layout conflicts
+  uint8_t bookLayoutChoice = 255;        // 0 = book CSS layout, 1 = reader setting layout, 255 = not saved
   int layoutConflictSelection = 0;       // 0 = book CSS layout, 1 = reader setting layout
   const std::function<void()> onGoBack;
   const std::function<void()> onGoHome;
@@ -55,9 +56,12 @@ class EpubReaderActivity final : public ActivityWithSubactivity {
   void saveProgress(int spineIndex, int currentPage, int pageCount);
   // Jump to a percentage of the book (0-100), mapping it to spine and page.
   void jumpToPercent(int percent);
-  void onReaderMenuBack(uint8_t orientation);
+  void onReaderMenuBack(uint8_t orientation, uint8_t layoutChoice);
   void onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction action);
   void applyOrientation(uint8_t orientation);
+  void applyBookLayoutChoice(uint8_t layoutChoice);
+  void loadBookLayoutChoice();
+  void saveBookLayoutChoice(uint8_t layoutChoice) const;
 
   void renderPngSleepScreen(GfxRenderer& renderer, bool verticalLayout) const;
   void renderLayoutConflictPrompt();

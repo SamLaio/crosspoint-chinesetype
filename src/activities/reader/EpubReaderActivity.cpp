@@ -31,6 +31,12 @@ constexpr uint16_t WALLPAPER_PXC_VERSION = 1;
 constexpr char WALLPAPER_PXC_PATH[] = "/.crosspoint/wallpaper_bg.pxc";
 constexpr char WALLPAPER_VERTICAL_PXC_PATH[] = "/.crosspoint/wallpaper_bg_vertical.pxc";
 constexpr uint8_t WALLPAPER_PXC_FIXED_ORIENTATION = CrossPointSettings::ORIENTATION::PORTRAIT;
+constexpr uint32_t EPUB_LAYOUT_CHOICE_MAGIC = 0x31434C45;  // "ELC1"
+constexpr uint16_t EPUB_LAYOUT_CHOICE_VERSION = 1;
+constexpr char EPUB_LAYOUT_CHOICE_FILE[] = "/layout_choice.bin";
+constexpr uint8_t EPUB_LAYOUT_CHOICE_BOOK = 0;
+constexpr uint8_t EPUB_LAYOUT_CHOICE_READER = 1;
+constexpr uint8_t EPUB_LAYOUT_CHOICE_UNSET = 255;
 
 bool readWallpaperPayload(FsFile& input, uint8_t* target, const uint32_t payloadSize) {
   size_t totalRead = 0;
@@ -47,6 +53,10 @@ bool readWallpaperPayload(FsFile& input, uint8_t* target, const uint32_t payload
 
 bool isVerticalWritingMode(const CssWritingMode writingMode) {
   return writingMode == CssWritingMode::VerticalRl || writingMode == CssWritingMode::VerticalLr;
+}
+
+bool isValidLayoutChoice(const uint8_t choice) {
+  return choice == EPUB_LAYOUT_CHOICE_BOOK || choice == EPUB_LAYOUT_CHOICE_READER;
 }
 
 bool readWallpaperPxcHeader(FsFile& input, const uint32_t expectedPayload) {
@@ -122,6 +132,46 @@ bool saveWallpaperPxcFromFramebuffer(const std::string& pxcPath, GfxRenderer& re
     totalWritten += bytesWritten;
   }
 
+  output.sync();
+  output.close();
+  return true;
+}
+
+bool readEpubLayoutChoice(const std::string& cachePath, uint8_t& layoutChoice) {
+  FsFile input;
+  if (!SdMan.openFileForRead("ERS", cachePath + EPUB_LAYOUT_CHOICE_FILE, input)) {
+    return false;
+  }
+
+  uint32_t magic = 0;
+  uint16_t version = 0;
+  uint8_t choice = EPUB_LAYOUT_CHOICE_UNSET;
+  serialization::readPod(input, magic);
+  serialization::readPod(input, version);
+  serialization::readPod(input, choice);
+  input.close();
+
+  if (magic != EPUB_LAYOUT_CHOICE_MAGIC || version != EPUB_LAYOUT_CHOICE_VERSION || !isValidLayoutChoice(choice)) {
+    return false;
+  }
+
+  layoutChoice = choice;
+  return true;
+}
+
+bool writeEpubLayoutChoice(const std::string& cachePath, const uint8_t layoutChoice) {
+  if (!isValidLayoutChoice(layoutChoice)) {
+    return false;
+  }
+
+  FsFile output;
+  if (!SdMan.openFileForWrite("ERS", cachePath + EPUB_LAYOUT_CHOICE_FILE, output)) {
+    return false;
+  }
+
+  serialization::writePod(output, EPUB_LAYOUT_CHOICE_MAGIC);
+  serialization::writePod(output, EPUB_LAYOUT_CHOICE_VERSION);
+  serialization::writePod(output, layoutChoice);
   output.sync();
   output.close();
   return true;
@@ -224,7 +274,8 @@ void EpubReaderActivity::onEnter() {
   RECENT_BOOKS.addBook(epub->getPath(), epub->getTitle(), epub->getAuthor(), epub->getThumbBmpPath());
 
   useBookEmbeddedStyle = SETTINGS.embeddedStyle;
-  if (shouldAskLayoutConflict()) {
+  loadBookLayoutChoice();
+  if (bookLayoutChoice == EPUB_LAYOUT_CHOICE_UNSET && shouldAskLayoutConflict()) {
     state = EPUBState::LAYOUT_CONFLICT;
     layoutConflictSelection = 0;
     skipNextButtonCheck = true;
@@ -366,7 +417,8 @@ void EpubReaderActivity::loop() {
       exitActivity();
       enterNewActivity(new EpubReaderMenuActivity(
           this->renderer, this->mappedInput, epub->getTitle(), currentPage, totalPages, bookProgressPercent,
-          SETTINGS.orientation, [this](const uint8_t orientation) { onReaderMenuBack(orientation); },
+          SETTINGS.orientation, useBookEmbeddedStyle ? EPUB_LAYOUT_CHOICE_BOOK : EPUB_LAYOUT_CHOICE_READER,
+          [this](const uint8_t orientation, const uint8_t layoutChoice) { onReaderMenuBack(orientation, layoutChoice); },
           [this](EpubReaderMenuActivity::MenuAction action) { onReaderMenuConfirm(action); }));
       xSemaphoreGive(renderingMutex);
     }
@@ -540,11 +592,11 @@ void EpubReaderActivity::loop() {
 
 }
 
-void EpubReaderActivity::onReaderMenuBack(const uint8_t orientation) {
+void EpubReaderActivity::onReaderMenuBack(const uint8_t orientation, const uint8_t layoutChoice) {
   exitActivity();
-  // Apply the user-selected orientation when the menu is dismissed.
-  // This ensures the menu can be navigated without immediately rotating the screen.
+  // Apply user-selected settings when the menu is dismissed so the menu itself stays stable.
   applyOrientation(orientation);
+  applyBookLayoutChoice(layoutChoice);
   updateRequired = true;
 }
 
@@ -679,6 +731,9 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
       xSemaphoreGive(renderingMutex);
       break;
     }
+    case EpubReaderMenuActivity::MenuAction::LAYOUT_SETTING: {
+      break;
+    }
     case EpubReaderMenuActivity::MenuAction::GO_HOME: {
       // Defer go home to avoid race condition with display task
       pendingGoHome = true;
@@ -757,6 +812,55 @@ void EpubReaderActivity::applyOrientation(const uint8_t orientation) {
   applyReaderOrientation(renderer, SETTINGS.orientation);
 
   // Reset section to force re-layout in the new orientation.
+  section.reset();
+  xSemaphoreGive(renderingMutex);
+}
+
+void EpubReaderActivity::loadBookLayoutChoice() {
+  bookLayoutChoice = EPUB_LAYOUT_CHOICE_UNSET;
+  if (!epub) {
+    return;
+  }
+
+  uint8_t savedChoice = EPUB_LAYOUT_CHOICE_UNSET;
+  if (!readEpubLayoutChoice(epub->getCachePath(), savedChoice)) {
+    return;
+  }
+
+  bookLayoutChoice = savedChoice;
+  useBookEmbeddedStyle = savedChoice == EPUB_LAYOUT_CHOICE_BOOK;
+}
+
+void EpubReaderActivity::saveBookLayoutChoice(const uint8_t layoutChoice) const {
+  if (!epub || !isValidLayoutChoice(layoutChoice)) {
+    return;
+  }
+
+  if (!writeEpubLayoutChoice(epub->getCachePath(), layoutChoice)) {
+    Serial.printf("[%lu] [ERS] Failed to save EPUB layout choice\n", millis());
+  }
+}
+
+void EpubReaderActivity::applyBookLayoutChoice(const uint8_t layoutChoice) {
+  if (!isValidLayoutChoice(layoutChoice)) {
+    return;
+  }
+
+  const bool nextUseBookEmbeddedStyle = layoutChoice == EPUB_LAYOUT_CHOICE_BOOK;
+  if (bookLayoutChoice == layoutChoice && useBookEmbeddedStyle == nextUseBookEmbeddedStyle) {
+    return;
+  }
+
+  xSemaphoreTake(renderingMutex, portMAX_DELAY);
+  if (section) {
+    cachedSpineIndex = currentSpineIndex;
+    cachedChapterTotalPageCount = section->pageCount;
+    nextPageNumber = section->currentPage;
+  }
+
+  bookLayoutChoice = layoutChoice;
+  useBookEmbeddedStyle = nextUseBookEmbeddedStyle;
+  saveBookLayoutChoice(layoutChoice);
   section.reset();
   xSemaphoreGive(renderingMutex);
 }
@@ -1048,7 +1152,9 @@ bool EpubReaderActivity::shouldAskLayoutConflict() const {
 
 void EpubReaderActivity::applyLayoutConflictChoice() {
   xSemaphoreTake(renderingMutex, portMAX_DELAY);
-  useBookEmbeddedStyle = layoutConflictSelection == 0;
+  bookLayoutChoice = layoutConflictSelection == 0 ? EPUB_LAYOUT_CHOICE_BOOK : EPUB_LAYOUT_CHOICE_READER;
+  useBookEmbeddedStyle = bookLayoutChoice == EPUB_LAYOUT_CHOICE_BOOK;
+  saveBookLayoutChoice(bookLayoutChoice);
   section.reset();
   xSemaphoreGive(renderingMutex);
 

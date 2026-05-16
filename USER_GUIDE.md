@@ -1,6 +1,6 @@
 # CrossPoint ChineseType User Guide
 
-Firmware version: `zhTW_V2.5.5`
+Firmware version: `zhTW_V2.5.6`
 
 CrossPoint ChineseType is firmware for the XTEink X4 e-paper reader. This guide describes the current Traditional Chinese build, including local reading, OPDS downloads, Calibre transfer, Wi-Fi tools, Bluetooth HID, KOReader Sync, and custom fonts.
 
@@ -30,7 +30,7 @@ Home shows recent books and entry points for the main tools:
 - Bluetooth keyboard / media key settings.
 - Reader and system settings.
 
-Book titles, OPDS titles, Wi-Fi names, filenames, chapter names, and other external text use the 10px Ubuntu UI font subset. That subset is generated from common Traditional/Simplified Chinese characters, fixed interface strings, and common symbols.
+Book titles, OPDS titles, Wi-Fi names, filenames, chapter names, and other external text use the built-in 10px Noto Sans CJK TC subset. That subset is generated from common Traditional/Simplified Chinese characters, fixed interface strings, and common symbols.
 
 ## Supported Files
 
@@ -68,8 +68,11 @@ EPUB reading supports:
 - Status bar with optional progress display.
 - Portrait, landscape, and inverted orientation.
 - Percentage jump.
+- Per-book layout choice between the book's embedded layout and reader settings.
 - Cache clearing.
 - KOReader Sync upload/download when configured.
+
+When an EPUB declares a vertical/horizontal layout that differs from the current reader text layout, the reader asks once for that book. The choice is saved in that book's cache and can later be changed from the EPUB reader menu under Layout setting. Clearing the book cache also clears this saved layout choice.
 
 Embedded image support depends on the source file and reader path. Standalone image files can be opened directly from the SD card.
 
@@ -111,7 +114,7 @@ KOReader Sync can be configured from Settings. It is intended to exchange readin
 
 ## Fonts
 
-Built-in reader font choices include Bookerly, NotoSans, and OpenDyslexic ids. In this build, the compiled full CJK reader font is NotoSans, while UI labels and external metadata use a 10px subset font generated during build.
+Built-in reader font choices include Bookerly, NotoSans, and OpenDyslexic ids. In this build, those built-in ids, UI labels, and external metadata all use the same 10px Noto Sans CJK TC subset font.
 
 Custom `.epdfont` files can be placed in:
 
