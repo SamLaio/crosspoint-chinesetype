@@ -12,3 +12,6 @@ build
 /compile_commands.json
 /.cache
 RELEASE_NOTES_*
+RELEASE_*
+
+AGENTS.md

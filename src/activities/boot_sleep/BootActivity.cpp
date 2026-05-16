@@ -4,7 +4,7 @@
 
 #include "LanguageMapper.h"
 #include "fontIds.h"
-#include "images/CrossLarge.h"
+#include "images/BootImage.h"
 
 void BootActivity::onEnter() {
   Activity::onEnter();
@@ -13,7 +13,7 @@ void BootActivity::onEnter() {
   const auto pageHeight = renderer.getScreenHeight();
 
   renderer.clearScreen();
-  renderer.drawImage(CrossLarge, (pageWidth - 128) / 2, (pageHeight - 128) / 2, 128, 128);
+  renderer.drawImage(BootImage, (pageWidth - 128) / 2, (pageHeight - 128) / 2, 128, 128);
   renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 70, "CrossPoint", true, EpdFontFamily::BOLD);
   renderer.drawCenteredText(SMALL_FONT_ID, pageHeight / 2 + 95, getChineseName("BOOTING"));
   renderer.drawCenteredText(SMALL_FONT_ID, pageHeight - 30, CROSSPOINT_VERSION);

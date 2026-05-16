@@ -51,7 +51,17 @@ constexpr VerticalGlyphMap kVerticalGlyphMap[] = {
     {0x3008, 0xFE3F},  // 〈 -> ︿
     {0x3009, 0xFE40},  // 〉 -> ﹀
     {0x2026, 0xFE19},  // … -> ︙
+    {0x2010, 0xFE32},  // ‐ -> ︲
+    {0x2011, 0xFE32},  // ‑ -> ︲
+    {0x2013, 0xFE32},  // – -> ︲
     {0x2014, 0xFE31},  // — -> ︱
+    {0x2015, 0xFE31},  // ― -> ︱
+    {0x2212, 0xFE32},  // − -> ︲
+    {0x2500, 0xFE31},  // ─ -> ︱
+    {0x2501, 0xFE31},  // ━ -> ︱
+    {0x2E3A, 0xFE31},  // ⸺ -> ︱
+    {0x2E3B, 0xFE31},  // ⸻ -> ︱
+    {0xFF0D, 0xFE32},  // － -> ︲
     {0x007C, 0xFE33},  // | -> ︳
     {0xFF5C, 0xFE33},  // ｜ -> ︳
     {0x2016, 0xFE34},  // ‖ -> ︴
@@ -246,7 +256,19 @@ bool drawFallbackVerticalForm(const GfxRenderer& renderer, const uint32_t cp, co
       renderer.fillRect(cx - 1, cy + markSize / 3 - 1, 3, 3, black);
       return true;
     case 0x2014:  // — -> ︱
+    case 0x2015:  // ― -> ︱
+    case 0x2500:  // ─ -> ︱
+    case 0x2501:  // ━ -> ︱
+    case 0x2E3A:  // ⸺ -> ︱
+    case 0x2E3B:  // ⸻ -> ︱
       drawThickLine(renderer, cx, y0, cx, y1, black);
+      return true;
+    case 0x2010:  // ‐ -> ︲
+    case 0x2011:  // ‑ -> ︲
+    case 0x2013:  // – -> ︲
+    case 0x2212:  // − -> ︲
+    case 0xFF0D:  // － -> ︲
+      drawThickLine(renderer, cx, y0 + markSize / 3, cx, y1 - markSize / 3, black);
       return true;
     case 0x007C:  // | -> ︳
     case 0xFF5C:  // ｜ -> ︳
